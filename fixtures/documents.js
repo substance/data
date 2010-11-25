@@ -1,5 +1,5 @@
 var documents_fixture = {
-  "type:document": {
+  "/type/document": {
     "type": "type",
     "name": "Document",
     "properties": {
@@ -11,7 +11,7 @@ var documents_fixture = {
       "entities": {
         "name": "Associated Entities",
         "unique": false,
-        "expected_type": "type:entity"
+        "expected_type": "/type/entity"
       },
       "page_count": {
         "name": "Page Count",
@@ -25,7 +25,7 @@ var documents_fixture = {
       }
     }
   },
-  "type:entity": {
+  "/type/entity": {
     "type": "type",
     "name": "Entity",
     "properties": {
@@ -37,23 +37,23 @@ var documents_fixture = {
       "mentions": {
         "name": "Mentions",
         "unique": false,
-        "expected_type": "type:mention"
+        "expected_type": "/type/mention"
       }
     }
   },
-  "type:mention": {
+  "/type/mention": {
     "name": "Mention",
     "type": "type",
     "properties": {
       "document": {
         "name": "Document",
         "unique": true,
-        "expected_type": "type:document"
+        "expected_type": "/type/document"
       },
       "entity": {
         "name": "Entity",
         "unique": true,
-        "expected_type": "type:entity"
+        "expected_type": "/type/entity"
       },
       "page": {
         "name": "Occured on page",
@@ -63,7 +63,7 @@ var documents_fixture = {
     }
   },
   "/doc/protovis_introduction": {
-    "type": "type:document",
+    "type": "/type/document",
     "properties": {
       "title": "Protovis",
       "authors": ["Michael Bostock", "Jeffrey Heer"],
@@ -72,7 +72,7 @@ var documents_fixture = {
     }
   },
   "/doc/unveil_introduction": {
-    "type": "type:document",
+    "type": "/type/document",
     "properties": {
       "title": "Unveil.js",
       "authors": ["Michael Aufreiter", "Lindsay Kay"],
@@ -81,7 +81,7 @@ var documents_fixture = {
     }
   },
   "/doc/processing_js_introduction": {
-    "type": "type:document",
+    "type": "/type/document",
     "properties": {
       "title": "Processing.js",
       "authors": ["Alistair MacDonald", "David Humphrey", "Michael Aufreiter"],
@@ -89,35 +89,35 @@ var documents_fixture = {
     }
   },
   "/location/stanford": {
-    "type": "type:entity",
+    "type": "/type/entity",
     "properties": {
       "name": "Stanford",
       "mentions": ["M0000001"]    
     }
   },
   "/location/new_york": {
-    "type": "type:entity",
+    "type": "/type/entity",
     "properties": {
       "name": "New York",
       "mentions": ["M0000002", "M0000003"]
     }
   },
   "/location/toronto": {
-    "type": "type:entity",
+    "type": "/type/entity",
     "properties": {
       "name": "Toronto",
       "mentions": ["M0000004"]
     }
   },
   "/person/michael_bostock": {
-    "type": "type:entity",
+    "type": "/type/entity",
     "properties": {
       "name": "Michael Bostock",
       "mentions": ["M0000005"]
     }
   },
   "M0000001": {
-    "type": "type:mention",
+    "type": "/type/mention",
     "properties": {
       "document": "/doc/protovis_introduction",
       "entity": "/location/stanford",
@@ -125,7 +125,7 @@ var documents_fixture = {
     }
   },
   "M0000002": {
-    "type": "type:mention",
+    "type": "/type/mention",
     "properties": {
       "document": "/doc/protovis_introduction",
       "entity": "/location/new_york",
@@ -133,7 +133,7 @@ var documents_fixture = {
     }
   },
   "M0000003": {
-    "type": "type:mention",
+    "type": "/type/mention",
     "properties": {
       "document": "/doc/processing_js_introduction",
       "entity": "/location/new_york",
@@ -141,7 +141,7 @@ var documents_fixture = {
     }
   },
   "M0000004": {
-    "type": "type:mention",
+    "type": "/type/mention",
     "properties": {
       "document": "/doc/processing_js_introduction",
       "entity": "/location/toronto",
@@ -149,7 +149,7 @@ var documents_fixture = {
     }
   },
   "M0000005": {
-    "type": "type:mention",
+    "type": "/type/mention",
     "properties": {
       "document": "/doc/protovis_introduction",
       "entity": "/person/michael_bostock",

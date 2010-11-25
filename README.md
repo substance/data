@@ -39,7 +39,7 @@ to generate a new graph based on an existing input graph.
 Data.Graphs are exchanges through a uniform JSON Serialization Format:
 
     {
-      "type:document": {
+      "/type/document": {
         "type": "type",
         "name": "Document",
         "properties": {
@@ -51,7 +51,7 @@ Data.Graphs are exchanges through a uniform JSON Serialization Format:
           "entities": {
             "name": "Associated Entities",
             "unique": false,
-            "expected_type": "type:entity"
+            "expected_type": "/type/entity"
           },
           "page_count": {
             "name": "Page Count",
@@ -65,7 +65,7 @@ Data.Graphs are exchanges through a uniform JSON Serialization Format:
           }
         }
       },
-      "type:entity": {
+      "/type/entity": {
         "type": "type",
         "name": "Entity",
         "properties": {
@@ -77,23 +77,23 @@ Data.Graphs are exchanges through a uniform JSON Serialization Format:
           "mentions": {
             "name": "Mentions",
             "unique": false,
-            "expected_type": "type:mention"
+            "expected_type": "/type/mention"
           }
         }
       },
-      "type:mention": {
+      "/type/mention": {
         "name": "Mention",
         "type": "type",
         "properties": {
           "document": {
             "name": "Document",
             "unique": true,
-            "expected_type": "type:document"
+            "expected_type": "/type/document"
           },
           "entity": {
             "name": "Entity",
             "unique": true,
-            "expected_type": "type:entity"
+            "expected_type": "/type/entity"
           },
           "page": {
             "name": "Occured on page",
@@ -103,7 +103,7 @@ Data.Graphs are exchanges through a uniform JSON Serialization Format:
         }
       },
       "/doc/protovis_introduction": {
-        "type": "type:document",
+        "type": "/type/document",
         "properties": {
           "title": "Protovis",
           "authors": ["Michael Bostock", "Jeffrey Heer"],
@@ -112,7 +112,7 @@ Data.Graphs are exchanges through a uniform JSON Serialization Format:
         }
       },
       "/doc/unveil_introduction": {
-        "type": "type:document",
+        "type": "/type/document",
         "properties": {
           "title": "Unveil.js",
           "authors": ["Michael Aufreiter", "Lindsay Kay"],
@@ -121,7 +121,7 @@ Data.Graphs are exchanges through a uniform JSON Serialization Format:
         }
       },
       "/doc/processing_js_introduction": {
-        "type": "type:document",
+        "type": "/type/document",
         "properties": {
           "title": "Processing.js",
           "authors": ["Alistair MacDonald", "David Humphrey", "Michael Aufreiter"],
@@ -129,35 +129,35 @@ Data.Graphs are exchanges through a uniform JSON Serialization Format:
         }
       },
       "/location/stanford": {
-        "type": "type:entity",
+        "type": "/type/entity",
         "properties": {
           "name": "Stanford",
           "mentions": ["M0000001"]    
         }
       },
       "/location/new_york": {
-        "type": "type:entity",
+        "type": "/type/entity",
         "properties": {
           "name": "New York",
           "mentions": ["M0000002", "M0000003"]
         }
       },
       "/location/toronto": {
-        "type": "type:entity",
+        "type": "/type/entity",
         "properties": {
           "name": "Toronto",
           "mentions": ["M0000004"]
         }
       },
       "/person/michael_bostock": {
-        "type": "type:entity",
+        "type": "/type/entity",
         "properties": {
           "name": "Michael Bostock",
           "mentions": ["M0000005"]
         }
       },
       "M0000001": {
-        "type": "type:mention",
+        "type": "/type/mention",
         "properties": {
           "document": "/doc/protovis_introduction",
           "entity": "/location/stanford",
@@ -165,7 +165,7 @@ Data.Graphs are exchanges through a uniform JSON Serialization Format:
         }
       },
       "M0000002": {
-        "type": "type:mention",
+        "type": "/type/mention",
         "properties": {
           "document": "/doc/protovis_introduction",
           "entity": "/location/new_york",
@@ -173,7 +173,7 @@ Data.Graphs are exchanges through a uniform JSON Serialization Format:
         }
       },
       "M0000003": {
-        "type": "type:mention",
+        "type": "/type/mention",
         "properties": {
           "document": "/doc/processing_js_introduction",
           "entity": "/location/new_york",
@@ -181,7 +181,7 @@ Data.Graphs are exchanges through a uniform JSON Serialization Format:
         }
       },
       "M0000004": {
-        "type": "type:mention",
+        "type": "/type/mention",
         "properties": {
           "document": "/doc/processing_js_introduction",
           "entity": "/location/toronto",
@@ -189,7 +189,7 @@ Data.Graphs are exchanges through a uniform JSON Serialization Format:
         }
       },
       "M0000005": {
-        "type": "type:mention",
+        "type": "/type/mention",
         "properties": {
           "document": "/doc/protovis_introduction",
           "entity": "/person/michael_bostock",

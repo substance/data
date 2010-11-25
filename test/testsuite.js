@@ -382,22 +382,22 @@ test("valid construction", function() {
   ok(graph != undefined);
   ok(graph.all('types').length == 3);
   
-  ok(graph.get('types', 'type:document') instanceof Data.Type);
-  ok(graph.get('types', 'type:entity') instanceof Data.Type);
-  ok(graph.get('types', 'type:mention') instanceof Data.Type);
+  ok(graph.get('types', '/type/document') instanceof Data.Type);
+  ok(graph.get('types', '/type/entity') instanceof Data.Type);
+  ok(graph.get('types', '/type/mention') instanceof Data.Type);
 });
 
 test("Type inspection", function() {
-  documentType = graph.get('types', 'type:document');
+  documentType = graph.get('types', '/type/document');
   ok(documentType.all('properties').length === 4);
-  ok(documentType.key === 'type:document');
+  ok(documentType.key === '/type/document');
   ok(documentType.name === 'Document');
 });
 
 test("Property inspection", function() {
   entitiesProperty = documentType.get('properties', 'entities');
   ok(entitiesProperty.name === 'Associated Entities');
-  ok(entitiesProperty.expected_type === 'type:entity');
+  ok(entitiesProperty.expected_type === '/type/entity');
 });
 
 test("Object inspection", function() {
@@ -487,7 +487,7 @@ test("Value identity", function() {
   ok(processingjs.get('authors').at(2) === 'Michael Aufreiter');
   
   // This allows questions like:
-  // Show me all unique values of a certain property e.g. type:document.authors
+  // Show me all unique values of a certain property e.g. /type/document.authors
   
   ok(protovis.type.get('properties', 'authors').all('values').length === 6);
 });
