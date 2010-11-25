@@ -7,7 +7,7 @@ var items;
 // Data.SortedHash
 //-------------
 
-module("SortedHash", {
+module("Data.SortedHash", {
   setup: function() {
     items = new Data.SortedHash();
     items.set("at", "Austria");
@@ -264,7 +264,7 @@ test("fail prevention", function() {
 
 var austrian, english, german, eu, austria, germany, uk;
 
-module("Node", {
+module("Data.Node", {
   setup: function() {
     austrian = new Data.Node({value: 'Austrian'});
     english = new Data.Node({value: 'English'});
@@ -369,7 +369,7 @@ var graph,
     mention,
     anotherMention;
     
-module("Node", {
+module("Data.Graph", {
   setup: function() {
     graph = new Data.Graph(documents_fixture);
   },
