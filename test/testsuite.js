@@ -3,6 +3,10 @@
 
 var items;
 
+
+// Data.SortedHash
+//-------------
+
 module("SortedHash", {
   setup: function() {
     items = new Data.SortedHash();
@@ -255,9 +259,8 @@ test("fail prevention", function() {
 });
 
 
-//-----------------------------------------------------------------------------
-// Node API
-//-----------------------------------------------------------------------------
+// Data.Node
+//-------------
 
 var austrian, english, german, eu, austria, germany, uk;
 
@@ -351,4 +354,140 @@ test("Allows null as a key for property values", function() {
   var nullNode = new Data.Node({value: null});
   root.set('values', null, nullNode);
   ok(root.value('values', null) === null);
+});
+
+
+// Data.Graph
+//-------------
+
+var graph,
+    documentType,
+    entitiesProperty,
+    protovis,
+    unveil,
+    processingjs,
+    mention,
+    anotherMention;
+    
+module("Node", {
+  setup: function() {
+    graph = new Data.Graph(documents_fixture);
+  },
+  teardown: function() {
+    delete graph;
+  }
+});
+
+test("valid construction", function() {
+  ok(graph != undefined);
+  ok(graph.all('types').length == 3);
+  
+  ok(graph.get('types', 'type:document') instanceof Data.Type);
+  ok(graph.get('types', 'type:entity') instanceof Data.Type);
+  ok(graph.get('types', 'type:mention') instanceof Data.Type);
+});
+
+test("Type inspection", function() {
+  documentType = graph.get('types', 'type:document');
+  ok(documentType.all('properties').length === 4);
+  ok(documentType.key === 'type:document');
+  ok(documentType.name === 'Document');
+});
+
+test("Property inspection", function() {
+  entitiesProperty = documentType.get('properties', 'entities');
+  ok(entitiesProperty.name === 'Associated Entities');
+  ok(entitiesProperty.expected_type === 'type:entity');
+});
+
+test("Object inspection", function() {
+  protovis = graph.get('objects', '/doc/protovis_introduction');
+  unveil = graph.get('objects', '/doc/unveil_introduction');
+  processingjs = graph.get('objects', '/doc/processing_js_introduction');
+  mention = graph.get('objects', 'M0000003');
+  anotherMention = graph.get('objects', 'M0000003');
+  
+  ok(protovis instanceof Data.Object);
+  ok(mention instanceof Data.Object);
+  ok(anotherMention instanceof Data.Object);
+});
+
+
+// There are four different access scenarios:
+// For convenience there's a get method, which always returns the right result depending on the
+// schema information. However, internally, every property of a resource is represented as a
+// non-unique SortedHash of Node objects, even if it's a unique property. So if
+// you want to be explicit you should use the native methods of the Node API.
+
+test("1. Unique value types", function() {
+  ok(protovis.get('page_count') === 8);
+  ok(protovis.get('title') === 'Protovis');
+  
+  // internally delegates to
+  ok(protovis.get('page_count') === 8);
+});
+
+test("2. Non-Unique value types", function() {
+  ok(protovis.get('authors').length === 2);
+  ok(protovis.get('authors').at(0) === 'Michael Bostock');
+  ok(protovis.get('authors').at(1) === 'Jeffrey Heer');
+  
+  // internally delegates to
+  ok(protovis.values('authors').length === 2);
+});
+
+test("3. Unique object types (one resource)", function() {
+  ok(mention.get('entity').key === '/location/new_york');
+
+  // internally delegates to
+  ok(mention.first('entity').key === '/location/new_york');
+});
+
+test("4. Non-unique object types (many resources)", function() {
+  ok(protovis.get('entities').length === 2);
+  ok(protovis.get('entities').at(0).key === '/location/stanford');
+  ok(protovis.get('entities').at(1).key === '/location/new_york');
+
+  // internally delegates to
+  ok(protovis.all('entities').length === 2);
+});
+
+test("References to the same resource should result in object equality", function() {
+  ok(mention.first('entity') === anotherMention.first('entity'));
+});
+
+
+test("Graph traversal (navigation)", function() {
+  // Hop from a document to the second entity, picking the 2nd mention and go
+  // to the associated document of this mention.
+  ok(protovis.get('entities').at(1) // => Entity#/location/new_york
+          .get('mentions').at(1) // => Mention#M0000003
+          .get('document')       // => /doc/processing_js_introduction
+          .key === '/doc/processing_js_introduction');
+});
+
+
+test("Querying information", function() {
+  var cities = graph.all('objects').select(function(res, key) {
+    return /or/.test(res.get('name'))
+  });
+    
+  ok(cities.length === 3);
+  ok(cities.get('/location/new_york'));
+  ok(cities.get('/location/toronto'));
+  ok(cities.get('/location/stanford'));
+});
+
+
+test("Value identity", function() {
+  // If the values of a property are shared among resources they should have
+  // the same identity as well.
+  ok(unveil.all('authors').at(0) === processingjs.all('authors').at(2));
+  ok(unveil.get('authors').at(0) === 'Michael Aufreiter');
+  ok(processingjs.get('authors').at(2) === 'Michael Aufreiter');
+  
+  // This allows questions like:
+  // Show me all unique values of a certain property e.g. type:document.authors
+  
+  ok(protovis.type.get('properties', 'authors').all('values').length === 6);
 });
