@@ -32,7 +32,7 @@
   // Helpers
   // -------
 
-  var VALUE_TYPES = [
+  Data.VALUE_TYPES = [
     'string',
     'number',
     'date',
@@ -41,7 +41,7 @@
   ];
   
   var isValueType = function (type) {
-    return _.include(VALUE_TYPES, type);
+    return _.include(Data.VALUE_TYPES, type);
   };
 
   // Shared empty constructor function to aid in prototype-chain creation.
@@ -531,7 +531,11 @@
             if (!res) {
               throw "Can't reference "+v;
             }
+            
+            // Register associated Data.Objects on the resource
+            res.set('objects', that.key, that);
             that.set(p.key, res.key, res);
+            p.set('values', res.key, res);
           });
         } else {
           _.each(values, function(v, index) {
@@ -542,6 +546,9 @@
             if (!val) {
               val = new Data.Node({value: v});
             }
+            // Register associated Data.Objects on the value
+            val.set('objects', that.key, that);
+            
             that.set(p.key, v, val);
             p.set('values', v, val);
           });
@@ -602,6 +609,132 @@
       this.all('objects').each(function(r, key, index) {
         r.build();
       });
+    },
+    
+    serialize: function() {
+      // Serialize schema nodes
+      var result = {};
+      
+      this.all('types').each(function(type, key) {
+        result[key] = {
+          type: 'type',
+          name: type.name,
+          properties: {}
+        };
+        
+        type.all('properties').each(function(property) {
+          result[key].properties[property.key] = {
+            name: property.name,
+            unique: property.unique,
+            expected_type: property.expected_type
+          };
+        });
+      });
+      
+      // Serialize object nodes
+      this.all('objects').each(function(obj, key) {
+        // INFO: Presumes that the graph hasn't been modified
+        result[key] = obj.data;
+      });
+      
+      return result;
+    },
+    
+    filter: function(criteria) {
+      var g2 = new Data.Graph(this.serialize());
+      
+      // Only use a subset of the objects (those returned by criteria.run())
+      // The new graph shares some objects with the old graph
+      g2.replace('objects', criteria.run(this));
+      return g2;
+    }
+  });
+  
+  
+  // Data.Criterion
+  // --------------
+
+  Data.Criterion = function (operator, type, property, value) {
+    this.operator = operator;
+    this.type = type;
+    this.property = property;
+    this.value = value;
+    this.children = [];
+  };
+  
+  Data.Criterion.operators = {};
+  
+  _.extend(Data.Criterion.operators, {
+    
+    // Logical Connectors
+    
+    AND: function(target, criteria) {
+      if (criteria.length === 0) return new Data.SortedHash();
+      var result = criteria[0].run(target);
+      for(var i=1; i < criteria.length; i++) {
+        result = result.intersect(criteria[i].run(target));
+      }
+      return result;
+    },
+
+    OR: function(target, criteria) {
+      var result = new Data.SortedHash();
+      for(var i=0; i < criteria.length; i++) {
+        result = result.union(criteria[i].run(target));
+      }
+      return result;
+    },
+
+    // Logical Operators
+    
+    CONTAINS: function(target, typeKey, propertyKey, value) {
+      var type = target.get('types', typeKey),
+          property = type.get('properties', propertyKey), //,
+          v = property.get('values', value);
+
+      // Only return results within the requested type range
+      return v.all('objects').select(function(obj, key) {
+        return obj.type.key === typeKey;
+      });
+    },
+    
+    // Only works with value type properties
+    GT: function(target, typeKey, propertyKey, value) {
+      var type = target.get('types', typeKey),
+          property = type.get('properties', propertyKey),
+          values = property.all('values'),
+          matchedObjects = new Data.SortedHash();
+          
+      values = values.select(function(v) {
+        return v.val >= value;
+      });
+      
+      values.each(function(v) {
+        matchedObjects = matchedObjects.union(v.all('objects'));
+      });
+      return matchedObjects;
+    }
+  });
+  
+  _.extend(Data.Criterion.prototype, {
+    add: function(criterion) {
+      this.children.push(criterion);
+      return this; // Allow chaining
+    },
+
+    // Run criterion against a Data.Graph (target)
+    // TODO: allow Data.Collections to be passed here too,
+    // for Collections the type attribute can be derived automatically.
+    run: function(target) {
+      // execute operator
+      if (this.operator === "AND") {
+        return Data.Criterion.operators.AND(target, this.children);
+      } else if (this.operator === "OR") {
+        return Data.Criterion.operators.OR(target, this.children);
+      } else {
+        // leaf nodes
+        return Data.Criterion.operators[this.operator](target, this.type, this.property, this.value);
+      }
     }
   });
   

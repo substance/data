@@ -76,7 +76,7 @@ var documents_fixture = {
     "properties": {
       "title": "Unveil.js",
       "authors": ["Michael Aufreiter", "Lindsay Kay"],
-      "page_count": 5,
+      "page_count": 8,
       "entities": []
     }
   },

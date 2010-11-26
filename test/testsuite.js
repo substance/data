@@ -461,8 +461,8 @@ test("Graph traversal (navigation)", function() {
   // Hop from a document to the second entity, picking the 2nd mention and go
   // to the associated document of this mention.
   ok(protovis.get('entities').at(1) // => Entity#/location/new_york
-          .get('mentions').at(1) // => Mention#M0000003
-          .get('document')       // => /doc/processing_js_introduction
+          .get('mentions').at(1)    // => Mention#M0000003
+          .get('document')          // => /doc/processing_js_introduction
           .key === '/doc/processing_js_introduction');
 });
 
@@ -490,4 +490,59 @@ test("Value identity", function() {
   // Show me all unique values of a certain property e.g. /type/document.authors
   
   ok(protovis.type.get('properties', 'authors').all('values').length === 6);
+});
+
+
+module('Criterion');
+
+var graph;    
+module("Data.Graph", {
+  setup: function() {
+    graph = new Data.Graph(documents_fixture);
+  },
+  teardown: function() {
+    delete graph;
+  }
+});
+
+
+// Data.Criterion
+//-------------
+
+test('Data.Criterion.operators.CONTAINS', function() {
+  // For value type properties
+  var matchedItems = Data.Criterion.operators.CONTAINS(graph, '/type/document', 'page_count', 8);
+  ok(matchedItems.length === 2);
+  ok(matchedItems.at(0).value('page_count') === 8);
+  ok(matchedItems.at(1).value('page_count') === 8);
+  
+  var matchedItems = Data.Criterion.operators.CONTAINS(graph, '/type/document', 'title', 'Unveil.js');
+  ok(matchedItems.length === 1);
+  ok(matchedItems.at(0).value('title') === 'Unveil.js');
+  
+  // For object type properties
+  var matchedItems = Data.Criterion.operators.CONTAINS(graph, '/type/document', 'entities', '/location/new_york');
+  ok(matchedItems.length === 1);
+  ok(matchedItems.at(0).get('entities', '/location/new_york') instanceof Data.Object);
+});
+
+test('Data.Criterion.operators.GT', function() {
+  // For value type properties
+  var matchedItems = Data.Criterion.operators.GT(graph, '/type/document', 'page_count', 10);  
+  ok(matchedItems.length === 1);
+  ok(matchedItems.at(0).value('page_count') > 10);  
+});
+
+test("nested criteria", function() {
+  // the root criterion takes it all
+  var criteria = new Data.Criterion('AND'),
+      filteredGraph;
+      
+  criteria.add(new Data.Criterion('GT', '/type/document', 'page_count', 5));
+  criteria.add(new Data.Criterion('OR')
+    .add(new Data.Criterion('CONTAINS', '/type/document', 'title', 'Unveil.js'))
+    .add(new Data.Criterion('CONTAINS', '/type/document', 'title', 'Processing.js')));
+  
+  filteredGraph = graph.filter(criteria);
+  ok(filteredGraph.all('objects').length === 2);
 });

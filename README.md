@@ -36,7 +36,7 @@ In future we'll introduce `Data.Transformers` that allow you specify individual 
 to generate a new graph based on an existing input graph.
 
 
-Data.Graphs are exchanges through a uniform JSON Serialization Format:
+Data.Graphs are exchanged through a uniform JSON Serialization Format:
 
     {
       "/type/document": {
