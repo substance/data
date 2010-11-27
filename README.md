@@ -19,7 +19,7 @@ and the [Unveil.js documentation](http://docs.quasipartikel.at/#/unveil)*
 Features
 ------------------
 
-* Data.SortedHash (A SortedHash data-structure)
+* Data.Set (A sortable Set data-structure)
 * Data.Node (A JavaScript Node implementation that introduces properties that can be used to create Multipartite Graphs)
 * Data.Graph (A data abstraction for all kinds of linked data)
 
@@ -191,7 +191,7 @@ Data.Graphs are exchanged through a uniform JSON Serialization Format:
         mention,
         anotherMention;
     
-    module("Node", {
+    module("Data.Graph", {
       setup: function() {
         graph = new Data.Graph(documents_fixture);
       },
@@ -209,12 +209,14 @@ Data.Graphs are exchanged through a uniform JSON Serialization Format:
       ok(graph.get('types', '/type/mention') instanceof Data.Type);
     });
 
+
     test("Type inspection", function() {
       documentType = graph.get('types', '/type/document');
       ok(documentType.all('properties').length === 4);
       ok(documentType.key === '/type/document');
       ok(documentType.name === 'Document');
     });
+
 
     test("Property inspection", function() {
       entitiesProperty = documentType.get('properties', 'entities');
@@ -238,7 +240,7 @@ Data.Graphs are exchanged through a uniform JSON Serialization Format:
     // There are four different access scenarios:
     // For convenience there's a get method, which always returns the right result depending on the
     // schema information. However, internally, every property of a resource is represented as a
-    // non-unique SortedHash of Node objects, even if it's a unique property. So if
+    // non-unique Set of Node objects, even if it's a unique property. So if
     // you want to be explicit you should use the native methods of the Node API.
 
     test("1. Unique value types", function() {
@@ -248,6 +250,7 @@ Data.Graphs are exchanged through a uniform JSON Serialization Format:
       // internally delegates to
       ok(protovis.get('page_count') === 8);
     });
+
 
     test("2. Non-Unique value types", function() {
       ok(protovis.get('authors').length === 2);
@@ -283,8 +286,8 @@ Data.Graphs are exchanged through a uniform JSON Serialization Format:
       // Hop from a document to the second entity, picking the 2nd mention and go
       // to the associated document of this mention.
       ok(protovis.get('entities').at(1) // => Entity#/location/new_york
-              .get('mentions').at(1) // => Mention#M0000003
-              .get('document')       // => /doc/processing_js_introduction
+              .get('mentions').at(1)    // => Mention#M0000003
+              .get('document')          // => /doc/processing_js_introduction
               .key === '/doc/processing_js_introduction');
     });
 
@@ -293,7 +296,7 @@ Data.Graphs are exchanged through a uniform JSON Serialization Format:
       var cities = graph.all('objects').select(function(res, key) {
         return /or/.test(res.get('name'))
       });
-      
+    
       ok(cities.length === 3);
       ok(cities.get('/location/new_york'));
       ok(cities.get('/location/toronto'));
@@ -309,8 +312,7 @@ Data.Graphs are exchanged through a uniform JSON Serialization Format:
       ok(processingjs.get('authors').at(2) === 'Michael Aufreiter');
   
       // This allows questions like:
-      // Show me all unique values of a certain property e.g. /type/document.authors
-  
+      // Show all unique values of a certain property e.g. /type/document.authors
       ok(protovis.type.get('properties', 'authors').all('values').length === 6);
     });
     

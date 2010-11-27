@@ -84,14 +84,14 @@
   
   
   
-  // Data.SortedHash
+  // Data.Set
   // --------------
 
-  // A SortedHash data structure that provides a simple layer of
-  // abstraction for managing Sorted Hashes in JavaScript. It's
-  // heavily used throughout Data.js.
+  // A Set data structure that provides a simple layer of abstraction for
+  // managing a sortable data-structure with hash semantics. It's heavily
+  // used throughout Data.js.
   
-  Data.SortedHash = function(data) {
+  Data.Set = function(data) {
     var that = this;
     this.data = {};
     this.keyOrder = [];
@@ -110,12 +110,12 @@
     if (this.initialize) this.initialize(attributes, options);
   };
 
-  _.extend(Data.SortedHash.prototype, {
+  _.extend(Data.Set.prototype, {
 
     // Returns a copy of the sorted hash
     // Used by transformation methods
     clone: function () {
-      var copy = new Data.SortedHash();
+      var copy = new Data.Set();
       copy.length = this.length;
       _.each(this.data, function(value, key) {
         copy.data[key] = value;
@@ -191,7 +191,7 @@
       return this.keyOrder.indexOf(key);
     },
     
-    // Iterate over values contained in the `Data.SortedHash`
+    // Iterate over values contained in the `Data.Set`
     each: function (fn) {
       var that = this;
       _.each(this.keyOrder, function(key, index) {
@@ -226,7 +226,7 @@
       return result;
     },
 
-    // Map the `SortedHash` to your needs    
+    // Map the `Set` to your needs    
     map: function (fn) {
       var result = this.clone(),
           that = this;
@@ -238,7 +238,7 @@
 
     // Select items that match some conditions expressed by a matcher function
     select: function (fn) {
-      var result = new Data.SortedHash(),
+      var result = new Data.Set(),
           that = this;
     
       this.each(function(value, key, index) {
@@ -249,7 +249,7 @@
       return result;
     },
     
-    // Performs a sort on the `SortedHash`
+    // Performs a sort on the `Set`
     sort: function (comparator) {
       var result = this.clone();
           sortedKeys = result.toArray().sort(comparator);
@@ -261,13 +261,13 @@
       return result;
     },
     
-    // Performs an intersection with the given `SortedHash`
-    intersect: function(sortedHash) {
+    // Performs an intersection with the given `Set`
+    intersect: function(set) {
       var that = this,
-      result = new Data.SortedHash();
+      result = new Data.Set();
     
       this.each(function(value, key) {
-        sortedHash.each(function(value2, key2) {
+        set.each(function(value2, key2) {
           if (key === key2) {
             result.set(key, value);
           }
@@ -276,16 +276,16 @@
       return result;
     },
     
-    // Performs an union with the given `SortedHash`
-    union: function(sortedHash) {
+    // Performs an union with the given `Set`
+    union: function(set) {
       var that = this,
-      result = new Data.SortedHash();
+      result = new Data.Set();
     
       this.each(function(value, key) {
         if (!result.get(key))
           result.set(key, value);
       });
-      sortedHash.each(function(value, key) {
+      set.each(function(value, key) {
         if (!result.get(key))
           result.set(key, value);
       });
@@ -384,9 +384,9 @@
       return this.nodeId;
     },
     
-    // Replace a property with a `SortedHash`
-    replace: function(property, sortedHash) {
-      this._properties[property] = sortedHash;
+    // Replace a property with a `Set`
+    replace: function(property, set) {
+      this._properties[property] = set;
     },
 
     // Set a Node's property
@@ -395,7 +395,7 @@
     // instances of `Data.Node` wrapped are automatically.
     set: function (property, key, value) {
       if (!this._properties[property]) {
-        this._properties[property] = new Data.SortedHash();
+        this._properties[property] = new Data.Set();
       }
       this._properties[property].set(key, value instanceof Data.Node ? value : new Data.Node({value: value}));
       return this;
@@ -431,7 +431,7 @@
     
     // Values of associated target nodes for non-unique properties
     values: function(property) {
-      if (!this.all(property)) return new Data.SortedHash();
+      if (!this.all(property)) return new Data.Set();
       return this.all(property).map(function(n) {
         return n.val;
       });
@@ -458,7 +458,7 @@
         p.unique = property.unique;
         p.name = property.name;
         p.expected_type = property.expected_type;
-        p.replace('values', new Data.SortedHash());
+        p.replace('values', new Data.Set());
         p.isValueType = function() {
           return isValueType(p.expected_type);
         };
@@ -526,7 +526,7 @@
         }
   
         // init key
-        that.replace(p.key, new Data.SortedHash());
+        that.replace(p.key, new Data.Set());
   
         if (p.isObjectType()) {
           _.each(values, function(v, index) {
@@ -559,7 +559,7 @@
       });
     },
     
-    // There are four different access for getting a certain property
+    // There are four different access scenarios for getting a certain property
     // 
     // * Unique value types
     // * Non-unique value types
@@ -568,7 +568,7 @@
     // 
     // For convenience there's a get method, which always returns the right
     // result depending on the schema information. However, internally, every
-    // property of a resource is represented as a non-unique `Data.SortedHash` 
+    // property of a resource is represented as a non-unique `Data.Set` 
     // of `Data.Node` objects, even if it's a unique property. So if you want 
     // to be explicit you should use the native methods of `Data.Node`. If
     // three arguments are provided `get` delegates to `Data.Node#get`.
@@ -693,7 +693,7 @@
     // Logical Connectors
     
     AND: function(target, criteria) {
-      if (criteria.length === 0) return new Data.SortedHash();
+      if (criteria.length === 0) return new Data.Set();
       var result = criteria[0].run(target);
       for(var i=1; i < criteria.length; i++) {
         result = result.intersect(criteria[i].run(target));
@@ -702,7 +702,7 @@
     },
 
     OR: function(target, criteria) {
-      var result = new Data.SortedHash();
+      var result = new Data.Set();
       for(var i=0; i < criteria.length; i++) {
         result = result.union(criteria[i].run(target));
       }
@@ -727,7 +727,7 @@
       var type = target.get('types', typeKey),
           property = type.get('properties', propertyKey),
           values = property.all('values'),
-          matchedObjects = new Data.SortedHash();
+          matchedObjects = new Data.Set();
           
       values = values.select(function(v) {
         return v.val >= value;

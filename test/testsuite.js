@@ -4,12 +4,12 @@
 var items;
 
 
-// Data.SortedHash
+// Data.Set
 //-------------
 
-module("Data.SortedHash", {
+module("Data.Set", {
   setup: function() {
-    items = new Data.SortedHash();
+    items = new Data.Set();
     items.set("at", "Austria");
     items.set("de", "Germany");
   },
@@ -19,7 +19,7 @@ module("Data.SortedHash", {
 });
 
 test("construction from Array", function() {
-  var numbers = new Data.SortedHash([1, 2, 5, 10]);
+  var numbers = new Data.Set([1, 2, 5, 10]);
   
   ok(numbers.at(0) === 1);
   ok(numbers.at(1) === 2);
@@ -36,7 +36,7 @@ test("construction from Array", function() {
 });
 
 test("construction from Hash", function() {
-  var countries = new Data.SortedHash({
+  var countries = new Data.Set({
     'at': 'Austria',
     'de': 'Germany',
     'ch': 'Switzerland'
@@ -115,7 +115,7 @@ test("array semantics", function() {
   
 });
 
-test("SortedHash#del", function() {
+test("Set#del", function() {
   items.set("ch", "Switzerland");
   items.del('de');
   ok(items.length === 2);
@@ -124,7 +124,7 @@ test("SortedHash#del", function() {
 });
 
 
-test("SortedHash#each", function() {
+test("Set#each", function() {
   var enumerated = [];
   items.each(function(item, key, index) {
     enumerated.push(item);
@@ -134,7 +134,7 @@ test("SortedHash#each", function() {
   ok(enumerated[1]==="Germany");
 });
 
-test("SortedHash#values", function() {
+test("Set#values", function() {
   items.set("ch", "Switzerland");
   var values = items.values();
 
@@ -144,7 +144,7 @@ test("SortedHash#values", function() {
 });
 
 
-test("SortedHash#sort", function() {
+test("Set#sort", function() {
   items.set("ch", "Switzerland");
 
   ok(items.at(0)==="Austria");
@@ -161,12 +161,12 @@ test("SortedHash#sort", function() {
 
 
 
-test("SortedHash#map", function() {
+test("Set#map", function() {
   var mappedItems = items.map(function (item) {
     return item.slice(0, 3);
   });
   
-  // leave original SortedHash untouched
+  // leave original Set untouched
   ok(items.get('at') === 'Austria');
   ok(items.get('de') === 'Germany');
   ok(items.at(0) === 'Austria');
@@ -181,12 +181,12 @@ test("SortedHash#map", function() {
 
 
 
-test("SortedHash#select", function() {
+test("Set#select", function() {
   var selectedItems = items.select(function (item, key) {
         return item === 'Austria';
       });
 
-  // leave original SortedHash untouched
+  // leave original Set untouched
   ok(items.get('at') === 'Austria');
   ok(items.get('de') === 'Germany');
   ok(items.at(0) === 'Austria');
@@ -198,14 +198,14 @@ test("SortedHash#select", function() {
 });
 
 
-test("SortedHash#intersect", function() {
-  var items2 = new Data.SortedHash(),
+test("Set#intersect", function() {
+  var items2 = new Data.Set(),
       intersected;
   
   items2.set('fr', 'France');
   items2.set('at', 'Austria');
   
-  // leave original SortedHashes untouched
+  // leave original Setes untouched
   ok(items.get('at') === 'Austria');
   ok(items.get('de') === 'Germany');
   ok(items.at(0) === 'Austria');
@@ -222,14 +222,14 @@ test("SortedHash#intersect", function() {
 });
 
 
-test("SortedHash#union", function() {
-  var items2 = new Data.SortedHash(),
+test("Set#union", function() {
+  var items2 = new Data.Set(),
       unitedItems;
   
   items2.set('fr', 'France');
   items2.set('at', 'Austria');
   
-  // leave original SortedHashes untouched
+  // leave original Setes untouched
   ok(items.get('at') === 'Austria');
   ok(items.get('de') === 'Germany');
   ok(items.at(0) === 'Austria');
@@ -294,7 +294,7 @@ module("Data.Node", {
 
 test("get connected nodes", function() {
   // order should be preserved
-  ok(austria.all('languages') instanceof Data.SortedHash); // => returns a SortedHash
+  ok(austria.all('languages') instanceof Data.Set); // => returns a Set
   ok(austria.all('languages').at(0) === austrian);
   ok(austria.all('languages').at(1) === german);
   
@@ -418,7 +418,7 @@ test("Object inspection", function() {
 // There are four different access scenarios:
 // For convenience there's a get method, which always returns the right result depending on the
 // schema information. However, internally, every property of a resource is represented as a
-// non-unique SortedHash of Node objects, even if it's a unique property. So if
+// non-unique Set of Node objects, even if it's a unique property. So if
 // you want to be explicit you should use the native methods of the Node API.
 
 test("1. Unique value types", function() {
