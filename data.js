@@ -1,11 +1,9 @@
-// Data.js 0.1.0 - A JavaScript library for dealing with data
-// (c) 2010 Michael Aufreiter
-// 
-// Dependencies
-//   - Underscore.js
-// Inspired by
-//   - Underscore.js
-//   - Google Visualization API
+//     (c) 2010 Michael Aufreiter
+//     Data.js is freely distributable under the MIT license.
+//     Portions of Daja.js are inspired or borrowed from Underscore.js
+//     and Google's Visualization API.
+//     For all details and documentation:
+//     http://github.com/michael/data
 
 (function(){
 
@@ -89,6 +87,10 @@
   // Data.SortedHash
   // --------------
 
+  // A SortedHash data structure that provides a simple layer of
+  // abstraction for managing Sorted Hashes in JavaScript. It's
+  // heavily used throughout Data.js.
+  
   Data.SortedHash = function(data) {
     var that = this;
     this.data = {};
@@ -122,7 +124,7 @@
       return copy;
     },
     
-    // Set a value at a given key
+    // Set a value at a given *key*
     set: function (key, value, targetIndex) {
       if (key === undefined)
         return this;
@@ -150,7 +152,7 @@
       return this;
     },
     
-    // Remove entry at given key
+    // Remove entry at given *key*
     del: function (key) {
       delete this.data[key];
       this.keyOrder.splice(this.index(key), 1);
@@ -158,12 +160,12 @@
       return this;
     },
     
-    // Get value at given key
+    // Get value at given *key*
     get: function (key) {
       return this.data[key];
     },
     
-    // Get value at given index
+    // Get value at given *index*
     at: function (index) {
       var key = this.keyOrder[index];
       return this.data[key];
@@ -179,17 +181,17 @@
       return this.at(this.length-1);
     },
     
-    // Returns for an index the corresponding key
+    // Returns for an index the corresponding *key*
     key: function (index) {
       return this.keyOrder[index];
     },
     
-    // Returns for a given key the corresponding index
+    // Returns for a given *key* the corresponding *index*
     index: function(key) {
       return this.keyOrder.indexOf(key);
     },
     
-    // Iterate over values contained in the SortedHash
+    // Iterate over values contained in the `Data.SortedHash`
     each: function (fn) {
       var that = this;
       _.each(this.keyOrder, function(key, index) {
@@ -213,7 +215,7 @@
     },
     
     // Convert to an ordinary JavaScript Array containing
-    // key value pairs — used for sorting
+    // key value pairs. Used by `sort`.
     toArray: function () {
       var result = [];
     
@@ -224,7 +226,7 @@
       return result;
     },
 
-    // Map the SortedHash to your needs    
+    // Map the `SortedHash` to your needs    
     map: function (fn) {
       var result = this.clone(),
           that = this;
@@ -247,7 +249,7 @@
       return result;
     },
     
-    // Performs a sort on the SortedHash
+    // Performs a sort on the `SortedHash`
     sort: function (comparator) {
       var result = this.clone();
           sortedKeys = result.toArray().sort(comparator);
@@ -259,7 +261,7 @@
       return result;
     },
     
-    // Performs an intersection with the given SortedHash
+    // Performs an intersection with the given `SortedHash`
     intersect: function(sortedHash) {
       var that = this,
       result = new Data.SortedHash();
@@ -274,7 +276,7 @@
       return result;
     },
     
-    // Performs an union with the given SortedHash
+    // Performs an union with the given `SortedHash`
     union: function(sortedHash) {
       var that = this,
       result = new Data.SortedHash();
@@ -295,7 +297,7 @@
   // --------------
 
   Data.Comparators = {};
-
+  
   Data.Comparators.ASC = function(item1, item2) {
     return item1.value === item2.value ? 0 : (item1.value < item2.value ? -1 : 1);
   };
@@ -357,7 +359,7 @@
   // Every Node simply contains properties which conform to outgoing edges.
   // It makes heavy use of hashing through JavaScript object properties to
   // allow random access whenever possible. If I've got it right, it should 
-  // perform sufficiently fast in future, allowing speedy graph traversals.
+  // perform sufficiently fast, allowing speedy graph traversals.
   
   Data.Node = function(options) {
     this.nodeId = Data.Node.generateId();
@@ -382,20 +384,15 @@
       return this.nodeId;
     },
     
-    // Replace a property with a SortedHash
+    // Replace a property with a `SortedHash`
     replace: function(property, sortedHash) {
       this._properties[property] = sortedHash;
     },
 
     // Set a Node's property
     // 
-    // Parameters:
-    //   - property <String> A readable property key
-    //   - key <String> The value key
-    //   - value <Node | Object> Either a Node or an arbitrary Object
-    //
-    // Returns:
-    //   => [Node] The Node for property chaining
+    // Takes a property key, a value key and value. Values that aren't
+    // instances of `Data.Node` wrapped are automatically.
     set: function (property, key, value) {
       if (!this._properties[property]) {
         this._properties[property] = new Data.SortedHash();
@@ -405,53 +402,36 @@
     },
     
 
-    // Get node for given property at given key
-    // 
-    // Returns:
-    //   => [Node] The target Node
+    // Get node for given *property* at given *key*
     get: function (property, key) {
       if (key !== undefined && this._properties[property] !== undefined) {
         return this._properties[property].get(key);
       }
     },
 
-    // Get all connected nodes at given property
-    // Returns:
-    //   => [SortedHash] A SortedHash of Nodes
+    // Get all connected nodes at given *property*
     all: function(property) {
       return this._properties[property];
     },
     
-    // Get first connected node at given property
+    // Get first connected node at given *property*
     // 
     // Useful if you want to mimic the behavior of unique properties.
     // That is, if you know that there's always just one associated node
     // at a given property.
-    // 
-    // Returns:
-    //   => [SortedHash] A SortedHash of Nodes
     first: function(property) {
       var p = this._properties[property];
       return p ? p.first() : null;  
     },
 
-    // Value of first connected target node at given property
-    // 
-    // Returns:
-    //   => [Object] The Node's value property
+    // Value of first connected target node at given *property*
     value: function(property) {
       return this.values(property).first();
     },
     
-
     // Values of associated target nodes for non-unique properties
-    // 
-    // Returns:
-    //   => [SortedHash] List of Node values
     values: function(property) {
-      // TODO: check why this fails sometimes
       if (!this.all(property)) return new Data.SortedHash();
-    
       return this.all(property).map(function(n) {
         return n.val;
       });
@@ -514,6 +494,9 @@
   // Data.Object
   // --------------
   
+  // Represents a typed data object within a `Data.Graph`.
+  // Provides access to properties, defined on the corresponding `Data.Type`.
+  
   Data.Object = _.inherits(Data.Node, {
     constructor: function(g, key, data) {
       Data.Node.call(this);
@@ -529,9 +512,10 @@
     // After all nodes are recognized the Item can be built
     build: function() {
       var that = this;
-  
-      _.each(this.data.properties, function(property, key) {
-  
+    
+      _.each(this.data, function(property, key) {
+        if (key === 'type') return; // Skip type property
+        
         // Ask the schema wheter this property holds a
         // value type or an object type
         var values = Array.isArray(property) ? property : [property];
@@ -551,7 +535,7 @@
               throw "Can't reference "+v;
             }
             
-            // Register associated Data.Objects on the resource
+            // Register associated `Data.Objects` on the resource
             res.set('objects', that.key, that);
             that.set(p.key, res.key, res);
             p.set('values', res.key, res);
@@ -565,7 +549,7 @@
             if (!val) {
               val = new Data.Node({value: v});
             }
-            // Register associated Data.Objects on the value
+            // Register associated `Data.Objects` on the value
             val.set('objects', that.key, that);
             
             that.set(p.key, v, val);
@@ -575,7 +559,20 @@
       });
     },
     
-    // Delegates to Node#get if 3 arguments are provided
+    // There are four different access for getting a certain property
+    // 
+    // * Unique value types
+    // * Non-unique value types
+    // * Unique object types 
+    // * Non-Unique object types 
+    // 
+    // For convenience there's a get method, which always returns the right
+    // result depending on the schema information. However, internally, every
+    // property of a resource is represented as a non-unique `Data.SortedHash` 
+    // of `Data.Node` objects, even if it's a unique property. So if you want 
+    // to be explicit you should use the native methods of `Data.Node`. If
+    // three arguments are provided `get` delegates to `Data.Node#get`.
+    
     get: function(property, key) {
       var p = this.type.get('properties', property);
       if (!p) return null;
@@ -591,8 +588,9 @@
       }
     },
     
+    // Serialize an `Data.Object`'s properties
+    // Presumes that the graph hasn't been modified
     serialize: function() {
-      // INFO: Presumes that the graph hasn't been modified
       return this.data;
     }
   });
@@ -600,6 +598,12 @@
   
   // Data.Graph
   // --------------
+  
+  // A `Data.Graph` can be used for representing arbitrary complex object
+  // graphs. Relations between objects are expressed through links that
+  // point to referred objects. Data.Graphs can be traversed in various ways.
+  // See the testsuite for usage. They're meant to be used read-only in a 
+  // functional style.
   
   Data.Graph = _.inherits(Data.Node, {
     constructor: function(g) {
@@ -635,6 +639,7 @@
       });
     },
     
+    // Serializes the graph to the JSON-based exchange format
     serialize: function() {
       var result = {};
       
@@ -651,6 +656,8 @@
       return result;
     },
     
+    // Perform a filter on the graph. Expects `Data.Criterion` object
+    // describing the filter conditions
     filter: function(criteria) {
       var g2 = {};
       
@@ -736,20 +743,19 @@
   _.extend(Data.Criterion.prototype, {
     add: function(criterion) {
       this.children.push(criterion);
-      return this; // Allow chaining
+      return this;
     },
 
     // Run criterion against a Data.Graph (target)
     // TODO: allow Data.Collections to be passed here too,
     // for Collections the type attribute can be derived automatically.
     run: function(target) {
-      // execute operator
       if (this.operator === "AND") {
         return Data.Criterion.operators.AND(target, this.children);
       } else if (this.operator === "OR") {
         return Data.Criterion.operators.OR(target, this.children);
       } else {
-        // leaf nodes
+        // Leaf nodes
         return Data.Criterion.operators[this.operator](target, this.type, this.property, this.value);
       }
     }

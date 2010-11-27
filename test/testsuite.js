@@ -387,12 +387,14 @@ test("valid construction", function() {
   ok(graph.get('types', '/type/mention') instanceof Data.Type);
 });
 
+
 test("Type inspection", function() {
   documentType = graph.get('types', '/type/document');
   ok(documentType.all('properties').length === 4);
   ok(documentType.key === '/type/document');
   ok(documentType.name === 'Document');
 });
+
 
 test("Property inspection", function() {
   entitiesProperty = documentType.get('properties', 'entities');
@@ -426,6 +428,7 @@ test("1. Unique value types", function() {
   // internally delegates to
   ok(protovis.get('page_count') === 8);
 });
+
 
 test("2. Non-Unique value types", function() {
   ok(protovis.get('authors').length === 2);
@@ -487,8 +490,7 @@ test("Value identity", function() {
   ok(processingjs.get('authors').at(2) === 'Michael Aufreiter');
   
   // This allows questions like:
-  // Show me all unique values of a certain property e.g. /type/document.authors
-  
+  // Show all unique values of a certain property e.g. /type/document.authors
   ok(protovis.type.get('properties', 'authors').all('values').length === 6);
 });
 

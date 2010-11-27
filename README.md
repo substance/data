@@ -20,7 +20,7 @@ Features
 ------------------
 
 * Data.SortedHash (A SortedHash data-structure)
-* Data.Node (A JavaScript Node implementation that hides graph complexity from the interface)
+* Data.Node (A JavaScript Node implementation that introduces properties that can be used to create Multipartite Graphs)
 * Data.Graph (A data abstraction for all kinds of linked data)
 
 
@@ -34,6 +34,11 @@ They're meant to be used read-only in a functional style.
 
 In future we'll introduce `Data.Transformers` that allow you specify individual computations
 to generate a new graph based on an existing input graph.
+
+
+**Based on the Metaweb Object model**
+
+The Data.Graph format is highly inspired by the [Metaweb Object Model](http://www.freebase.com/docs/mql/ch02.html) that is used at Freebase.com. So if you're familiar with Freebase and MQL, you should have already gotten the basic idea. However, there's one important difference: In Data.js a Data.Object can only be member of one single type. It assumes a type property (which isn't a regular property) that points to the id of the corresponding type node. By contrast in Freebase an object (resource) can be a member of multiple types. Thus, in Freebase the type property is a member of the `/type/object` type and is seen as a regular property. For simplicity, in Data.js, we simply use the type property to depict the object's one-and-only (unique) type.
 
 
 Data.Graphs are exchanged through a uniform JSON Serialization Format:
@@ -104,97 +109,73 @@ Data.Graphs are exchanged through a uniform JSON Serialization Format:
       },
       "/doc/protovis_introduction": {
         "type": "/type/document",
-        "properties": {
-          "title": "Protovis",
-          "authors": ["Michael Bostock", "Jeffrey Heer"],
-          "page_count": 8,
-          "entities": ["/location/stanford", "/location/new_york"]
-        }
+        "title": "Protovis",
+        "authors": ["Michael Bostock", "Jeffrey Heer"],
+        "page_count": 8,
+        "entities": ["/location/stanford", "/location/new_york"]
       },
       "/doc/unveil_introduction": {
         "type": "/type/document",
-        "properties": {
-          "title": "Unveil.js",
-          "authors": ["Michael Aufreiter", "Lindsay Kay"],
-          "page_count": 5,
-          "entities": []
-        }
+        "title": "Unveil.js",
+        "authors": ["Michael Aufreiter", "Lindsay Kay"],
+        "page_count": 8,
+        "entities": []
       },
       "/doc/processing_js_introduction": {
         "type": "/type/document",
-        "properties": {
-          "title": "Processing.js",
-          "authors": ["Alistair MacDonald", "David Humphrey", "Michael Aufreiter"],
-          "page_count": 20
-        }
+        "title": "Processing.js",
+        "authors": ["Alistair MacDonald", "David Humphrey", "Michael Aufreiter"],
+        "page_count": 20
       },
       "/location/stanford": {
         "type": "/type/entity",
-        "properties": {
-          "name": "Stanford",
-          "mentions": ["M0000001"]    
-        }
+        "name": "Stanford",
+        "mentions": ["M0000001"]
       },
       "/location/new_york": {
         "type": "/type/entity",
-        "properties": {
-          "name": "New York",
-          "mentions": ["M0000002", "M0000003"]
-        }
+        "name": "New York",
+        "mentions": ["M0000002", "M0000003"]
       },
       "/location/toronto": {
         "type": "/type/entity",
-        "properties": {
-          "name": "Toronto",
-          "mentions": ["M0000004"]
-        }
+        "name": "Toronto",
+        "mentions": ["M0000004"]
       },
       "/person/michael_bostock": {
         "type": "/type/entity",
-        "properties": {
-          "name": "Michael Bostock",
-          "mentions": ["M0000005"]
-        }
+        "name": "Michael Bostock",
+        "mentions": ["M0000005"]
       },
       "M0000001": {
         "type": "/type/mention",
-        "properties": {
-          "document": "/doc/protovis_introduction",
-          "entity": "/location/stanford",
-          "page": 2
-        }
+        "document": "/doc/protovis_introduction",
+        "entity": "/location/stanford",
+        "page": 2
       },
       "M0000002": {
         "type": "/type/mention",
-        "properties": {
-          "document": "/doc/protovis_introduction",
-          "entity": "/location/new_york",
-          "page": 8
-        }
+        "document": "/doc/protovis_introduction",
+        "entity": "/location/new_york",
+        "page": 8
       },
       "M0000003": {
         "type": "/type/mention",
-        "properties": {
-          "document": "/doc/processing_js_introduction",
-          "entity": "/location/new_york",
-          "page": 5
-        }
+        "document": "/doc/processing_js_introduction",
+        "entity": "/location/new_york",
+        "page": 5
       },
       "M0000004": {
         "type": "/type/mention",
-        "properties": {
-          "document": "/doc/processing_js_introduction",
-          "entity": "/location/toronto",
-          "page": 2
-        }
+        "document": "/doc/processing_js_introduction",
+        "entity": "/location/toronto",
+        "page": 2
       },
       "M0000005": {
         "type": "/type/mention",
-        "properties": {
-          "document": "/doc/protovis_introduction",
-          "entity": "/person/michael_bostock",
-          "page": 1
-        }
+        "document": "/doc/protovis_introduction",
+        "entity": "/person/michael_bostock",
+        "page": 1
       }
     }
 
