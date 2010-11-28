@@ -111,7 +111,7 @@
 
   _.extend(Data.Hash.prototype, {
 
-    // Returns a copy of the sorted hash
+    // Returns a copy of the Hash
     // Used by transformation methods
     clone: function () {
       var copy = new Data.Hash();
@@ -363,7 +363,7 @@
   Data.Node = function(options) {
     this.nodeId = Data.Node.generateId();
     if (options) {
-      this.val = options.value; // used for leave nodes (simple types)
+      this.val = options.value;
     }
     this._properties = {};
     
@@ -542,7 +542,7 @@
         
         // Ask the schema wheter this property holds a
         // value type or an object type
-        var values = Array.isArray(property) ? property : [property];
+        var values = _.isArray(property) ? property : [property];
         var p = that.type.get('properties', key);
   
         if (!p) {
@@ -632,12 +632,10 @@
   Data.Graph = _.inherits(Data.Node, {
     constructor: function(g) {
       var that = this;
-      Data.Node.call(this);
       
       if (!g) return;
-      
-      // console.log(g);
-      
+      Data.Node.call(this);
+
       // Process schema nodes
       var types = _.select(g, function(node, key) {
         if (node.type === 'type') {
