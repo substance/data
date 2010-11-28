@@ -7,9 +7,7 @@ in order to make it available as a separate library that can be used in the
 browser or within CommonJS environments.
 
 I took some inspiration from various existing data manipulation libraries such
-as the Google Visualization API or [Underscore.js](http://documentcloud.github.com/underscore/). I updated the API so most of 
-the methods conform to the API of Underscore.js. Actually, Data.js is meant to 
-be used as an extension to Underscore.js, on which it depends on.
+as the [Google Visualization API](http://code.google.com/apis/visualization/documentation/reference.html) or [Underscore.js](http://documentcloud.github.com/underscore/). I updated the API so most of the methods conform to the API of Underscore.js. Actually, Data.js is meant to be used as an extension to Underscore.js, on which it depends on.
 
 Until a dedicated documentation is available, please have a look at the [annotated source code](http://quasipartikel.at/data.js).
 
@@ -40,7 +38,27 @@ to generate a new graph based on an existing input graph.
 The Data.Graph format is highly inspired by the [Metaweb Object Model](http://www.freebase.com/docs/mql/ch02.html) that is used at Freebase.com. So if you're familiar with Freebase and MQL, you should have already gotten the basic idea. However, there's one important difference: In Data.js a Data.Object can only be member of one single type. It assumes a type property (which isn't a regular property) that points to the id of the corresponding type node. By contrast in Freebase an object (resource) can be a member of multiple types. Thus, in Freebase the type property is a member of the `/type/object` type and is seen as a regular property. For simplicity, in Data.js, we simply use the type property to depict the object's one-and-only (unique) type.
 
 
-Data.Graphs are exchanged through a uniform JSON Serialization Format:
+**Why not RDF?**
+
+Actually, I was considering building this framework on top of an existing RDF-based serialization format. However I ended up with introducing my own JSON based format for various reasons:
+
+* Every single Javascript developer prefers JSON ;-)
+
+* RDF is designed to work in a global distributed scenario, involving in a more verbose syntax. A `Data.Graph` operates in a local scenario, and therefore allows for a tighter syntax.
+
+* From my experience, proprietary formats are perfectly valid as long as mapping data back and forth is easy. Since RDF and `Data.Graph` are both modeling a graph, translation should be easy enough.
+
+* Ontologies are important for the Semantic Web, but for the task of client-side data-processing they are most often irrelevant.
+
+However in future RDF support (for construction and serialization) may be added to the library. Until then, a scenario involving RDF could look like so:
+
+1. Fetch data from a SPARQL endpoint
+1. Translate the result to the Data.Graph format
+1. Do data processing using Data.js
+1. Display the results on the fly (e.g. using a visualization for encoding the results)
+
+
+**Data.Graphs are exchanged through a uniform JSON Serialization Format:**
 
     {
       "/type/document": {
@@ -322,7 +340,7 @@ Data.Collection
 A Collection is a simple data abstraction format where a data-set under investigation conforms to a collection of data items that describes all facets of the underlying data in a simple and universal way. You can think of a Collection as a table of data, except it provides precise information about the data contained (meta-data). A Data.Collection just wraps a `Data.Graph` internally, in order to simplify the interface, for cases where you do not have to deal with linked data.
 
 
-The simplified JSON Serialization Format looks like so:
+**A Data.Graph specification looks like so:**
 
     {
       "properties": {

@@ -354,7 +354,7 @@
   
   // JavaScript Node implementation that hides graph complexity from
   // the interface. It introduces properties, which group types of edges
-  // together. Therefore multi-partit graphs are possible without any hassle.
+  // together. Therefore multi-partite graphs are possible without any hassle.
   // Every Node simply contains properties which conform to outgoing edges.
   // It makes heavy use of hashing through JavaScript object properties to
   // allow random access whenever possible. If I've got it right, it should 
