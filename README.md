@@ -17,7 +17,7 @@ Until a dedicated documentation is available, please have a look at the [annotat
 Features
 ------------------
 
-* Data.Set (A sortable Set data-structure)
+* Data.Hash (A sortable Hash data-structure)
 * Data.Node (A JavaScript Node implementation that introduces properties that can be used to create Multipartite Graphs)
 * Data.Graph (A data abstraction for all kinds of linked data)
 * Data.Collection (A simplified interface for tabular data that uses a Data.Graph internally)
@@ -417,7 +417,7 @@ Data.Aggregators
 **Usage**
 
     test("Aggregators", function() {
-      var values = new Data.Set();
+      var values = new Data.Hash();
       values.set('0', 4);
       values.set('1', 5);
       values.set('2', -3);

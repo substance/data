@@ -83,14 +83,14 @@
   
   
   
-  // Data.Set
+  // Data.Hash
   // --------------
 
-  // A Set data structure that provides a simple layer of abstraction for
+  // A Hash data structure that provides a simple layer of abstraction for
   // managing a sortable data-structure with hash semantics. It's heavily
   // used throughout Data.js.
   
-  Data.Set = function(data) {
+  Data.Hash = function(data) {
     var that = this;
     this.data = {};
     this.keyOrder = [];
@@ -109,12 +109,12 @@
     if (this.initialize) this.initialize(attributes, options);
   };
 
-  _.extend(Data.Set.prototype, {
+  _.extend(Data.Hash.prototype, {
 
     // Returns a copy of the sorted hash
     // Used by transformation methods
     clone: function () {
-      var copy = new Data.Set();
+      var copy = new Data.Hash();
       copy.length = this.length;
       _.each(this.data, function(value, key) {
         copy.data[key] = value;
@@ -190,7 +190,7 @@
       return this.keyOrder.indexOf(key);
     },
     
-    // Iterate over values contained in the `Data.Set`
+    // Iterate over values contained in the `Data.Hash`
     each: function (fn) {
       var that = this;
       _.each(this.keyOrder, function(key, index) {
@@ -225,7 +225,7 @@
       return result;
     },
 
-    // Map the `Set` to your needs    
+    // Map the `Set` to your needs
     map: function (fn) {
       var result = this.clone(),
           that = this;
@@ -237,7 +237,7 @@
 
     // Select items that match some conditions expressed by a matcher function
     select: function (fn) {
-      var result = new Data.Set(),
+      var result = new Data.Hash(),
           that = this;
     
       this.each(function(value, key, index) {
@@ -248,7 +248,7 @@
       return result;
     },
     
-    // Performs a sort on the `Set`
+    // Performs a sort
     sort: function (comparator) {
       var result = this.clone();
           sortedKeys = result.toArray().sort(comparator);
@@ -260,13 +260,13 @@
       return result;
     },
     
-    // Performs an intersection with the given `Set`
-    intersect: function(set) {
+    // Performs an intersection with the given *hash*
+    intersect: function(hash) {
       var that = this,
-      result = new Data.Set();
+      result = new Data.Hash();
     
       this.each(function(value, key) {
-        set.each(function(value2, key2) {
+        hash.each(function(value2, key2) {
           if (key === key2) {
             result.set(key, value);
           }
@@ -275,16 +275,16 @@
       return result;
     },
     
-    // Performs an union with the given `Set`
-    union: function(set) {
+    // Performs an union with the given *hash*
+    union: function(hash) {
       var that = this,
-      result = new Data.Set();
+      result = new Data.Hash();
     
       this.each(function(value, key) {
         if (!result.get(key))
           result.set(key, value);
       });
-      set.each(function(value, key) {
+      hash.each(function(value, key) {
         if (!result.get(key))
           result.set(key, value);
       });
@@ -383,9 +383,9 @@
       return this.nodeId;
     },
     
-    // Replace a property with a `Set`
-    replace: function(property, set) {
-      this._properties[property] = set;
+    // Replace a property with a complete `Hash`
+    replace: function(property, hash) {
+      this._properties[property] = hash;
     },
 
     // Set a Node's property
@@ -394,7 +394,7 @@
     // instances of `Data.Node` wrapped are automatically.
     set: function (property, key, value) {
       if (!this._properties[property]) {
-        this._properties[property] = new Data.Set();
+        this._properties[property] = new Data.Hash();
       }
       this._properties[property].set(key, value instanceof Data.Node ? value : new Data.Node({value: value}));
       return this;
@@ -430,7 +430,7 @@
     
     // Values of associated target nodes for non-unique properties
     values: function(property) {
-      if (!this.all(property)) return new Data.Set();
+      if (!this.all(property)) return new Data.Hash();
       return this.all(property).map(function(n) {
         return n.val;
       });
@@ -442,8 +442,8 @@
   // --------------
   
   // Meta-data (data about data) is represented as a set of properties that
-  // belongs to a certain type. A `Data.Property` holds a key, a name and an 
-  // expected type, telling whether the data is numeric or textual, etc.
+  // belongs to a certain `Data.Type`. A `Data.Property` holds a key, a name
+  // and an expected type, telling whether the data is numeric or textual, etc.
   
   Data.Property = _.inherits(Data.Node, {
     constructor: function(type, key, options) {
@@ -453,7 +453,7 @@
       this.unique = options.unique;
       this.name = options.name;
       this.expectedType = options['expected_type'];
-      this.replace('values', new Data.Set());
+      this.replace('values', new Data.Hash());
     },
     
     isValueType: function() {
@@ -550,7 +550,7 @@
         }
   
         // init key
-        that.replace(p.key, new Data.Set());
+        that.replace(p.key, new Data.Hash());
   
         if (p.isObjectType()) {
           _.each(values, function(v, index) {
@@ -592,7 +592,7 @@
     // 
     // For convenience there's a get method, which always returns the right
     // result depending on the schema information. However, internally, every
-    // property of a resource is represented as a non-unique `Data.Set` 
+    // property of a resource is represented as a non-unique `Data.Hash` 
     // of `Data.Node` objects, even if it's a unique property. So if you want 
     // to be explicit you should use the native methods of `Data.Node`. If
     // two arguments are provided `get` delegates to `Data.Node#get`.
@@ -707,7 +707,7 @@
   // Data.Collection
   // --------------
   
-  // A Collection is a simple data abstraction format where a data-set under
+  // A Collection is a simple data abstraction format where a dataset under
   // investigation conforms to a collection of data items that describes all
   // facets of the underlying data in a simple and universal way. You can
   // think of a Collection as a table of data, except it provides precise
@@ -773,7 +773,7 @@
     // Logical Connectors
     
     AND: function(target, criteria) {
-      if (criteria.length === 0) return new Data.Set();
+      if (criteria.length === 0) return new Data.Hash();
       var result = criteria[0].run(target);
       for(var i=1; i < criteria.length; i++) {
         result = result.intersect(criteria[i].run(target));
@@ -782,7 +782,7 @@
     },
 
     OR: function(target, criteria) {
-      var result = new Data.Set();
+      var result = new Data.Hash();
       for(var i=0; i < criteria.length; i++) {
         result = result.union(criteria[i].run(target));
       }
@@ -807,7 +807,7 @@
       var type = target.get('types', typeKey),
           property = type.get('properties', propertyKey),
           values = property.all('values'),
-          matchedObjects = new Data.Set();
+          matchedObjects = new Data.Hash();
           
       values = values.select(function(v) {
         return v.val >= value;

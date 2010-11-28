@@ -4,12 +4,12 @@
 var items;
 
 
-// Data.Set
+// Data.Hash
 // -------------
 
-module("Data.Set", {
+module("Data.Hash", {
   setup: function() {
-    items = new Data.Set();
+    items = new Data.Hash();
     items.set("at", "Austria");
     items.set("de", "Germany");
   },
@@ -19,7 +19,7 @@ module("Data.Set", {
 });
 
 test("construction from Array", function() {
-  var numbers = new Data.Set([1, 2, 5, 10]);
+  var numbers = new Data.Hash([1, 2, 5, 10]);
   
   ok(numbers.at(0) === 1);
   ok(numbers.at(1) === 2);
@@ -36,7 +36,7 @@ test("construction from Array", function() {
 });
 
 test("construction from Hash", function() {
-  var countries = new Data.Set({
+  var countries = new Data.Hash({
     'at': 'Austria',
     'de': 'Germany',
     'ch': 'Switzerland'
@@ -114,7 +114,7 @@ test("array semantics", function() {
   ok(items.last() === "Germany");
 });
 
-test("Set#del", function() {
+test("Data.Hash#del", function() {
   items.set("ch", "Switzerland");
   items.del('de');
   ok(items.length === 2);
@@ -123,7 +123,7 @@ test("Set#del", function() {
 });
 
 
-test("Set#each", function() {
+test("Data.Hash#each", function() {
   var enumerated = [];
   items.each(function(item, key, index) {
     enumerated.push(item);
@@ -133,7 +133,7 @@ test("Set#each", function() {
   ok(enumerated[1]==="Germany");
 });
 
-test("Set#values", function() {
+test("Data.Hash#values", function() {
   items.set("ch", "Switzerland");
   var values = items.values();
 
@@ -143,7 +143,7 @@ test("Set#values", function() {
 });
 
 
-test("Set#sort", function() {
+test("Data.Hash#sort", function() {
   items.set("ch", "Switzerland");
 
   ok(items.at(0)==="Austria");
@@ -160,12 +160,12 @@ test("Set#sort", function() {
 
 
 
-test("Set#map", function() {
+test("Data.Hash#map", function() {
   var mappedItems = items.map(function (item) {
     return item.slice(0, 3);
   });
   
-  // leave original Set untouched
+  // leave original Hash untouched
   ok(items.get('at') === 'Austria');
   ok(items.get('de') === 'Germany');
   ok(items.at(0) === 'Austria');
@@ -180,7 +180,7 @@ test("Set#map", function() {
 
 
 
-test("Set#select", function() {
+test("Data.Hash#select", function() {
   var selectedItems = items.select(function (item, key) {
         return item === 'Austria';
       });
@@ -197,8 +197,8 @@ test("Set#select", function() {
 });
 
 
-test("Set#intersect", function() {
-  var items2 = new Data.Set(),
+test("Data.Hash#intersect", function() {
+  var items2 = new Data.Hash(),
       intersected;
   
   items2.set('fr', 'France');
@@ -221,8 +221,8 @@ test("Set#intersect", function() {
 });
 
 
-test("Set#union", function() {
-  var items2 = new Data.Set(),
+test("Data.Hash#union", function() {
+  var items2 = new Data.Hash(),
       unitedItems;
   
   items2.set('fr', 'France');
@@ -290,7 +290,7 @@ module("Data.Node", {
 
 test("get connected nodes", function() {
   // order should be preserved
-  ok(austria.all('languages') instanceof Data.Set); // => returns a Set
+  ok(austria.all('languages') instanceof Data.Hash);
   ok(austria.all('languages').at(0) === austrian);
   ok(austria.all('languages').at(1) === german);
   
@@ -536,7 +536,7 @@ module("Data.Aggregators");
 // -------------
 
 test("Aggregators", function() {
-  var values = new Data.Set();
+  var values = new Data.Hash();
   values.set('0', 4);
   values.set('1', 5);
   values.set('2', -3);
