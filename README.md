@@ -1,19 +1,17 @@
 Data.js
 ==================
 
-Data.js is a data abstraction and manipulation framework for JavaScript. It is
-being extracted from [Unveil.js](http://github.com/michael/unveil)
-in order to make it available as a separate library, that can be used in the
+Data.js is a data abstraction and manipulation framework for JavaScript. It has
+been extracted from [Unveil.js](http://github.com/michael/unveil),
+in order to make it available as a separate library that can be used in the
 browser or within CommonJS environments.
 
 I took some inspiration from various existing data manipulation libraries such
-as the Google Visualization API or Underscore.js. I updated the API so most of 
-the methods conform to the API of Underscore.js. Actually Data.js is meant to 
+as the Google Visualization API or [Underscore.js](http://documentcloud.github.com/underscore/). I updated the API so most of 
+the methods conform to the API of Underscore.js. Actually, Data.js is meant to 
 be used as an extension to Underscore.js, on which it depends on.
 
-Until a dedicated documentation is available, please have a look at the tests
-and the [Unveil.js documentation](http://docs.quasipartikel.at/#/unveil)*
-(see SortedHash API, Node API, Collection API).
+Until a dedicated documentation is available, please have a look at the [annotated source code](http://quasipartikel.at/data.js).
 
 
 Features
@@ -22,6 +20,7 @@ Features
 * Data.Set (A sortable Set data-structure)
 * Data.Node (A JavaScript Node implementation that introduces properties that can be used to create Multipartite Graphs)
 * Data.Graph (A data abstraction for all kinds of linked data)
+* Data.Collection (A simplified interface for tabular data that uses a Data.Graph internally)
 
 
 Data.Graph
@@ -317,8 +316,122 @@ Data.Graphs are exchanged through a uniform JSON Serialization Format:
     });
     
 
+Data.Collection
+-----------------
 
-Upcoming modules
+A Collection is a simple data abstraction format where a data-set under investigation conforms to a collection of data items that describes all facets of the underlying data in a simple and universal way. You can think of a Collection as a table of data, except it provides precise information about the data contained (meta-data). A Data.Collection just wraps a `Data.Graph` internally, in order to simplify the interface, for cases where you do not have to deal with linked data.
+
+
+The simplified JSON Serialization Format looks like so:
+
+    {
+      "properties": {
+        "name": {
+          "name": "Country Name",
+          "expected_type": "string",
+          "unique": true
+        },
+        "form_of_government": {
+          "name": "Form of governmennt",
+          "expected_type": "string",
+          "unique": false
+        },
+        "population": {
+          "name": "Population",
+          "expected_type": "number",
+          "unique": true
+        }
+      },
+      "items": {
+        "austria": {
+          "name": "Austria",
+          "official_language": "Croatian language",
+          "form_of_government": [
+            "Federal republic",
+            "Parliamentary republic"
+          ],
+          "currency_used": "Euro",
+          "population": 8356700,
+          "gdp_nominal": 432400000000.0,
+          "area": 83872.0,
+          "date_founded": "1955-07-27"
+        },
+        "ger": {
+          "name": "Germany",
+          "official_language": "German Language",
+          "form_of_government": [
+            "Federal republic",
+            "Democracy",
+            "Parliamentary republic"
+          ],
+          "currency_used": "Euro",
+          "population": 82062200,
+          "gdp_nominal": 3818000000000.0,
+          "area": 357092.9,
+          "date_founded": "1949-05-23"
+        },
+      }
+    }
+
+
+**Usage**
+
+    var c = new Data.Collection(countries_fixture);
+
+    test("has some properties", function() {
+      ok(c.get('properties', 'area') instanceof Data.Node);
+      ok(c.get('properties', 'currency_used') instanceof Data.Node);
+      ok(c.get('properties', 'doesnotexit') === undefined);
+    });
+
+    test("property is connected to values", function() {
+      var governmentForms = c.get('properties', 'form_of_government');
+      ok(governmentForms.all('values').length === 10);
+    });
+
+    test("read item property values", function() {
+      var item = c.get('items', 'austria');
+      // Unique properties
+      ok(item.get('name') === 'Austria');
+      ok(item.get('area') === 83872);
+      // Non-unique properties
+      ok(item.get('form_of_government').length === 2);
+    });
+
+    test("get values of a property", function() {
+      var population = c.get('properties', 'population');
+      ok(population.all('values').length === 6);
+    });
+
+    // useful for non-unique properties
+    test("get value of a property", function() {
+      var population = c.get('properties', 'population');
+      ok(population.value('values') === 8356700);
+    });
+    
+
+
+Data.Aggregators
 ------------------
 
-* Data.Collection (A simple interface for tabular data, will use Data.Graph internally)
+**Usage**
+
+    test("Aggregators", function() {
+      var values = new Data.Set();
+      values.set('0', 4);
+      values.set('1', 5);
+      values.set('2', -3);
+      values.set('3', 1);
+
+      ok(Data.Aggregators.SUM(values) === 7);
+      ok(Data.Aggregators.MIN(values) === -3);
+      ok(Data.Aggregators.MAX(values) === 5);
+      ok(Data.Aggregators.COUNT(values) === 4);
+    });
+
+
+    test("allow aggregation of property values", function() {
+      var population = c.get("properties", "population");
+      ok(population.aggregate(Data.Aggregators.MIN) === 8356700);
+      ok(population.aggregate(Data.Aggregators.MAX) === 306108000);
+    });

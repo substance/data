@@ -33,9 +33,8 @@
   Data.VALUE_TYPES = [
     'string',
     'number',
-    'date',
-    'datetime',
-    'location'
+    'boolean',
+    'date'
   ];
   
   var isValueType = function (type) {
@@ -439,8 +438,46 @@
   });
   
   
+  // Data.Property
+  // --------------
+  
+  // Meta-data (data about data) is represented as a set of properties that
+  // belongs to a certain type. A `Data.Property` holds a key, a name and an 
+  // expected type, telling whether the data is numeric or textual, etc.
+  
+  Data.Property = _.inherits(Data.Node, {
+    constructor: function(type, key, options) {
+      Data.Node.call(this);
+      this.key = key;
+      this.type = type;
+      this.unique = options.unique;
+      this.name = options.name;
+      this.expectedType = options['expected_type'];
+      this.replace('values', new Data.Set());
+    },
+    
+    isValueType: function() {
+      return isValueType(this.expectedType);
+    },
+    
+    isObjectType: function() {
+      return !this.isValueType();
+    },
+    
+    // Aggregates the property's values
+    aggregate: function (fn) {
+      return fn(this.values("values"));
+    }
+  });
+  
+   
   // Data.Type
   // --------------
+  
+  // A `Data.Type` denotes an IS A relationship about a `Data.Object`. 
+  // For example, if you type the object 'Shakespear' with the type 'Person'
+  // you are saying that Shakespeare IS A person. Types are also used to hold
+  // collections of properties that belong to a certain group of objects.
   
   Data.Type = _.inherits(Data.Node, {
     constructor: function(g, key, type) {
@@ -453,20 +490,7 @@
   
       // extract properties
       _.each(type.properties, function(property, key) {
-        var p = new Data.Node();
-        p.key = key;
-        p.unique = property.unique;
-        p.name = property.name;
-        p.expected_type = property.expected_type;
-        p.replace('values', new Data.Set());
-        p.isValueType = function() {
-          return isValueType(p.expected_type);
-        };
-        p.isObjectType = function() {
-          return !p.isValueType();
-        };
-  
-        that.set('properties', key, p);
+        that.set('properties', key, new Data.Property(that, key, property));
       });
     },
     
@@ -482,7 +506,7 @@
         result.properties[property.key] = {
           name: property.name,
           unique: property.unique,
-          expected_type: property.expected_type
+          expected_type: property.expectedType
         };
       });
       
@@ -571,7 +595,7 @@
     // property of a resource is represented as a non-unique `Data.Set` 
     // of `Data.Node` objects, even if it's a unique property. So if you want 
     // to be explicit you should use the native methods of `Data.Node`. If
-    // three arguments are provided `get` delegates to `Data.Node#get`.
+    // two arguments are provided `get` delegates to `Data.Node#get`.
     
     get: function(property, key) {
       var p = this.type.get('properties', property);
@@ -609,7 +633,11 @@
     constructor: function(g) {
       var that = this;
       Data.Node.call(this);
-    
+      
+      if (!g) return;
+      
+      // console.log(g);
+      
       // Process schema nodes
       var types = _.select(g, function(node, key) {
         if (node.type === 'type') {
@@ -670,10 +698,62 @@
       criteria.run(this).each(function(obj, key) {
         g2[key] = obj.serialize();
       });
+      
       return new Data.Graph(g2);
     }
   });
   
+  
+  // Data.Collection
+  // --------------
+  
+  // A Collection is a simple data abstraction format where a data-set under
+  // investigation conforms to a collection of data items that describes all
+  // facets of the underlying data in a simple and universal way. You can
+  // think of a Collection as a table of data, except it provides precise
+  // information about the data contained (meta-data). A Data.Collection
+  // just wraps a `Data.Graph` internally, in order to simplify the interface,
+  // for cases where you do not have to deal with linked data.
+  
+  Data.Collection = function(spec) {
+    var that = this,
+        gspec = { "/type/item": {"type": "type", "properties": {}}};
+
+    // Convert to Data.Graph serialization format
+    if (spec) {
+      _.each(spec.properties, function(property, key) {
+        gspec["/type/item"].properties[key] = property;
+      });
+      
+      _.each(spec.items, function(item, key) {
+        gspec[key] = item;
+        gspec[key].type = "/type/item";
+      });
+      
+      this.g = new Data.Graph(gspec);
+    } else {
+      this.g = new Data.Graph();
+    }
+  };
+  
+  _.extend(Data.Collection.prototype, {
+    get: function(property, key) {
+      if (property === 'properties') {
+        return this.g.get('types', '/type/item').get('properties', key);
+      } else if (property === 'items') {
+        return this.g.get('objects', key);
+      }
+    },
+    
+    all: function() {
+      if (property === 'properties') {
+        return this.g.get('types', '/type/item').all('properties');
+      } else if (property === 'items') {
+        return this.g.all('objects', key);
+      }
+    }
+  });
+
   
   // Data.Criterion
   // --------------

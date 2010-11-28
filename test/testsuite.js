@@ -1,11 +1,11 @@
 // Data.js — A utility belt for data manipulation
-//-------------
+// -------------
 
 var items;
 
 
 // Data.Set
-//-------------
+// -------------
 
 module("Data.Set", {
   setup: function() {
@@ -112,7 +112,6 @@ test("array semantics", function() {
   
   ok(items.first() === "Austria");
   ok(items.last() === "Germany");
-  
 });
 
 test("Set#del", function() {
@@ -260,7 +259,7 @@ test("fail prevention", function() {
 
 
 // Data.Node
-//-------------
+// -------------
 
 var austrian, english, german, eu, austria, germany, uk;
 
@@ -286,9 +285,6 @@ module("Data.Node", {
     austria.set('languages', 'ger', german);
     
     eu.set('president', 'barroso', barroso);
-  },
-  teardown: function() {
-    
   }
 });
 
@@ -358,7 +354,7 @@ test("Allows null as a key for property values", function() {
 
 
 // Data.Graph
-//-------------
+// -------------
 
 var graph,
     documentType,
@@ -399,7 +395,7 @@ test("Type inspection", function() {
 test("Property inspection", function() {
   entitiesProperty = documentType.get('properties', 'entities');
   ok(entitiesProperty.name === 'Associated Entities');
-  ok(entitiesProperty.expected_type === '/type/entity');
+  ok(entitiesProperty.expectedType === '/type/entity');
 });
 
 test("Object inspection", function() {
@@ -495,6 +491,74 @@ test("Value identity", function() {
 });
 
 
+// Data.Collection
+// -------------
+
+module("Data.Collection");
+
+var c = new Data.Collection(countries_fixture);
+
+test("has some properties", function() {
+  ok(c.get('properties', 'area') instanceof Data.Node);
+  ok(c.get('properties', 'currency_used') instanceof Data.Node);
+  ok(c.get('properties', 'doesnotexit') === undefined);
+});
+
+test("property is connected to values", function() {
+  var governmentForms = c.get('properties', 'form_of_government');
+  ok(governmentForms.all('values').length === 10);
+});
+
+test("read item property values", function() {
+  var item = c.get('items', 'austria');
+  // Unique properties
+  ok(item.get('name') === 'Austria');
+  ok(item.get('area') === 83872);
+  // Non-unique properties
+  ok(item.get('form_of_government').length === 2);
+});
+
+test("get values of a property", function() {
+  var population = c.get('properties', 'population');
+  ok(population.all('values').length === 6);
+});
+
+// useful for non-unique properties
+test("get value of a property", function() {
+  var population = c.get('properties', 'population');
+  ok(population.value('values') === 8356700);
+});
+
+
+module("Data.Aggregators");
+
+// Data.Aggregators
+// -------------
+
+test("Aggregators", function() {
+  var values = new Data.Set();
+  values.set('0', 4);
+  values.set('1', 5);
+  values.set('2', -3);
+  values.set('3', 1);
+  
+  ok(Data.Aggregators.SUM(values) === 7);
+  ok(Data.Aggregators.MIN(values) === -3);
+  ok(Data.Aggregators.MAX(values) === 5);
+  ok(Data.Aggregators.COUNT(values) === 4);
+});
+
+
+test("allow aggregation of property values", function() {
+  var population = c.get("properties", "population");
+  ok(population.aggregate(Data.Aggregators.MIN) === 8356700);
+  ok(population.aggregate(Data.Aggregators.MAX) === 306108000);
+});
+
+
+// Data.Criterion
+//-------------
+
 module('Criterion');
 
 var graph;    
@@ -506,10 +570,6 @@ module("Data.Graph", {
     delete graph;
   }
 });
-
-
-// Data.Criterion
-//-------------
 
 test('Data.Criterion.operators.CONTAINS', function() {
   // For value type properties
@@ -539,12 +599,14 @@ test("nested criteria", function() {
   // the root criterion takes it all
   var criteria = new Data.Criterion('AND'),
       filteredGraph;
-      
+  
+  var titleprop = graph.get('types', '/type/document').get('properties', 'title');
+  
   criteria.add(new Data.Criterion('GT', '/type/document', 'page_count', 5));
   criteria.add(new Data.Criterion('OR')
     .add(new Data.Criterion('CONTAINS', '/type/document', 'title', 'Unveil.js'))
     .add(new Data.Criterion('CONTAINS', '/type/document', 'title', 'Processing.js')));
-  
+
   filteredGraph = graph.filter(criteria);
   ok(filteredGraph.all('objects').length === 2);
 });
