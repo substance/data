@@ -453,3 +453,24 @@ Data.Aggregators
       ok(population.aggregate(Data.Aggregators.MIN) === 8356700);
       ok(population.aggregate(Data.Aggregators.MAX) === 306108000);
     });
+
+
+Installation
+-----------------
+
+**Browser**
+
+Download the latest [tarball](https://github.com/michael/data/tarball/master) or pick a specific release. Don't forget to include a recent version of Underscore.js.
+
+**Node.js**
+
+
+npm:
+
+    npm install data
+    
+usage:
+    
+    var Data = require('data');
+    var items = new Data.Hash({a: 123, b: 34, x: 53});
+    ...
