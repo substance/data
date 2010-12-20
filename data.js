@@ -160,7 +160,6 @@
   };
   
   
-  
   // Data.Hash
   // --------------
 
@@ -303,7 +302,7 @@
       return result;
     },
 
-    // Map the `Set` to your needs
+    // Map the `Data.Hash` to your needs
     map: function (fn) {
       var result = this.clone(),
           that = this;
@@ -519,7 +518,7 @@
   // Data.Adapter
   // --------------
   
-  // An abstract interface for persisting and reading Data.Graphs.
+  // An abstract interface for writing and reading Data.Graphs.
   
   Data.Adapter = function(config) {
     // The config object is used to describe database credentials
@@ -595,12 +594,13 @@
   // collections of properties that belong to a certain group of objects.
   
   Data.Type = _.inherits(Data.Node, {
-    constructor: function(g, key, type) {
+    constructor: function(g, id, type) {
       var that = this;
       Data.Node.call(this);
   
       this.g = g; // belongs to the DataGraph
-      this.key = key;
+      this.key = id;
+      this._id = id;
       this.type = type.type;
       this.name = type.name;
   
@@ -645,24 +645,27 @@
       
       // TODO: remove in favor of _id
       this.key = key;
-
-      // Pull off _id and _rev properties      
-      this._id = data._id; delete data._id;
-      this._rev = data._rev; delete data._rev;
+      this._id = key;
       
-      this.type = g.get('objects', data.type);
-  
       // Associated Data.Objects
       this.referencedObjects = new Data.Hash();
       
-      // Memoize raw data for the build process
-      this.data = data;
+      if (data) {
+        // Memoize raw data for the build process
+        this.data = data;
+      }
     },
     
     // After all nodes are recognized the Item can be built
     build: function() {
+      if (!this.data) throw 'object has no data, and cannot be built';
       var that = this;
-    
+      
+      // Pull off _id and _rev properties
+      this._id = this.data._id; delete this.data._id;
+      this._rev = this.data._rev; delete this.data._rev;
+      this.type = this.g.get('objects', this.data.type);
+  
       _.each(this.data, function(property, key) {
         if (key === 'type') return; // Skip type property
         
@@ -672,30 +675,37 @@
         var p = that.type.get('properties', key);
   
         if (!p) {
-          throw "property "+key+" not found at "+that.type.key+" for object "+that.key+"";
+          console.log("property "+key+" not found at "+that.type.key+" for object "+that.key);
+          throw "property "+key+" not found at "+that.type.key+" for object "+that.key;
         }
   
         // init key
         that.replace(p.key, new Data.Hash());
   
         if (p.isObjectType()) {
+          
           _.each(values, function(v, index) {
-            var res = that.g.get('objects', v);
-            if (!res) {
-              throw "Can't reference "+v;
+            if (v) {
+              var res = that.g.get('objects', v);
+
+              if (!res) {
+                // Register the object (even if not yet loaded)
+                res = new Data.Object(that.g, v);
+                that.g.set('objects', v, res);
+              }
+
+              // Register referenced `Data.Objects` on the resource
+              res.referencedObjects.set(that.key, that);
+              that.set(p.key, res.key, res);
+              p.set('values', res.key, res);
             }
-            
-            // Register referenced `Data.Objects` on the resource
-            res.referencedObjects.set(that.key, that);
-            
-            that.set(p.key, res.key, res);
-            p.set('values', res.key, res);
           });
         } else {
           that.setValueProperty(p.key, values);
         }
       });
     },
+    
     
     // Set a value property
     setValueProperty: function(property, values) {
@@ -739,6 +749,7 @@
     // two arguments are provided `get` delegates to `Data.Node#get`.
     
     get: function(property, key) {
+      if (!this.data) return null;
       var p = this.type.get('properties', property);
       if (!p) return null;
   
@@ -753,6 +764,19 @@
       }
     },
     
+    // Get a property asynchronously
+    // Handles cases where an object is not yet populated with data
+    getAsync: function(property, callback) {
+      var that = this;
+      if (!this.data) {
+        this.g.fetch({_id: this._id}, {}, function(err) {
+          err ? callback(err) : callback(null, that.get(property));
+        });
+      } else {
+        callback(null, that.get(property)); // Delegate to Data.Object#get
+      }
+    },
+    
     // Sets properties on the object
     // Existing properties are overridden / replaced
     set: function(properties) {
@@ -761,9 +785,8 @@
       if (arguments.length === 1) {
         _.each(properties, function(value, key) {
           var p = that.type.get('properties', key);
-          
           if (p.isObjectType()) {
-            throw 'Manually setting object properties is not yet implemented.';
+            throw('Manually setting object properties is not yet implemented.');
           } else {
             that.setValueProperty(key, _.isArray(value) ? value : [value]);
           }
@@ -804,10 +827,8 @@
   Data.Graph = _.inherits(Data.Node, {
     constructor: function(g) {
       var that = this;
-      
       Data.Node.call(this);
       
-      // TODO: Put everything under a 'nodes' property
       this.replace('objects', new Data.Hash());
       if (!g) return;
       this.merge(g);
@@ -820,8 +841,10 @@
       
       // Process schema nodes
       var types = _.select(g, function(node, key) {
-        if (node.type === '/type/type') {
-          that.set('objects', key, new Data.Type(that, key, node));
+        if (node.type === '/type/type' || node.type === 'type') {
+          if (!that.get('objects', key)) {
+            that.set('objects', key, new Data.Type(that, key, node));            
+          }
           return true;
         }
         return false;
@@ -829,9 +852,16 @@
       
       // Process object nodes
       var objects = _.select(g, function(node, key) {
-        if (node.type !== '/type/type') {
-          var res = that.get('objects', key) || new Data.Object(that, key, node);
-          that.set('objects', key, res);
+        if (node.type !== '/type/type' && node.type !== 'type') {
+          var res = that.get('objects', key);
+          
+          if (!res) {
+            res = new Data.Object(that, key, node);
+            that.set('objects', key, res);
+          } else {
+            // Populate existing node with data in order to be rebuilt
+            res.data = node;
+          }
           
           if (!that.get('objects', node.type)) {
             throw "Type '"+node.type+"' not found for "+key+"...";
@@ -841,22 +871,61 @@
         }
         return false;
       });
-        
+
       // Now that all objects are registered we can build them
       this.objects().each(function(r, key, index) {
-        r.build();
+        if (r.data) {
+          r.build();
+        }
       });
     },
+  
     
     // API method for accessing objects in the graph space
     // TODO: Ask the datastore if the node is not known in the local graph
     //       use async method queues for this!
-    get: function(key) {
+    get: function(id) {
       if (arguments.length === 1) {
-        return this.get('objects', key);
-        
+        return this.get('objects', id);
       } else {
         return Data.Node.prototype.get.call(this, arguments[0], arguments[1]);
+      }
+    },
+    
+    // Set (add) a new node on the graph
+    set: function(id, properties) {
+      var that = this;
+      
+      if (arguments.length === 2) {
+        // Derive type based on the id
+        var parts = id.split('/');
+        var subGraph = {};
+        subGraph[id] = _.extend({
+          _id: id,
+          type: '/type/'+parts[1]
+        }, properties);
+        
+        that.merge(subGraph);
+        return this.get('objects', id);
+      } else { // Delegate to Data.Node#set
+        return Data.Node.prototype.set.call(this, arguments[0], arguments[1], arguments[2]);
+      }
+    },
+    
+    // Get a node asynchronously
+    // Handles cases where an object is not yet there and needs to be fetched from
+    // the server first
+    getAsync: function(id, callback) {
+      var that = this,
+          node = this.get(id);
+      
+      if (!node || !node.data) {
+        that.fetch({_id: id}, {}, function(err) {
+          err ? callback(err) : callback(null, that.get(id));
+        });
+      } else {
+        // Delegate to Data.Graph#get
+        callback(null, node);
       }
     },
     
@@ -914,14 +983,14 @@
     // Type nodes
     types: function() {
       return this.all('objects').select(function(node, key) {
-        return node.type === '/type/type';
+        return node.type === '/type/type' || node.type === 'type';
       });
     },
     
     // Object nodes
     objects: function() {
       return this.all('objects').select(function(node, key) {
-        return node.type !== '/type/type';
+        return node.type !== '/type/type' && node.type !== 'type';
       });
     }
   });
