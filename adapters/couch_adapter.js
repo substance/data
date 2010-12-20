@@ -15,7 +15,24 @@ var CouchAdapter = function(config) {
     });
     return queryProperties.join(":").replace(/\//g, '.');
   }
+  
 
+  // flush
+  // --------------
+
+  // Flush the database
+  self.flush = function(callback) {
+    var databaseName = _.last(config.url.split('/'));
+    console.log(databaseName);
+    db.request("DELETE", "/"+databaseName, function (err) {
+      err ? callback(err) 
+          : db.request("PUT", "/"+databaseName, function(err) {
+              err ? callback(err) : callback();
+            });
+    });
+  };
+  
+  
   // writeGraph
   // --------------
 
@@ -101,7 +118,7 @@ var CouchAdapter = function(config) {
               err ? callback('Error during saving the view') : callback();
             });
           } else {
-            throw '_design/queries not found.';
+            throw('_design/queries not found.');
           }
         });
       }
@@ -183,6 +200,8 @@ var CouchAdapter = function(config) {
     // Start the fun
     query(qry, function(err, nodes) {
       types = {};
+      
+      if (err) return callback(err);
       
       _.each(nodes, function(node) {
         // Attach node to the result graph
