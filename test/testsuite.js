@@ -376,27 +376,28 @@ module("Data.Graph", {
 
 test("valid construction", function() {
   ok(graph != undefined);
-  ok(graph.all('types').length == 3);
   
-  ok(graph.get('types', '/type/document') instanceof Data.Type);
-  ok(graph.get('types', '/type/entity') instanceof Data.Type);
-  ok(graph.get('types', '/type/mention') instanceof Data.Type);
+  ok(graph.types().length == 3);
+  
+  ok(graph.get('objects', '/type/document') instanceof Data.Type);
+  ok(graph.get('objects', '/type/entity') instanceof Data.Type);
+  ok(graph.get('objects', '/type/mention') instanceof Data.Type);
 });
 
 
 test("Type inspection", function() {
-  documentType = graph.get('types', '/type/document');
+  documentType = graph.get('objects', '/type/document');
   ok(documentType.all('properties').length === 4);
   ok(documentType.key === '/type/document');
   ok(documentType.name === 'Document');
 });
-
 
 test("Property inspection", function() {
   entitiesProperty = documentType.get('properties', 'entities');
   ok(entitiesProperty.name === 'Associated Entities');
   ok(entitiesProperty.expectedType === '/type/entity');
 });
+
 
 test("Object inspection", function() {
   protovis = graph.get('objects', '/doc/protovis_introduction');
@@ -424,7 +425,6 @@ test("1. Unique value types", function() {
   // internally delegates to
   ok(protovis.get('page_count') === 8);
 });
-
 
 test("2. Non-Unique value types", function() {
   ok(protovis.get('authors').length === 2);
@@ -491,6 +491,22 @@ test("Value identity", function() {
 });
 
 
+// Data.Object Manipulation
+
+test("Set properties of existing nodes", function() {
+  // Value properties
+  protovis.set({
+    'title': 'Protovis Introduction',
+    'page_count': 20
+  });
+  
+  ok(protovis.get('title') === 'Protovis Introduction');
+  ok(protovis.get('page_count') === 20);
+  
+  // TODO: check for registration and unregistration of values
+});
+
+
 // Data.Collection
 // -------------
 
@@ -517,6 +533,7 @@ test("read item property values", function() {
   // Non-unique properties
   ok(item.get('form_of_government').length === 2);
 });
+
 
 test("get values of a property", function() {
   var population = c.get('properties', 'population');
@@ -571,9 +588,11 @@ module("Data.Graph", {
   }
 });
 
+
 test('Data.Criterion.operators.CONTAINS', function() {
   // For value type properties
   var matchedItems = Data.Criterion.operators.CONTAINS(graph, '/type/document', 'page_count', 8);
+  
   ok(matchedItems.length === 2);
   ok(matchedItems.at(0).value('page_count') === 8);
   ok(matchedItems.at(1).value('page_count') === 8);
@@ -600,13 +619,14 @@ test("nested criteria", function() {
   var criteria = new Data.Criterion('AND'),
       filteredGraph;
   
-  var titleprop = graph.get('types', '/type/document').get('properties', 'title');
+  var titleprop = graph.get('objects', '/type/document').get('properties', 'title');
   
   criteria.add(new Data.Criterion('GT', '/type/document', 'page_count', 5));
   criteria.add(new Data.Criterion('OR')
     .add(new Data.Criterion('CONTAINS', '/type/document', 'title', 'Unveil.js'))
     .add(new Data.Criterion('CONTAINS', '/type/document', 'title', 'Processing.js')));
-
+    
   filteredGraph = graph.filter(criteria);
-  ok(filteredGraph.all('objects').length === 2);
+  ok(filteredGraph.objects().length === 2);
 });
+

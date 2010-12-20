@@ -1,6 +1,6 @@
 var documents_fixture = {
   "/type/document": {
-    "type": "type",
+    "type": "/type/type",
     "name": "Document",
     "properties": {
       "title": {
@@ -26,7 +26,7 @@ var documents_fixture = {
     }
   },
   "/type/entity": {
-    "type": "type",
+    "type": "/type/type",
     "name": "Entity",
     "properties": {
       "name": {
@@ -43,7 +43,7 @@ var documents_fixture = {
   },
   "/type/mention": {
     "name": "Mention",
-    "type": "type",
+    "type": "/type/type",
     "properties": {
       "document": {
         "name": "Document",
@@ -80,6 +80,7 @@ var documents_fixture = {
     "type": "/type/document",
     "title": "Processing.js",
     "authors": ["Alistair MacDonald", "David Humphrey", "Michael Aufreiter"],
+    "entities": [],
     "page_count": 20
   },
   "/location/stanford": {
@@ -132,4 +133,9 @@ var documents_fixture = {
     "entity": "/person/michael_bostock",
     "page": 1
   }
+}
+
+// Expose to to CommonJS
+if (typeof exports !== 'undefined') {
+  exports = documents_fixture;
 }

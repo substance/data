@@ -20,14 +20,14 @@
   }
   
   // Current version of the library. Keep in sync with `package.json`.
-  Data.VERSION = '0.1.0';
+  Data.VERSION = '0.2.0';
 
   // Require Underscore, if we're on the server, and it's not already present.
   var _ = this._;
-  if (!_ && (typeof require !== 'undefined')) _ = require("underscore")._;
+  if (!_ && (typeof require !== 'undefined')) _ = require("underscore");
   
-
-  // Helpers
+  
+  // Top Level API
   // -------
 
   Data.VALUE_TYPES = [
@@ -37,8 +37,86 @@
     'date'
   ];
   
-  var isValueType = function (type) {
+  Data.isValueType = function (type) {
     return _.include(Data.VALUE_TYPES, type);
+  };
+  
+  // Set a new Data.Adapter and enable Persistance API
+  Data.setAdapter = function(name, config) {
+    var Adapter = require('./adapters/'+name+'_adapter');
+    Data.adapter = new Adapter(config);
+  };
+
+  // Helpers
+  // -------
+
+
+  // _.Events (borrowed from Backbone.js)
+  // -----------------
+  
+  // A module that can be mixed in to *any object* in order to provide it with
+  // custom events. You may `bind` or `unbind` a callback function to an event;
+  // `trigger`-ing an event fires all callbacks in succession.
+  //
+  //     var object = {};
+  //     _.extend(object, Backbone.Events);
+  //     object.bind('expand', function(){ alert('expanded'); });
+  //     object.trigger('expand');
+  //
+  
+  _.Events = {
+
+    // Bind an event, specified by a string name, `ev`, to a `callback` function.
+    // Passing `"all"` will bind the callback to all events fired.
+    bind : function(ev, callback) {
+      var calls = this._callbacks || (this._callbacks = {});
+      var list  = this._callbacks[ev] || (this._callbacks[ev] = []);
+      list.push(callback);
+      return this;
+    },
+
+    // Remove one or many callbacks. If `callback` is null, removes all
+    // callbacks for the event. If `ev` is null, removes all bound callbacks
+    // for all events.
+    unbind : function(ev, callback) {
+      var calls;
+      if (!ev) {
+        this._callbacks = {};
+      } else if (calls = this._callbacks) {
+        if (!callback) {
+          calls[ev] = [];
+        } else {
+          var list = calls[ev];
+          if (!list) return this;
+          for (var i = 0, l = list.length; i < l; i++) {
+            if (callback === list[i]) {
+              list.splice(i, 1);
+              break;
+            }
+          }
+        }
+      }
+      return this;
+    },
+
+    // Trigger an event, firing all bound callbacks. Callbacks are passed the
+    // same arguments as `trigger` is, apart from the event name.
+    // Listening for `"all"` passes the true event name as the first argument.
+    trigger : function(ev) {
+      var list, calls, i, l;
+      if (!(calls = this._callbacks)) return this;
+      if (list = calls[ev]) {
+        for (i = 0, l = list.length; i < l; i++) {
+          list[i].apply(this, Array.prototype.slice.call(arguments, 1));
+        }
+      }
+      if (list = calls['all']) {
+        for (i = 0, l = list.length; i < l; i++) {
+          list[i].apply(this, arguments);
+        }
+      }
+      return this;
+    }
   };
 
   // Shared empty constructor function to aid in prototype-chain creation.
@@ -377,7 +455,7 @@
     return Data.Node.nodeCount += 1;
   };
   
-  _.extend(Data.Node.prototype, {
+  _.extend(Data.Node.prototype, _.Events, {
     // Node identity, which is simply the node's id
     identity: function() {
       return this.nodeId;
@@ -438,6 +516,43 @@
   });
   
   
+  // Data.Adapter
+  // --------------
+  
+  // An abstract interface for persisting and reading Data.Graphs.
+  
+  Data.Adapter = function(config) {
+    // The config object is used to describe database credentials
+    this.config = config;
+  };
+  
+  _.extend(Data.Adapter.prototype, {
+    
+    // Takes a query object to match objects in the database 
+    // and return them as a Data.Graph
+    // 
+    // Fetch all nodes of /type/document:
+    //
+    //  {
+    //    "type": "/type/document"
+    //  }
+    // 
+    // Fetch all nodes of /type/document associated with "user": "/user/michael"
+    //  {
+    //    "type": "/type/document"
+    //    "user": "/user/michael"
+    //  }
+    readGraph: function(qry, targetGraph, options, callback) {
+      // No-op
+    },
+    
+    // Takes a serialized graph object and persists it
+    writeGraph: function(graph, callback) {
+      // No-op
+    }
+  });
+  
+  
   // Data.Property
   // --------------
   
@@ -457,7 +572,7 @@
     },
     
     isValueType: function() {
-      return isValueType(this.expectedType);
+      return Data.isValueType(this.expectedType);
     },
     
     isObjectType: function() {
@@ -486,6 +601,7 @@
   
       this.g = g; // belongs to the DataGraph
       this.key = key;
+      this.type = type.type;
       this.name = type.name;
   
       // extract properties
@@ -495,9 +611,9 @@
     },
     
     // Serialize a single type node
-    serialize: function() {
+    toJSON: function() {
       var result = {
-        type: 'type',
+        type: '/type/type',
         name: this.name,
         properties: {}
       };
@@ -514,7 +630,7 @@
     }
   });
   
-  
+
   // Data.Object
   // --------------
   
@@ -526,9 +642,19 @@
       Data.Node.call(this);
   
       this.g = g;
+      
+      // TODO: remove in favor of _id
       this.key = key;
-      this.type = g.get('types', data.type);
+
+      // Pull off _id and _rev properties      
+      this._id = data._id; delete data._id;
+      this._rev = data._rev; delete data._rev;
+      
+      this.type = g.get('objects', data.type);
   
+      // Associated Data.Objects
+      this.referencedObjects = new Data.Hash();
+      
       // Memoize raw data for the build process
       this.data = data;
     },
@@ -559,27 +685,42 @@
               throw "Can't reference "+v;
             }
             
-            // Register associated `Data.Objects` on the resource
-            res.set('objects', that.key, that);
+            // Register referenced `Data.Objects` on the resource
+            res.referencedObjects.set(that.key, that);
+            
             that.set(p.key, res.key, res);
             p.set('values', res.key, res);
           });
         } else {
-          _.each(values, function(v, index) {
-            var val = p.get('values', v);
-  
-            // Check if the value is already registered
-            // on this property
-            if (!val) {
-              val = new Data.Node({value: v});
-            }
-            // Register associated `Data.Objects` on the value
-            val.set('objects', that.key, that);
-            
-            that.set(p.key, v, val);
-            p.set('values', v, val);
-          });
+          that.setValueProperty(p.key, values);
         }
+      });
+    },
+    
+    // Set a value property
+    setValueProperty: function(property, values) {
+      var that = this;
+      var p = this.type.get('properties', property);
+      
+      // Reset property
+      this.replace(p.key, new Data.Hash());
+      
+      _.each(values, function(v, index) {
+        var val = p.get('values', v);
+
+        // Check if the value is already registered
+        // on this property
+        if (!val) {
+          val = new Data.Node({value: v});
+          val.referencedObjects = new Data.Hash();
+        }
+        
+        // Register associated `Data.Objects` on the value
+        // TODO: update registered oldvalue and point it to the new value
+        val.referencedObjects.set(that.key, that); 
+        
+        that.set(p.key, v, val);
+        p.set('values', v, val);
       });
     },
     
@@ -612,10 +753,41 @@
       }
     },
     
+    // Sets properties on the object
+    // Existing properties are overridden / replaced
+    set: function(properties) {
+      var that = this;
+      
+      if (arguments.length === 1) {
+        _.each(properties, function(value, key) {
+          var p = that.type.get('properties', key);
+          
+          if (p.isObjectType()) {
+            throw 'Manually setting object properties is not yet implemented.';
+          } else {
+            that.setValueProperty(key, _.isArray(value) ? value : [value]);
+          }
+        });
+      } else {
+        return Data.Node.prototype.set.call(this, arguments[0], arguments[1], arguments[2]);
+      }
+    },
+    
     // Serialize an `Data.Object`'s properties
-    // Presumes that the graph hasn't been modified
-    serialize: function() {
-      return this.data;
+    toJSON: function() {
+      var that = this;
+      result = {};
+      
+      _.each(this._properties, function(value, key) {
+        var p = that.type.get('properties', key);
+        if (p.isObjectType()) {
+          result[key] = p.unique ? that.all(key).keys()[0] : that.all(key).keys()
+        } else {
+          result[key] = p.unique ? that.value(key) : that.values(key).values();
+        }
+      });
+      result['type'] = this.type.key;
+      return result;
     }
   });
   
@@ -633,13 +805,23 @@
     constructor: function(g) {
       var that = this;
       
-      if (!g) return;
       Data.Node.call(this);
-
+      
+      // TODO: Put everything under a 'nodes' property
+      this.replace('objects', new Data.Hash());
+      if (!g) return;
+      this.merge(g);
+    },
+    
+    
+    // Merges in another Graph
+    merge: function(g) {
+      var that = this;
+      
       // Process schema nodes
       var types = _.select(g, function(node, key) {
-        if (node.type === 'type') {
-          that.set('types', key, new Data.Type(that, key, node));
+        if (node.type === '/type/type') {
+          that.set('objects', key, new Data.Type(that, key, node));
           return true;
         }
         return false;
@@ -647,39 +829,68 @@
       
       // Process object nodes
       var objects = _.select(g, function(node, key) {
-        if (node.type !== 'type') {
+        if (node.type !== '/type/type') {
           var res = that.get('objects', key) || new Data.Object(that, key, node);
           that.set('objects', key, res);
-          if (!that.get('types', node.type)) {
+          
+          if (!that.get('objects', node.type)) {
             throw "Type '"+node.type+"' not found for "+key+"...";
           }
-          that.get('types', node.type).set('objects', key, res);
+          that.get('objects', node.type).set('objects', key, res);
           return true;
         }
         return false;
       });
         
       // Now that all objects are registered we can build them
-      this.all('objects').each(function(r, key, index) {
+      this.objects().each(function(r, key, index) {
         r.build();
       });
     },
     
+    // API method for accessing objects in the graph space
+    // TODO: Ask the datastore if the node is not known in the local graph
+    //       use async method queues for this!
+    get: function(key) {
+      if (arguments.length === 1) {
+        return this.get('objects', key);
+        
+      } else {
+        return Data.Node.prototype.get.call(this, arguments[0], arguments[1]);
+      }
+    },
+    
     // Serializes the graph to the JSON-based exchange format
-    serialize: function() {
+    toJSON: function() {
       var result = {};
-      
-      // Serialize schema nodes
-      this.all('types').each(function(type, key) {
-        result[key] = type.serialize();
-      });
       
       // Serialize object nodes
       this.all('objects').each(function(obj, key) {
-        result[key] = obj.serialize();
+        result[key] = obj.toJSON();
       });
       
       return result;
+    },
+    
+    // Fetches a new subgraph from the adapter and either merges the new nodes
+    // into the current set of nodes or replaces the graph completely with
+    // the query result
+    fetch: function(qry, options, callback) {
+      var that = this;
+      
+      Data.adapter.readGraph(qry, this, options, function(err, graph) {
+        that.merge(graph);
+        err ? callback(err) : callback(null, graph);
+      });
+    },
+    
+    // Write all new and dirty nodes to the server
+    save: function(callback) {
+      var that = this;
+      
+      Data.adapter.writeGraph(this.toJSON(), function(err) {
+        err ? callback(err) : callback();
+      });
     },
     
     // Perform a filter on the graph. Expects `Data.Criterion` object
@@ -688,16 +899,30 @@
       var g2 = {};
       
       // Include schema information from the original graph
-      this.all('types').each(function(type, key) {
-        g2[key] = type.serialize();
+      this.types().each(function(type, key) {
+        g2[key] = type.toJSON();
       });
       
       // Include matched object nodes
       criteria.run(this).each(function(obj, key) {
-        g2[key] = obj.serialize();
+        g2[key] = obj.toJSON();
       });
       
       return new Data.Graph(g2);
+    },
+    
+    // Type nodes
+    types: function() {
+      return this.all('objects').select(function(node, key) {
+        return node.type === '/type/type';
+      });
+    },
+    
+    // Object nodes
+    objects: function() {
+      return this.all('objects').select(function(node, key) {
+        return node.type !== '/type/type';
+      });
     }
   });
   
@@ -715,7 +940,7 @@
   
   Data.Collection = function(spec) {
     var that = this,
-        gspec = { "/type/item": {"type": "type", "properties": {}}};
+        gspec = { "/type/item": {"type": "/type/type", "properties": {}}};
 
     // Convert to Data.Graph serialization format
     if (spec) {
@@ -737,7 +962,7 @@
   _.extend(Data.Collection.prototype, {
     get: function(property, key) {
       if (property === 'properties') {
-        return this.g.get('types', '/type/item').get('properties', key);
+        return this.g.get('objects', '/type/item').get('properties', key);
       } else if (property === 'items') {
         return this.g.get('objects', key);
       }
@@ -745,7 +970,7 @@
     
     all: function() {
       if (property === 'properties') {
-        return this.g.get('types', '/type/item').all('properties');
+        return this.g.get('objects', '/type/item').all('properties');
       } else if (property === 'items') {
         return this.g.all('objects', key);
       }
@@ -790,19 +1015,19 @@
     // Logical Operators
     
     CONTAINS: function(target, typeKey, propertyKey, value) {
-      var type = target.get('types', typeKey),
+      var type = target.get('objects', typeKey),
           property = type.get('properties', propertyKey),
           v = property.get('values', value);
       
       // Only return results within the requested type range
-      return v.all('objects').select(function(obj, key) {
+      return v.referencedObjects.select(function(obj, key) {
         return obj.type.key === typeKey;
       });
     },
     
     // Only works with value type properties
     GT: function(target, typeKey, propertyKey, value) {
-      var type = target.get('types', typeKey),
+      var type = target.get('objects', typeKey),
           property = type.get('properties', propertyKey),
           values = property.all('values'),
           matchedObjects = new Data.Hash();
@@ -812,7 +1037,7 @@
       });
       
       values.each(function(v) {
-        matchedObjects = matchedObjects.union(v.all('objects'));
+        matchedObjects = matchedObjects.union(v.referencedObjects);
       });
       return matchedObjects;
     }

@@ -1,13 +1,11 @@
 Data.js
 ==================
 
-Data.js is a data abstraction and manipulation framework for JavaScript. It has
-been extracted from [Unveil.js](http://github.com/michael/unveil),
-in order to make it available as a separate library that can be used in the
-browser or within CommonJS environments.
+Data.js is a data manipulation and persistence framework for JavaScript. It has
+been extracted from [Unveil.js](http://github.com/michael/unveil), and is now being developed in the context of [Substance](http://github.com/michael/substance), a data-driven, real-time document authoring engine.
 
 I took some inspiration from various existing data manipulation libraries such
-as the [Google Visualization API](http://code.google.com/apis/visualization/documentation/reference.html) or [Underscore.js](http://documentcloud.github.com/underscore/). I updated the API so most of the methods conform to the API of Underscore.js. Actually, Data.js is meant to be used as an extension to Underscore.js, on which it depends on.
+as the [Google Visualization API](http://code.google.com/apis/visualization/documentation/reference.html) or [Underscore.js](http://documentcloud.github.com/underscore/). Data.js is meant to be used as an extension to Underscore.js, on which it depends on.  It can be used in the browser and within CommonJS environments. 
 
 Until a dedicated documentation is available, please have a look at the [annotated source code](http://quasipartikel.at/data.js).
 
@@ -15,10 +13,149 @@ Until a dedicated documentation is available, please have a look at the [annotat
 Features
 ------------------
 
+**New in Data.js 0.2.0**
+
+* Persistence Layer for Data.Graph's
+* Data.Adapter (An interface for connecting data-stores)
+* [Data.CouchAdapter](https://github.com/michael/data/blob/master/adapters/couch_adapter.js) (CouchDB Graph Persistence)
+
+
+**Data.js 0.1.0**
+
 * Data.Hash (A sortable Hash data-structure)
 * Data.Node (A JavaScript Node implementation that introduces properties that can be used to create Multipartite Graphs)
 * Data.Graph (A data abstraction for all kinds of linked data)
 * Data.Collection (A simplified interface for tabular data that uses a Data.Graph internally)
+
+
+The all new Data.Graph Persistence API that will ship with Data.js 0.2.0
+------------------
+
+Data.js 0.2.0 comes with a Data.Adapter for CouchDB, so this will be our first graph data-store.
+
+Graph Persistence is easy and fun. Let's have a look at the API:
+
+**First, we describe our domain model, which will serve as our type system**
+
+    var schema = {
+  
+      // Person
+      // --------------------
+  
+      "/type/person": {
+        "type": "type",
+        "name": "Person",
+        "properties": {
+          "name": {
+            "name": "Name",
+            "unique": true,
+            "expected_type": "string"
+          },
+          "origin": {
+            "name": "Page Count",
+            "unique": true,
+            "expected_type": "/type/location"
+          }
+        }
+      },
+  
+      // Location
+      // --------------------
+  
+      "/type/location": {
+        "type": "type",
+        "name": "Location",
+        "properties": {
+          "name": {
+            "name": "Name",
+            "unique": true,
+            "expected_type": "string"
+          },
+          "citizens": {
+            "name": "Citizens",
+            "unique": false,
+            "expected_type": "/type/person"
+          }
+        }
+      }
+    };
+
+**Now lets store our domain model in Couch:**
+
+    Data.setAdapter('couch', { url: 'http://localhost:5984/simpsons' });
+
+    var graph = new Data.Graph(schema);
+    graph.save(); // Stores the Data.Graph in Couch, asynchronously
+    
+
+**Let's add a Person object:**
+
+    graph.set('/person/bart', {
+      name: "Bart Simpson"
+    });
+
+Because of prefixing the type to every object_id we can derive the type property automatically.
+
+**We could sync with the DB now, but we wait until we've added more objects:**
+
+    graph.set('/location/springfield', {
+      name: "Springfield",
+      citizens: ["/person/bart"]
+    });
+
+**Now Springfield is aware of bart as a citizen, but Bart doesn't have an origin yet:**
+
+    graph.get('/person/bart')
+      .set({origin: "/location/springfield"});
+
+
+**Well, now Homer wants to join the fun:**
+
+    graph.set('/person/homer', {
+      name: "Homer Simpson",
+      origin: "/location/springfield",
+    });
+
+**Mayor, there's a new citizen:**
+
+    graph.get('/location/springfield').set({
+      citizens: ["/person/bart", "/person/homer"]
+    });
+
+
+**Okay, now suppose Mayor Quimby wants to display a list of inhabitants — Luckily he's got some basic Javascript skills:**
+
+We start with an empty graph, supposing that we've set up the Data.Adapter already.
+
+    var graph = new Data.Graph();
+    
+    graph.get('/location/springfield').get('citizens').each(function(person) {
+      console.log(person.get('name'));
+    });
+
+The Data.Graph will start fetching nodes from the database on demand. So what we get here's is an infinitely huge object space we can traverse step by step, and on demand. However, the chain-able asynchronous API for Data.Graph#get isn't available yet. We need to use asynchronous method queues in order to make this work.
+
+For the moment you have to use the asynchronous Data.Graph#fetch method, that receives a callback when the data has arrived.
+
+    graph.fetch({'_id': '/location/springfield'}, {expand: true}, function(err, res) {
+      // Even more Springfielders
+      graph.get('/location/springfield').get('citizens').get('/person/mr_burns');
+    });
+
+**Finally, we store the graph by simply calling `Data.Graph#save`:**
+
+    graph.save(function(err) {
+      console.log('The Graph has been stored on the server');
+    });
+
+
+**Some background:**
+
+Eventually, this whole thing is all about creating applications with a dynamic type system. You can at any time adjust your types by adding or removing properties.
+
+While the Graph Persistence API is under development, please have a look at the [Tests](https://github.com/michael/data/blob/master/test/persistence.js), that reflect the API that has been yet implemented.
+
+The first target is CouchDB to allow Graph Persistence with Node.js. But there will also be adapters for Ajax and Websockets, that allow to use exactly the same API from within the browser. Having a Data.Graph in the browser that is able to fetch additional nodes on demand is a great thing. The browser can keep a growing number of nodes in memory, which allows to build responsive interfaces. User input can be stored within Data.Graph nodes and at some point the whole graph (all dirty nodes) can be saved in one go. And best of all, you'll never have to deal with models again, since all schema information (type nodes) is stored in the graph as well.
 
 
 Data.Graph
@@ -27,7 +164,6 @@ Data.Graph
 A `Data.Graph` can be used for representing arbitrary complex object graphs. 
 Relations between objects are expressed through links that point to referred objects.
 Data.Graphs can be traversed in various ways. See the testsuite for usage. 
-They're meant to be used read-only in a functional style.
 
 In future we'll introduce `Data.Transformers` that allow you specify individual computations
 to generate a new graph based on an existing input graph.
@@ -197,142 +333,9 @@ However in future RDF support (for construction and serialization) may be added 
     }
 
 
-**Usage:**
-
-    var graph,
-        documentType,
-        entitiesProperty,
-        protovis,
-        unveil,
-        processingjs,
-        mention,
-        anotherMention;
-    
-    module("Data.Graph", {
-      setup: function() {
-        graph = new Data.Graph(documents_fixture);
-      },
-      teardown: function() {
-        delete graph;
-      }
-    });
-
-    test("valid construction", function() {
-      ok(graph != undefined);
-      ok(graph.all('types').length == 3);
+For Usage please have a look at the [Testsuite](https://github.com/michael/data/blob/master/test/testsuite.js)
   
-      ok(graph.get('types', '/type/document') instanceof Data.Type);
-      ok(graph.get('types', '/type/entity') instanceof Data.Type);
-      ok(graph.get('types', '/type/mention') instanceof Data.Type);
-    });
 
-
-    test("Type inspection", function() {
-      documentType = graph.get('types', '/type/document');
-      ok(documentType.all('properties').length === 4);
-      ok(documentType.key === '/type/document');
-      ok(documentType.name === 'Document');
-    });
-
-
-    test("Property inspection", function() {
-      entitiesProperty = documentType.get('properties', 'entities');
-      ok(entitiesProperty.name === 'Associated Entities');
-      ok(entitiesProperty.expected_type === '/type/entity');
-    });
-
-    test("Object inspection", function() {
-      protovis = graph.get('objects', '/doc/protovis_introduction');
-      unveil = graph.get('objects', '/doc/unveil_introduction');
-      processingjs = graph.get('objects', '/doc/processing_js_introduction');
-      mention = graph.get('objects', 'M0000003');
-      anotherMention = graph.get('objects', 'M0000003');
-  
-      ok(protovis instanceof Data.Object);
-      ok(mention instanceof Data.Object);
-      ok(anotherMention instanceof Data.Object);
-    });
-
-
-    // There are four different access scenarios:
-    // For convenience there's a get method, which always returns the right result depending on the
-    // schema information. However, internally, every property of a resource is represented as a
-    // non-unique Set of Node objects, even if it's a unique property. So if
-    // you want to be explicit you should use the native methods of the Node API.
-
-    test("1. Unique value types", function() {
-      ok(protovis.get('page_count') === 8);
-      ok(protovis.get('title') === 'Protovis');
-  
-      // internally delegates to
-      ok(protovis.get('page_count') === 8);
-    });
-
-
-    test("2. Non-Unique value types", function() {
-      ok(protovis.get('authors').length === 2);
-      ok(protovis.get('authors').at(0) === 'Michael Bostock');
-      ok(protovis.get('authors').at(1) === 'Jeffrey Heer');
-  
-      // internally delegates to
-      ok(protovis.values('authors').length === 2);
-    });
-
-    test("3. Unique object types (one resource)", function() {
-      ok(mention.get('entity').key === '/location/new_york');
-
-      // internally delegates to
-      ok(mention.first('entity').key === '/location/new_york');
-    });
-
-    test("4. Non-unique object types (many resources)", function() {
-      ok(protovis.get('entities').length === 2);
-      ok(protovis.get('entities').at(0).key === '/location/stanford');
-      ok(protovis.get('entities').at(1).key === '/location/new_york');
-
-      // internally delegates to
-      ok(protovis.all('entities').length === 2);
-    });
-
-    test("References to the same resource should result in object equality", function() {
-      ok(mention.first('entity') === anotherMention.first('entity'));
-    });
-
-
-    test("Graph traversal (navigation)", function() {
-      // Hop from a document to the second entity, picking the 2nd mention and go
-      // to the associated document of this mention.
-      ok(protovis.get('entities').at(1) // => Entity#/location/new_york
-              .get('mentions').at(1)    // => Mention#M0000003
-              .get('document')          // => /doc/processing_js_introduction
-              .key === '/doc/processing_js_introduction');
-    });
-
-
-    test("Querying information", function() {
-      var cities = graph.all('objects').select(function(res, key) {
-        return /or/.test(res.get('name'))
-      });
-    
-      ok(cities.length === 3);
-      ok(cities.get('/location/new_york'));
-      ok(cities.get('/location/toronto'));
-      ok(cities.get('/location/stanford'));
-    });
-
-
-    test("Value identity", function() {
-      // If the values of a property are shared among resources they should have
-      // the same identity as well.
-      ok(unveil.all('authors').at(0) === processingjs.all('authors').at(2));
-      ok(unveil.get('authors').at(0) === 'Michael Aufreiter');
-      ok(processingjs.get('authors').at(2) === 'Michael Aufreiter');
-  
-      // This allows questions like:
-      // Show all unique values of a certain property e.g. /type/document.authors
-      ok(protovis.type.get('properties', 'authors').all('values').length === 6);
-    });
-    
 
 Data.Collection
 -----------------
@@ -340,7 +343,7 @@ Data.Collection
 A Collection is a simple data abstraction format where a data-set under investigation conforms to a collection of data items that describes all facets of the underlying data in a simple and universal way. You can think of a Collection as a table of data, except it provides precise information about the data contained (meta-data). A Data.Collection just wraps a `Data.Graph` internally, in order to simplify the interface, for cases where you do not have to deal with linked data.
 
 
-**A Data.Graph specification looks like so:**
+**A Data.Collection specification looks like so:**
 
     {
       "properties": {
@@ -391,42 +394,7 @@ A Collection is a simple data abstraction format where a data-set under investig
       }
     }
 
-
-**Usage**
-
-    var c = new Data.Collection(countries_fixture);
-
-    test("has some properties", function() {
-      ok(c.get('properties', 'area') instanceof Data.Node);
-      ok(c.get('properties', 'currency_used') instanceof Data.Node);
-      ok(c.get('properties', 'doesnotexit') === undefined);
-    });
-
-    test("property is connected to values", function() {
-      var governmentForms = c.get('properties', 'form_of_government');
-      ok(governmentForms.all('values').length === 10);
-    });
-
-    test("read item property values", function() {
-      var item = c.get('items', 'austria');
-      // Unique properties
-      ok(item.get('name') === 'Austria');
-      ok(item.get('area') === 83872);
-      // Non-unique properties
-      ok(item.get('form_of_government').length === 2);
-    });
-
-    test("get values of a property", function() {
-      var population = c.get('properties', 'population');
-      ok(population.all('values').length === 6);
-    });
-
-    // useful for non-unique properties
-    test("get value of a property", function() {
-      var population = c.get('properties', 'population');
-      ok(population.value('values') === 8356700);
-    });
-    
+For Usage please have a look at the [Testsuite](https://github.com/michael/data/blob/master/test/testsuite.js)
 
 
 Data.Aggregators
@@ -434,25 +402,21 @@ Data.Aggregators
 
 **Usage**
 
-    test("Aggregators", function() {
-      var values = new Data.Hash();
-      values.set('0', 4);
-      values.set('1', 5);
-      values.set('2', -3);
-      values.set('3', 1);
+    var values = new Data.Hash();
+    values.set('0', 4);
+    values.set('1', 5);
+    values.set('2', -3);
+    values.set('3', 1);
 
-      ok(Data.Aggregators.SUM(values) === 7);
-      ok(Data.Aggregators.MIN(values) === -3);
-      ok(Data.Aggregators.MAX(values) === 5);
-      ok(Data.Aggregators.COUNT(values) === 4);
-    });
+    ok(Data.Aggregators.SUM(values) === 7);
+    ok(Data.Aggregators.MIN(values) === -3);
+    ok(Data.Aggregators.MAX(values) === 5);
+    ok(Data.Aggregators.COUNT(values) === 4);
 
 
-    test("allow aggregation of property values", function() {
-      var population = c.get("properties", "population");
-      ok(population.aggregate(Data.Aggregators.MIN) === 8356700);
-      ok(population.aggregate(Data.Aggregators.MAX) === 306108000);
-    });
+    var population = c.get("properties", "population");
+    ok(population.aggregate(Data.Aggregators.MIN) === 8356700);
+    ok(population.aggregate(Data.Aggregators.MAX) === 306108000);
 
 
 Installation
