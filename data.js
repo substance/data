@@ -43,8 +43,12 @@
   
   // Set a new Data.Adapter and enable Persistance API
   Data.setAdapter = function(name, config) {
-    var Adapter = require('./adapters/'+name+'_adapter');
-    Data.adapter = new Adapter(config);
+    if (typeof exports !== 'undefined') {
+      var Adapter = require('./adapters/'+name+'_adapter');
+      Data.adapter = new Adapter(config);
+    } else {
+      Data.adapter = new window[name](config);
+    }
   };
 
   // Helpers
@@ -186,7 +190,7 @@
     if (this.initialize) this.initialize(attributes, options);
   };
 
-  _.extend(Data.Hash.prototype, {
+  _.extend(Data.Hash.prototype, _.Events, {
 
     // Returns a copy of the Hash
     // Used by transformation methods
@@ -225,14 +229,19 @@
       }
 
       this.data[key] = value;
+      
+      this.trigger('set', key);
       return this;
     },
     
-    // Remove entry at given *key*
+    // Delete entry at given *key*
     del: function (key) {
-      delete this.data[key];
-      this.keyOrder.splice(this.index(key), 1);
-      this.length -= 1;
+      if (this.data[key]) {
+        delete this.data[key];
+        this.keyOrder.splice(this.index(key), 1);
+        this.length -= 1;
+        this.trigger('del', key);
+      }
       return this;
     },
     
@@ -344,9 +353,7 @@
     
       this.each(function(value, key) {
         hash.each(function(value2, key2) {
-          if (key === key2) {
-            result.set(key, value);
-          }
+          if (key === key2) result.set(key, value);
         });
       });
       return result;
@@ -401,9 +408,7 @@
   Data.Aggregators.MIN = function (values) {
     var result = Infinity;
     values.each(function(value, key, index) {
-      if (value < result) {
-        result = value;
-      }
+      if (value < result) result = value;
     });
     return result;
   };
@@ -411,9 +416,7 @@
   Data.Aggregators.MAX = function (values) {
     var result = -Infinity;
     values.each(function(value, key, index) {
-      if (value > result) {
-        result = value;
-      }
+      if (value > result) result = value;
     });
     return result;
   };
@@ -560,9 +563,10 @@
   // and an expected type, telling whether the data is numeric or textual, etc.
   
   Data.Property = _.inherits(Data.Node, {
-    constructor: function(type, key, options) {
+    constructor: function(type, id, options) {
       Data.Node.call(this);
-      this.key = key;
+      this.key = id;
+      this._id = id;
       this.type = type;
       this.unique = options.unique;
       this.name = options.name;
@@ -576,6 +580,33 @@
     
     isObjectType: function() {
       return !this.isValueType();
+    },
+    
+    registerValue: function(key, value, obj) {
+      // Value could be an object or value depending on the property
+      if (this.isObjectType()) {
+        this.set('values', key, value);
+        
+      } else {
+        var val = this.get('values', key);
+        
+        if (!val) {
+          val = new Data.Node({value: value});
+          val.referencedObjects = new Data.Hash();
+        }
+        
+        obj.set(this.key, key, val);
+        val.referencedObjects.set(obj.key, obj);
+        this.set('values', key, val); // vals are shared among objects
+      }
+    },
+    
+    unregisterValue: function(key, value) {
+      // this.set('values', key, value);
+      if (this.isObjectType()) {
+        this.all('values').del(key);
+        // this.set('values', key, value);
+      }
     },
     
     // Aggregates the property's values
@@ -638,14 +669,15 @@
   // Provides access to properties, defined on the corresponding `Data.Type`.
   
   Data.Object = _.inherits(Data.Node, {
-    constructor: function(g, key, data) {
+    constructor: function(g, id, data) {
+      var that = this;
       Data.Node.call(this);
   
       this.g = g;
       
       // TODO: remove in favor of _id
-      this.key = key;
-      this._id = key;
+      this.key = id;
+      this._id = id;
       
       // Associated Data.Objects
       this.referencedObjects = new Data.Hash();
@@ -654,6 +686,35 @@
         // Memoize raw data for the build process
         this.data = data;
       }
+      
+      // Bind function to the set event in order to keep property value links updated
+      this.bind('set', function(key, values, prevValues) {
+        
+        var p = this.type.get('properties', key);
+        
+        if (p.isObjectType()) {
+          // Unregister prev values
+          _.each(prevValues, function(value) {
+            p.unregisterValue(value, that.g.get(value),that);
+          });
+          
+          // Register new values
+          _.each(values, function(value) {
+            p.registerValue(value, that.g.get(value), that);
+          });
+        
+        } else { // Value type property values
+          // Unregister prev values
+          _.each(prevValues, function(value) {
+            p.unregisterValue(value, value, that);
+          });
+          
+          // Register new values
+          _.each(values, function(value) {
+            p.registerValue(value, value, that);
+          });
+        }
+      });
     },
     
     // After all nodes are recognized the Item can be built
@@ -662,7 +723,7 @@
       var that = this;
       
       // Pull off _id and _rev properties
-      this._id = this.data._id; delete this.data._id;
+      delete this.data._id;
       this._rev = this.data._rev; delete this.data._rev;
       this.type = this.g.get('objects', this.data.type);
   
@@ -681,43 +742,57 @@
   
         // init key
         that.replace(p.key, new Data.Hash());
-  
-        if (p.isObjectType()) {
-          
-          _.each(values, function(v, index) {
-            if (v) {
-              var res = that.g.get('objects', v);
-
-              if (!res) {
-                // Register the object (even if not yet loaded)
-                res = new Data.Object(that.g, v);
-                that.g.set('objects', v, res);
-              }
-
-              // Register referenced `Data.Objects` on the resource
-              res.referencedObjects.set(that.key, that);
-              that.set(p.key, res.key, res);
-              p.set('values', res.key, res);
-            }
-          });
-        } else {
-          that.setValueProperty(p.key, values);
-        }
+        
+        p.isObjectType() ? that.setObjectProperty(p, values)
+                         : that.setValueProperty(p, values);
+        
       });
     },
     
+    // Helper to create an object reference
+    newReference: function(id) {
+      var obj = this.g.get('objects', id);
+      if (!obj) {
+        // Register the object (even if not yet loaded)
+        obj = new Data.Object(this.g, id);
+        this.g.set('objects', id, obj);
+      }
+      // Register referenced `Data.Objects` on the object
+      obj.referencedObjects.set(this.key, this);
+      return obj;
+    },
     
-    // Set a value property
-    setValueProperty: function(property, values) {
+    // Set an object type property
+    setObjectProperty: function(p, values)  {
       var that = this;
-      var p = this.type.get('properties', property);
       
-      // Reset property
-      this.replace(p.key, new Data.Hash());
+      that.replace(p.key, new Data.Hash());
       
       _.each(values, function(v, index) {
-        var val = p.get('values', v);
+        if (!v) return; // skip
+        
+        var obj = that.newReference(v);
+        var prevKeys = that.all(p.key).keys();
+        
+        that.set(p.key, obj.key, obj);
+        that.trigger('set', p.key, that.all(p.key).keys(), prevKeys);
+        
+        // p.registerValue(obj.key, obj);
+        // Register values on property - now automatically triggerd by set events
+        // p.set('values', obj.key, obj);
+      });
+    },
+    
+    // Set a value type property
+    setValueProperty: function(p, values) {
+      var that = this;
 
+      // Reset property
+      that.replace(p.key, new Data.Hash());
+      _.each(values, function(v, index) {
+        var val = p.get('values', v);
+        
+        // TODO: Move all val related code to registerValue()
         // Check if the value is already registered
         // on this property
         if (!val) {
@@ -725,12 +800,15 @@
           val.referencedObjects = new Data.Hash();
         }
         
-        // Register associated `Data.Objects` on the value
-        // TODO: update registered oldvalue and point it to the new value
-        val.referencedObjects.set(that.key, that); 
-        
+        var prevKeys = that.all(p.key).keys();
         that.set(p.key, v, val);
-        p.set('values', v, val);
+        
+        that.trigger('set', p.key, that.all(p.key).keys(), prevKeys);
+        
+        // Register associated `Data.Objects` on the value        
+        // val.referencedObjects.set(that.key, that);
+        // that.set(p.key, v, val);
+        // p.set('values', v, val);
       });
     },
     
@@ -784,12 +862,16 @@
       
       if (arguments.length === 1) {
         _.each(properties, function(value, key) {
+          // TODO: improve this
+          var prevValues = that.all('key') ? that.all(key).keys() : [];
           var p = that.type.get('properties', key);
           if (p.isObjectType()) {
-            throw('Manually setting object properties is not yet implemented.');
+            that.setObjectProperty(p, _.isArray(value) ? value : [value]);
           } else {
-            that.setValueProperty(key, _.isArray(value) ? value : [value]);
+            that.setValueProperty(p, _.isArray(value) ? value : [value]);
           }
+          
+          that.trigger('set', key, that.all(key).keys(), prevValues);
         });
       } else {
         return Data.Node.prototype.set.call(this, arguments[0], arguments[1], arguments[2]);
@@ -814,6 +896,8 @@
     }
   });
   
+  _.extend(Data.Object.prototype, _.Events);
+  
   
   // Data.Graph
   // --------------
@@ -833,7 +917,6 @@
       if (!g) return;
       this.merge(g);
     },
-    
     
     // Merges in another Graph
     merge: function(g) {
@@ -879,7 +962,6 @@
         }
       });
     },
-  
     
     // API method for accessing objects in the graph space
     // TODO: Ask the datastore if the node is not known in the local graph
@@ -948,8 +1030,22 @@
       var that = this;
       
       Data.adapter.readGraph(qry, this, options, function(err, graph) {
-        that.merge(graph);
+        if (graph) {
+          that.merge(graph);
+        } // else no nodes found
+        
         err ? callback(err) : callback(null, graph);
+      });
+    },
+    
+    find: function(qry) {
+      return this.objects().select(function(o) {
+        var so = o.toJSON();
+        var rejected = false;
+        _.each(qry, function(value, key) {
+          if (so[key] !== value) rejected = true;
+        });
+        return !rejected;
       });
     },
     
@@ -990,7 +1086,7 @@
     // Object nodes
     objects: function() {
       return this.all('objects').select(function(node, key) {
-        return node.type !== '/type/type' && node.type !== 'type';
+        return node.type !== '/type/type' && node.type !== 'type' && node.data;
       });
     }
   });
@@ -1061,7 +1157,6 @@
   Data.Criterion.operators = {};
   
   _.extend(Data.Criterion.operators, {
-    
     // Logical Connectors
     
     AND: function(target, criteria) {

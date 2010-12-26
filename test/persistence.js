@@ -43,7 +43,7 @@ graph.fetch({'type': '/type/document'}, {expand: true}, function(err) {
   
   // Yeah we've got new data
   assert.ok(graph.get('/doc/protovis_introduction').get('title') === "Protovis Introduction");
-
+  
   // Now lets do some graph manipulation
   var protovis = graph.get('/doc/protovis_introduction');
   
