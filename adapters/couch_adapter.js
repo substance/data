@@ -16,17 +16,24 @@ var CouchAdapter = function(config) {
     return queryProperties.join(":").replace(/\//g, '.');
   }
   
+  // uuid
+  // --------------
+
+  // Generate a unique id that can be used for storing documents
+  self.uuid = function(callback) {
+    db.request("GET", "_uuids", function (err, res) {
+      err ? callback(err) : 'FOO';
+    });
+  };
 
   // flush
   // --------------
 
   // Flush the database
   self.flush = function(callback) {
-    var databaseName = _.last(config.url.split('/'));
-    console.log(databaseName);
-    db.request("DELETE", "/"+databaseName, function (err) {
+    db.request("DELETE", db.uri.pathname, function (err) {
       err ? callback(err) 
-          : db.request("PUT", "/"+databaseName, function(err) {
+          : db.request("PUT", db.uri.pathname, function(err) {
               err ? callback(err) : callback();
             });
     });
@@ -87,9 +94,11 @@ var CouchAdapter = function(config) {
 
     function query(qry, callback) {
       
+      if (!qry) throw "No query specified";
+      
       function executeQuery(qry, callback) {
         var viewId = serializeQuery(qry);
-        db.view('/documents/_design/queries/_view/'+viewId, function(err, res) {
+        db.view(db.uri.pathname+'/_design/queries/_view/'+viewId, function(err, res) {
           // Bug-workarount related to https://github.com/creationix/couch-client/issues#issue/3
           // Normally we'd just use the err object in an error case
           res.error ? callback(res.error) : callback(null, _.map(res.rows, function(item) {
