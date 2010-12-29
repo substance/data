@@ -117,6 +117,8 @@ test("array semantics", function() {
 test("Data.Hash#del", function() {
   items.set("ch", "Switzerland");
   items.del('de');
+  
+  
   ok(items.length === 2);
   ok(items.keyOrder.length === 2);
   ok(items.get('de') === undefined);
@@ -247,6 +249,19 @@ test("Data.Hash#union", function() {
 });
 
 
+test("Data.Hash Events", function() {
+  persons = new Data.Hash();
+  persons.bind('set', function(key) { ok(key); });
+  persons.bind('del', function(key) { ok(key); });
+  
+  persons.set("mi", "Michael");
+  persons.set("th", "Thomas");
+  
+  persons.del("mi");
+  expect(3);
+});
+
+
 test("fail prevention", function() {
   // null is a valid key
   items.set(null, 'Netherlands');
@@ -363,14 +378,28 @@ var graph,
     unveil,
     processingjs,
     mention,
+    stanford,
+    newYork,
     anotherMention;
-    
+
+graph = new Data.Graph(documents_fixture);
+
+protovis = graph.get('objects', '/doc/protovis_introduction');
+unveil = graph.get('objects', '/doc/unveil_introduction');
+processingjs = graph.get('objects', '/doc/processing_js_introduction');
+mention = graph.get('objects', 'M0000003');
+anotherMention = graph.get('objects', 'M0000003');
+stanford = graph.get('/location/stanford');
+newYork = graph.get('/location/new_york');
+
+
+
 module("Data.Graph", {
   setup: function() {
-    graph = new Data.Graph(documents_fixture);
+    // graph = new Data.Graph(documents_fixture);
   },
   teardown: function() {
-    delete graph;
+    // delete graph;
   }
 });
 
@@ -400,12 +429,6 @@ test("Property inspection", function() {
 
 
 test("Object inspection", function() {
-  protovis = graph.get('objects', '/doc/protovis_introduction');
-  unveil = graph.get('objects', '/doc/unveil_introduction');
-  processingjs = graph.get('objects', '/doc/processing_js_introduction');
-  mention = graph.get('objects', 'M0000003');
-  anotherMention = graph.get('objects', 'M0000003');
-  
   ok(protovis instanceof Data.Object);
   ok(mention instanceof Data.Object);
   ok(anotherMention instanceof Data.Object);
@@ -481,7 +504,9 @@ test("Querying information", function() {
 test("Value identity", function() {
   // If the values of a property are shared among resources they should have
   // the same identity as well.
+  
   ok(unveil.all('authors').at(0) === processingjs.all('authors').at(2));
+  
   ok(unveil.get('authors').at(0) === 'Michael Aufreiter');
   ok(processingjs.get('authors').at(2) === 'Michael Aufreiter');
   
@@ -493,18 +518,61 @@ test("Value identity", function() {
 
 // Data.Object Manipulation
 
-test("Set properties of existing nodes", function() {
+// Set new nodes on the graph
+test("Set new nodes on the graph", function() {
+  
+  var substance = graph.set('/document/substance', {
+    "type": "/type/document",
+    "title": "Substance Introduction",
+    "authors": ["Michael Aufreiter"],
+    "page_count": 12,
+    "entities": ["/location/stanford", "/location/new_york"]
+  });
+  
+  ok(substance.get('title') === 'Substance Introduction');
+  ok(substance.get('page_count') === 12);
+});
+
+
+
+test("Set value properties of existing nodes", function() {
   // Value properties
   protovis.set({
     'title': 'Protovis Introduction',
     'page_count': 20
   });
   
+  protovis.set({
+    'page_count': 20
+  });
+  
   ok(protovis.get('title') === 'Protovis Introduction');
   ok(protovis.get('page_count') === 20);
-  
-  // TODO: check for registration and unregistration of values
 });
+
+
+test("Set object properties of existing nodes", function() {
+  ok(protovis.get('entities').first().get('name') === 'Stanford');
+  ok(protovis.get('entities').last().get('name') === 'New York');
+  
+  ok(protovis.type.get('properties', 'entities').get('values', '/location/new_york') === newYork);
+  ok(protovis.type.get('properties', 'entities').get('values', '/location/stanford') === stanford);
+  ok(protovis.type.get('properties', 'entities').all('values').length === 2);
+  
+  ok(protovis.type.get('properties', 'authors').get('values', 'Michael Bostock'));
+  ok(protovis.type.get('properties', 'authors').get('values', 'Jeffrey Heer'));
+  
+  protovis.set({
+    entities: ['/location/toronto'],
+    authors: 'Michael Aufreiter'
+  });
+    
+  ok(protovis.get('entities').first() === graph.get('/location/toronto'));
+  // TODO: activate (proper value registration management)
+  // ok(protovis.type.get('properties', 'entities').all('values').length === 1);
+  ok(protovis.type.get('properties', 'entities').get('values', '/location/toronto'));
+});
+
 
 
 // Data.Collection
@@ -533,6 +601,7 @@ test("read item property values", function() {
   // Non-unique properties
   ok(item.get('form_of_government').length === 2);
 });
+
 
 
 test("get values of a property", function() {
