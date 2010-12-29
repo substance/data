@@ -5,6 +5,7 @@
 //     For all details and documentation:
 //     http://github.com/michael/data
 
+
 (function(){
 
   // Initial Setup
@@ -41,7 +42,7 @@
     return _.include(Data.VALUE_TYPES, type);
   };
   
-  // Set a new Data.Adapter and enable Persistance API
+  // Set a new Data.Adapter and enable Persistence API
   Data.setAdapter = function(name, config) {
     if (typeof exports !== 'undefined') {
       var Adapter = require('./adapters/'+name+'_adapter');
@@ -49,6 +50,46 @@
     } else {
       Data.adapter = new window[name](config);
     }
+  };
+  
+  
+  /*!
+  Math.uuid.js (v1.4)
+  http://www.broofa.com
+  mailto:robert@broofa.com
+
+  Copyright (c) 2010 Robert Kieffer
+  Dual licensed under the MIT and GPL licenses.
+  */
+
+  Data.uuid = function (prefix) {
+    var chars = '0123456789abcdefghijklmnopqrstuvwxyz'.split(''),
+        uuid = [],
+        radix = 16,
+        len = 32;
+
+    if (len) {
+      // Compact form
+      for (var i = 0; i < len; i++) uuid[i] = chars[0 | Math.random()*radix];
+    } else {
+      // rfc4122, version 4 form
+      var r;
+
+      // rfc4122 requires these characters
+      uuid[8] = uuid[13] = uuid[18] = uuid[23] = '-';
+      uuid[14] = '4';
+
+      // Fill in random data.  At i==19 set the high bits of clock sequence as
+      // per rfc4122, sec. 4.1.5
+      for (var i = 0; i < 36; i++) {
+        if (!uuid[i]) {
+          r = 0 | Math.random()*16;
+          uuid[i] = chars[(i == 19) ? (r & 0x3) | 0x8 : r];
+        }
+      }
+    }
+    
+    return (prefix ? prefix : "") + uuid.join('');
   };
 
   // Helpers
