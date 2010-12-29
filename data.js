@@ -581,28 +581,28 @@
   
   _.extend(Data.Adapter.prototype, {
     
+    // Flash the database
+    flush: function() {},
+    
     // Takes a query object to match objects in the database 
     // and return them as a Data.Graph
     // 
-    // Fetch all nodes of /type/document:
+    // Fetch all nodes of `/type/document`:
     //
-    //  {
-    //    "type": "/type/document"
-    //  }
+    //      {
+    //        "type": "/type/document"
+    //      }
     // 
-    // Fetch all nodes of /type/document associated with "user": "/user/michael"
-    //  {
-    //    "type": "/type/document"
-    //    "user": "/user/michael"
-    //  }
-    readGraph: function(qry, targetGraph, options, callback) {
-      // No-op
-    },
+    // Fetch all nodes of `/type/document` associated with user `/user/michael`
+    // 
+    //      {
+    //        "type": "/type/document"
+    //        "user": "/user/michael"
+    //      }
+    readGraph: function(qry, targetGraph, options, callback) {},
     
     // Takes a serialized graph object and persists it
-    writeGraph: function(graph, callback) {
-      // No-op
-    }
+    writeGraph: function(graph, callback) {}
   });
   
   
@@ -637,10 +637,8 @@
       // Value could be an object or value depending on the property
       if (this.isObjectType()) {
         this.set('values', key, value);
-        
       } else {
         var val = this.get('values', key);
-        
         if (!val) {
           val = new Data.Node({value: value});
           val.referencedObjects = new Data.Hash();
@@ -653,10 +651,8 @@
     },
     
     unregisterValue: function(key, value) {
-      // this.set('values', key, value);
       if (this.isObjectType()) {
         this.all('values').del(key);
-        // this.set('values', key, value);
       }
     },
     
@@ -723,24 +719,23 @@
     constructor: function(g, id, data) {
       var that = this;
       Data.Node.call(this);
-  
+      
       this.g = g;
       
       // TODO: remove in favor of _id
       this.key = id;
       this._id = id;
+      this.html_id = id.replace(/\//g, '_');
+      this.dirty = true; // Every constructed node is dirty by default
       
       // Associated Data.Objects
       this.referencedObjects = new Data.Hash();
       
-      if (data) {
-        // Memoize raw data for the build process
-        this.data = data;
-      }
+      // Memoize raw data for the build process
+      if (data) this.data = data;
       
       // Bind function to the set event in order to keep property value links updated
       this.bind('set', function(key, values, prevValues) {
-        
         var p = this.type.get('properties', key);
         
         if (p.isObjectType()) {
@@ -777,7 +772,8 @@
       delete this.data._id;
       this._rev = this.data._rev; delete this.data._rev;
       this.type = this.g.get('objects', this.data.type);
-  
+      
+
       _.each(this.data, function(property, key) {
         if (key === 'type') return; // Skip type property
         
@@ -793,11 +789,10 @@
   
         // init key
         that.replace(p.key, new Data.Hash());
-        
         p.isObjectType() ? that.setObjectProperty(p, values)
                          : that.setValueProperty(p, values);
-        
       });
+
     },
     
     // Helper to create an object reference
@@ -822,9 +817,13 @@
       _.each(values, function(v, index) {
         if (!v) return; // skip
         
+        if (typeof v === 'object') {
+          v = that.g.set(null, v)._id;
+        }
+        
         var obj = that.newReference(v);
         var prevKeys = that.all(p.key).keys();
-        
+
         that.set(p.key, obj.key, obj);
         that.trigger('set', p.key, that.all(p.key).keys(), prevKeys);
         
@@ -853,7 +852,6 @@
         
         var prevKeys = that.all(p.key).keys();
         that.set(p.key, v, val);
-        
         that.trigger('set', p.key, that.all(p.key).keys(), prevKeys);
         
         // Register associated `Data.Objects` on the value        
@@ -942,6 +940,7 @@
           result[key] = p.unique ? that.value(key) : that.values(key).values();
         }
       });
+      
       result['type'] = this.type.key;
       return result;
     }
@@ -966,18 +965,19 @@
       
       this.replace('objects', new Data.Hash());
       if (!g) return;
-      this.merge(g);
+      this.merge(g, true);
     },
     
     // Merges in another Graph
-    merge: function(g) {
+    merge: function(g, dirty) {
       var that = this;
       
       // Process schema nodes
       var types = _.select(g, function(node, key) {
         if (node.type === '/type/type' || node.type === 'type') {
           if (!that.get('objects', key)) {
-            that.set('objects', key, new Data.Type(that, key, node));            
+            that.set('objects', key, new Data.Type(that, key, node));
+            that.get(key).dirty = dirty;
           }
           return true;
         }
@@ -1001,9 +1001,12 @@
             throw "Type '"+node.type+"' not found for "+key+"...";
           }
           that.get('objects', node.type).set('objects', key, res);
+          that.get(key).dirty = dirty;
+          
           return true;
         }
         return false;
+        
       });
 
       // Now that all objects are registered we can build them
@@ -1028,18 +1031,17 @@
     // Set (add) a new node on the graph
     set: function(id, properties) {
       var that = this;
-      
+            
       if (arguments.length === 2) {
-        // Derive type based on the id
-        var parts = id.split('/');
-        var subGraph = {};
-        subGraph[id] = _.extend({
-          _id: id,
-          type: '/type/'+parts[1]
-        }, properties);
+        id = id ? id : Data.uuid('/' + _.last(properties.type.split('/')) + '/');
         
-        that.merge(subGraph);
+        var res = new Data.Object(that, id, properties, true);
+        res.dirty = true;
+        res.build();
+        
+        this.set('objects', id, res);
         return this.get('objects', id);
+        
       } else { // Delegate to Data.Node#set
         return Data.Node.prototype.set.call(this, arguments[0], arguments[1], arguments[2]);
       }
@@ -1068,7 +1070,10 @@
       
       // Serialize object nodes
       this.all('objects').each(function(obj, key) {
-        result[key] = obj.toJSON();
+        // Only serialize fetched nodes
+        if (obj.data || obj instanceof Data.Type) {
+          result[key] = obj.toJSON();
+        }
       });
       
       return result;
@@ -1082,7 +1087,7 @@
       
       Data.adapter.readGraph(qry, this, options, function(err, graph) {
         if (graph) {
-          that.merge(graph);
+          that.merge(graph, false);
         } // else no nodes found
         
         err ? callback(err) : callback(null, graph);
@@ -1102,10 +1107,19 @@
     
     // Write all new and dirty nodes to the server
     save: function(callback) {
-      var that = this;
+      var that = this,
+          nodes = that.dirtyNodes();
       
-      Data.adapter.writeGraph(this.toJSON(), function(err) {
-        err ? callback(err) : callback();
+      Data.adapter.writeGraph(nodes.toJSON(), function(err) {
+        if (err) {
+          callback(err);
+        } else {
+          // Now all nodes are clean.
+          nodes.each(function(n) {
+            n.dirty = false;
+          });
+          callback();
+        }
       });
     },
     
@@ -1139,7 +1153,16 @@
       return this.all('objects').select(function(node, key) {
         return node.type !== '/type/type' && node.type !== 'type' && node.data;
       });
+    },
+    
+    // Dirty and volatile nodes
+    // Used by Data.Graph#save
+    dirtyNodes: function() {
+      return this.all('objects').select(function(obj, key) {
+        return (obj.dirty && (obj.data || obj instanceof Data.Type));
+      });
     }
+    
   });
   
   
