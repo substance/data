@@ -351,6 +351,16 @@
     
       return result;
     },
+    
+    // Serialize
+    toJSON: function() {
+      var result = {};
+      
+      this.each(function(value, key) {
+        result[key] = value.toJSON();
+      });
+      return result;
+    },
 
     // Map the `Data.Hash` to your needs
     map: function (fn) {
