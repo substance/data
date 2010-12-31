@@ -621,12 +621,16 @@
       this.type = type;
       this.unique = options.unique;
       this.name = options.name;
-      this.expectedType = options['expected_type'];
+      this.required = options.required;
+      this.default = options.default;
+      
+      // TODO: ensure that object and value types are not mixed
+      this.expectedTypes = _.isArray(options['type']) ? options['type'] : [options['type']];
       this.replace('values', new Data.Hash());
     },
     
     isValueType: function() {
-      return Data.isValueType(this.expectedType);
+      return Data.isValueType(this.expectedTypes[0]);
     },
     
     isObjectType: function() {
@@ -697,11 +701,14 @@
       };
       
       this.all('properties').each(function(property) {
-        result.properties[property.key] = {
+        var p = result.properties[property.key] = {
           name: property.name,
           unique: property.unique,
-          expected_type: property.expectedType
+          type: property.expectedTypes,
+          required: property.required ? true : false
         };
+        if (property.default) p.default = property.default;
+        
       });
       
       return result;
@@ -727,6 +734,7 @@
       this._id = id;
       this.html_id = id.replace(/\//g, '_');
       this.dirty = true; // Every constructed node is dirty by default
+      this.errors = []; // Stores validation errors
       
       // Associated Data.Objects
       this.referencedObjects = new Data.Hash();
@@ -771,28 +779,62 @@
       // Pull off _id and _rev properties
       delete this.data._id;
       this._rev = this.data._rev; delete this.data._rev;
+      this._deleted = this.data._deleted; delete this.data._deleted;
       this.type = this.g.get('objects', this.data.type);
-      
 
-      _.each(this.data, function(property, key) {
-        if (key === 'type') return; // Skip type property
-        
-        // Ask the schema wheter this property holds a
-        // value type or an object type
-        var values = _.isArray(property) ? property : [property];
-        var p = that.type.get('properties', key);
-  
-        if (!p) {
-          console.log("property "+key+" not found at "+that.type.key+" for object "+that.key);
-          throw "property "+key+" not found at "+that.type.key+" for object "+that.key;
+      this.type.all('properties').each(function(property, key) {        
+        function applyValue(value) {
+          var values = _.isArray(value) ? value : [value];
+          
+          // Initialize Property
+          that.replace(property.key, new Data.Hash());
+          property.isObjectType() ? that.setObjectProperty(property, values)
+                                  : that.setValueProperty(property, values);
         }
-  
-        // init key
-        that.replace(p.key, new Data.Hash());
-        p.isObjectType() ? that.setObjectProperty(p, values)
-                         : that.setValueProperty(p, values);
+        
+        if (that.data[key]) {
+          applyValue(that.data[key]);
+        } else if (property.default) {
+          applyValue(property.default);
+        }
       });
+    },
+    
+    // Validates an object against its type (=schema)
+    validate: function() {
+      var that = this;
+      this.errors = [];
+      this.type.all('properties').each(function(property, key) {
+        // Required property?
+        if ((that.get(key) === undefined || that.get(key) === null)) {
+          if (property.required) {
+            that.errors.push({property: key, message: "Property \"" + property.name + "\" is required"});
+          }
+        } else {
+          // Correct type?
+          var types = property.expectedTypes;
 
+          function validType(value, types) {
+            if (_.include(types, typeof value)) return true;
+            if (value instanceof Data.Object && _.include(types, value.type._id)) return true;
+            
+            if (typeof value === 'object' && _.include(types, value.constructor.name.toLowerCase())) return true;
+            return false;
+          }
+          
+          // Unique properties
+          if (property.unique && !validType(that.get(key), types)) {
+            that.errors.push({property: key, message: "Invalid type for property \"" + property.name + "\""});
+          }
+          
+          // Non unique properties
+          if (!property.unique && !_.all(that.get(key).values(), function(v) { return validType(v, types); })) {
+            that.errors.push({property: key, message: "Invalid value type for property \"" + property.name + "\""});
+          }
+        }
+      });
+      
+      return this.errors.length === 0;
     },
     
     // Helper to create an object reference
@@ -823,7 +865,6 @@
         
         var obj = that.newReference(v);
         var prevKeys = that.all(p.key).keys();
-
         that.set(p.key, obj.key, obj);
         that.trigger('set', p.key, that.all(p.key).keys(), prevKeys);
         
@@ -914,6 +955,8 @@
           // TODO: improve this
           var prevValues = that.all('key') ? that.all(key).keys() : [];
           var p = that.type.get('properties', key);
+          if (!p) return; // Property not found on type
+          
           if (p.isObjectType()) {
             that.setObjectProperty(p, _.isArray(value) ? value : [value]);
           } else {
@@ -921,6 +964,7 @@
           }
           
           that.trigger('set', key, that.all(key).keys(), prevValues);
+          that.dirty = true;
         });
       } else {
         return Data.Node.prototype.set.call(this, arguments[0], arguments[1], arguments[2]);
@@ -942,6 +986,9 @@
       });
       
       result['type'] = this.type.key;
+      result['_id'] = this._id;
+      if (this._rev !== undefined) result['_rev'] = this._rev;
+      if (this._deleted) result['_deleted'] = this._deleted;
       return result;
     }
   });
@@ -1026,6 +1073,15 @@
       } else {
         return Data.Node.prototype.get.call(this, arguments[0], arguments[1]);
       }
+    },
+    
+    // Delete node by id, referenced nodes remain untouched
+    // Incoming links 
+    del: function(id) {
+      var node = this.get(id);
+      
+      node._deleted = true;
+      node.dirty = true;
     },
     
     // Set (add) a new node on the graph
@@ -1151,7 +1207,7 @@
     // Object nodes
     objects: function() {
       return this.all('objects').select(function(node, key) {
-        return node.type !== '/type/type' && node.type !== 'type' && node.data;
+        return node.type !== '/type/type' && node.type !== 'type' && node.data && !node._deleted;
       });
     },
     
@@ -1231,6 +1287,7 @@
   Data.Criterion.operators = {};
   
   _.extend(Data.Criterion.operators, {
+    
     // Logical Connectors
     
     AND: function(target, criteria) {
