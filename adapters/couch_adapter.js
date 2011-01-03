@@ -22,17 +22,17 @@ var CouchAdapter = function(config, callback) {
 
   // Flush the database
   self.flush = function(callback) {
+    // Delete DB if exists
     db.request("DELETE", db.uri.pathname, function (err) {
-      err ? callback(err) 
-          : db.request("PUT", db.uri.pathname, function(err) {
-              err ? callback(err) 
-                  : db.save({
-                      _id: '_design/queries',
-                      views: {}
-                    }, function (err, doc) {
-                      err ? callback(err) : callback();
-                    });
-            });
+      db.request("PUT", db.uri.pathname, function(err) {
+        err ? callback(err) 
+            : db.save({
+                _id: '_design/queries',
+                views: {}
+              }, function (err, doc) {
+                err ? callback(err) : callback();
+              });
+      });
     });
   };
   
@@ -112,8 +112,14 @@ var CouchAdapter = function(config, callback) {
             var conditions = [];
             var fn = "function(doc) { if (##conditions##) emit(doc._id, doc); }";
             
-            _.each(qry, function(value, property) {
-              conditions.push("doc."+property+" === \""+value+"\"");
+            _.each(qry, function(value, key) {
+              
+              // Extract operator
+              var matches = key.match(/^([a-z_]{1,30})(!=|>|>=|<|<=)?$/),
+                  property = matches[1],
+                  operator = matches[2] || '==';
+              
+              conditions.push("doc."+property+" "+operator+" "+(typeof value === "string" ? "\""+value+"\"": value));
             });
             
             fn = fn.replace('##conditions##', conditions.join(' && '));
@@ -169,13 +175,13 @@ var CouchAdapter = function(config, callback) {
             
             if (!result[item]) {
               fetchNode(item, function(err, node) {
-                if (err) return callback('node_not_found');
+                if (err) return callback(err);
                 result[node._id] = node;
                 
                 // Fetch corresponding type node
                 if (!result[node.type]) {
                   fetchNode(node.type, function(err, typeNode) {
-                    if (err) return callback('type_not_found');
+                    if (err) return callback(err);
                     result[typeNode._id] = typeNode;
                     
                     // Go deeper
@@ -221,7 +227,7 @@ var CouchAdapter = function(config, callback) {
       // Fetch all referenced type nodes in parallel
       async.forEach(Object.keys(types), function(item, callback) {
         fetchNode(item, function(err, typeNode) {
-          if (err) return callback('type_not_found');
+          if (err) return callback(err);
           result[typeNode._id] = typeNode;
           callback();
         });
