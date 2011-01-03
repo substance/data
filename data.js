@@ -621,6 +621,8 @@
       this.type = type;
       this.unique = options.unique;
       this.name = options.name;
+      this.meta = options.meta || {};
+      this.validator = options.validator;
       this.required = options.required;
       this.default = options.default;
       
@@ -708,7 +710,8 @@
           required: property.required ? true : false
         };
         if (property.default) p.default = property.default;
-        
+        if (property.validator) p.validator = property.validator;
+        if (property.meta && Object.keys(property.meta).length > 0) p.meta = property.meta;
       });
       
       return result;
@@ -792,7 +795,7 @@
                                   : that.setValueProperty(property, values);
         }
         
-        if (that.data[key]) {
+        if (that.data[key] !== undefined) {
           applyValue(that.data[key]);
         } else if (property.default) {
           applyValue(property.default);
@@ -802,6 +805,8 @@
     
     // Validates an object against its type (=schema)
     validate: function() {
+      if (this.type.key === '/type/type') return true; // Skip type nodes
+      
       var that = this;
       this.errors = [];
       this.type.all('properties').each(function(property, key) {
@@ -816,6 +821,10 @@
 
           function validType(value, types) {
             if (_.include(types, typeof value)) return true;
+            
+            // FIXME: assumes that unloaded objects are valid properties
+            if (!value.data) return true;
+            
             if (value instanceof Data.Object && _.include(types, value.type._id)) return true;
             
             if (typeof value === 'object' && _.include(types, value.constructor.name.toLowerCase())) return true;
@@ -830,6 +839,17 @@
           // Non unique properties
           if (!property.unique && !_.all(that.get(key).values(), function(v) { return validType(v, types); })) {
             that.errors.push({property: key, message: "Invalid value type for property \"" + property.name + "\""});
+          }
+        }
+        
+        // Validator satisfied?
+        function validValue() {
+          return new RegExp(property.validator).test(that.get(key));
+        }
+        
+        if (property.validator) {
+          if (!validValue()) {
+            that.errors.push({property: key, message: "Invalid value for property \"" + property.name + "\""});
           }
         }
       });
@@ -1166,6 +1186,15 @@
       var that = this,
           nodes = that.dirtyNodes();
       
+      // Validate nodes
+      var invalidNodes = nodes.select(function(node, key) {
+        if (node.validate) {
+          return !node.validate();
+        } else return false;
+      });
+      
+      if (invalidNodes.length > 0) return callback('validation_error', invalidNodes);
+      
       Data.adapter.writeGraph(nodes.toJSON(), function(err) {
         if (err) {
           callback(err);
@@ -1174,7 +1203,7 @@
           nodes.each(function(n) {
             n.dirty = false;
           });
-          callback();
+          callback(null, invalidNodes);
         }
       });
     },
