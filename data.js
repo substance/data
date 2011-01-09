@@ -625,7 +625,7 @@
       this.meta = options.meta || {};
       this.validator = options.validator;
       this.required = options.required;
-      this.default = options.default;
+      this["default"] = options["default"];
       
       // TODO: ensure that object and value types are not mixed
       this.expectedTypes = _.isArray(options['type']) ? options['type'] : [options['type']];
@@ -717,7 +717,7 @@
           type: property.expectedTypes,
           required: property.required ? true : false
         };
-        if (property.default) p.default = property.default;
+        if (property["default"]) p["default"] = property["default"];
         if (property.validator) p.validator = property.validator;
         if (property.meta && Object.keys(property.meta).length > 0) p.meta = property.meta;
       });
@@ -831,8 +831,8 @@
 
           if (that.data[key] !== undefined) {
             applyValue(that.data[key]);
-          } else if (property.default) {
-            applyValue(property.default);
+          } else if (property["default"]) {
+            applyValue(property["default"]);
           }
         });
       });
@@ -1276,11 +1276,16 @@
         g2[key] = type.toJSON();
       });
       
+      // Include all other objects that do not match the target type
+      this.objects().each(function(obj, key) {
+        if (!_.include(obj.types().keys(), criteria.type)) g2[key] = obj.toJSON();
+      });
+      
       // Include matched object nodes
       criteria.run(this).each(function(obj, key) {
         g2[key] = obj.toJSON();
       });
-      
+
       return new Data.Graph(g2);
     },
     
@@ -1403,7 +1408,7 @@
       
       // Only return results within the requested type range
       return v.referencedObjects.select(function(obj, key) {
-        return obj.type.key === typeKey;
+        return _.include(obj.types().keys(), typeKey);
       });
     },
     
