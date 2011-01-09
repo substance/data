@@ -30,14 +30,14 @@ var AjaxAdapter = function(config) {
   self.readGraph = function(qry, targetGraph, options, callback) {    
     $.ajax({
       type: "GET",
-      url: "/readgraph",
+      url: config.url+"readgraph",
       data: {
         qry: JSON.stringify(qry),
         options: JSON.stringify(options)
       },
-      dataType: "json",
+      dataType: "jsonp",
       success: function(graph) {
-       callback(null, graph);
+        callback(null, graph);
       },
       error: function(err) {
        callback(err);
