@@ -1,5 +1,7 @@
 var AjaxAdapter = function(config) {  
   
+  config = config ? config : {url: '/'};
+  
   // writeGraph
   // --------------
 
