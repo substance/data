@@ -47,7 +47,6 @@ var CouchAdapter = function(config, callback) {
   // Takes a Data.Graph and persists it to CouchDB
   
   self.writeGraph = function(graph, callback) {
-        
     function writeNode(nodeId, callback) {
       var target = _.extend(graph[nodeId], {
         _id: nodeId
@@ -182,7 +181,7 @@ var CouchAdapter = function(config, callback) {
       
       var properties = [];
       _.each(types, function(type) {
-        _.each(result[type].properties, function(property, key) {
+        _.each(sharedTypes[type].properties, function(property, key) {
           properties.push({
             key: key,
             // Ensure that type property is always an array (of allowed types for the property)
@@ -206,7 +205,6 @@ var CouchAdapter = function(config, callback) {
                 fetchAssociated(node._id, function(err) {
                   err ? callback(err) : callback();
                 });
-                
               });
             } else {
               callback();
@@ -228,10 +226,8 @@ var CouchAdapter = function(config, callback) {
       
       if (!res.error) {
         _.each(res.rows, function(item) {
-          // return item.value;
-          result[item.value._id] = item.value;
+          sharedTypes[item.value._id] = item.value;
         });
-        
         
         // Start the fun
         query(qry, function(err, nodes) {
