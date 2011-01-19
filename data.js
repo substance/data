@@ -624,7 +624,7 @@
       this.name = options.name;
       this.meta = options.meta || {};
       this.validator = options.validator;
-      this.required = options.required;
+      this.required = options["required"];
       this["default"] = options["default"];
       
       // TODO: ensure that object and value types are not mixed
@@ -846,7 +846,7 @@
       this.errors = [];
       this.properties().each(function(property, key) {
         // Required property?
-        if ((that.get(key) === undefined || that.get(key) === null)) {
+        if ((that.get(key) === undefined || that.get(key) === null) || that.get(key) === "") {
           if (property.required) {
             that.errors.push({property: key, message: "Property \"" + property.name + "\" is required"});
           }
@@ -1109,7 +1109,6 @@
             }
             that.get('objects', type).set('objects', key, res);
           });
-
           
           that.get(key).dirty = dirty;
           
@@ -1228,7 +1227,11 @@
               operator = matches[2] || '==';
           
           if (operator === "|=") { // one of operator
-            condition = _.include(so[property], value);
+            var values = _.isArray(value) ? value : [value];
+            condition = false;
+            _.each(values, function(val) {
+              if (_.include(so[property], val)) condition = true;
+            });
           } else { // regular operators
             condition = so[property] === value;
           }
@@ -1241,6 +1244,7 @@
     
     // Write all new and dirty nodes to the server
     save: function(callback) {
+      callback = callback ? callback : function() {};
       var that = this,
           nodes = that.dirtyNodes();
       
