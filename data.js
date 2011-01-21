@@ -745,6 +745,7 @@
       this._id = id;
       this.html_id = id.replace(/\//g, '_');
       this.dirty = true; // Every constructed node is dirty by default
+      
       this.errors = []; // Stores validation errors
       this._types = new Data.Hash();
       
@@ -786,6 +787,10 @@
     // Convenience function for accessing all related types
     types: function() {
       return this._types;
+    },
+    
+    toString: function() {
+      return this.get('name') || this.val || this._id;
     },
     
     // Properties from all associated types
@@ -836,6 +841,8 @@
           }
         });
       });
+      
+      if (this.dirty) this.g.trigger('dirty');
     },
     
     // Validates an object against its type (=schema)
@@ -1021,6 +1028,7 @@
           
           that.trigger('set', key, that.all(key).keys(), prevValues);
           that.dirty = true;
+          that.g.trigger('dirty');
         });
       } else {
         return Data.Node.prototype.set.call(this, arguments[0], arguments[1], arguments[2]);
@@ -1242,27 +1250,32 @@
       });
     },
     
-    // Write all new and dirty nodes to the server
-    save: function(callback) {
-      callback = callback ? callback : function() {};
+    // Synchronize all new and dirty, as well as deleted nodes to the server
+    sync: function(callback) {
+      callback = callback || function() {};
       var that = this,
           nodes = that.dirtyNodes();
+      
+      var validNodes = new Data.Hash();
       
       // Validate nodes
       var invalidNodes = nodes.select(function(node, key) {
         if (node.validate) {
           return !node.validate();
-        } else return false;
+        } else {
+          validNodes.set(node._id, node);
+          return false
+        };
       });
       
-      if (invalidNodes.length > 0) return callback('validation_error', invalidNodes);
+      // if (invalidNodes.length > 0) return callback('validation_error', invalidNodes);
       
       Data.adapter.writeGraph(nodes.toJSON(), function(err) {
         if (err) {
           callback(err);
         } else {
-          // Now all nodes are clean.
-          nodes.each(function(n) {
+          // Now all valid nodes are clean.
+          validNodes.each(function(n) {
             n.dirty = false;
           });
           callback(null, invalidNodes);
@@ -1313,10 +1326,16 @@
       return this.all('objects').select(function(obj, key) {
         return (obj.dirty && (obj.data || obj instanceof Data.Type));
       });
-    }
+    },
     
+    invalidNodes: function() {
+      return this.all('objects').select(function(obj, key) {
+        return (obj.errors.length > 0);
+      });
+    }
   });
   
+  _.extend(Data.Graph.prototype, _.Events);
   
   // Data.Collection
   // --------------

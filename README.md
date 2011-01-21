@@ -85,7 +85,7 @@ Graph Persistence is easy and fun. Let's have a look at the API:
     Data.setAdapter('couch', { url: 'http://localhost:5984/simpsons' });
 
     var graph = new Data.Graph(schema);
-    graph.save(); // Stores the Data.Graph in Couch, asynchronously
+    graph.sync); // Stores the Data.Graph in Couch, asynchronously
     
 
 **Let's add a Person object:**
@@ -142,9 +142,9 @@ For the moment you have to use the asynchronous Data.Graph#fetch method, that re
       graph.get('/location/springfield').get('citizens').get('/person/mr_burns');
     });
 
-**Finally, we store the graph by simply calling `Data.Graph#save`:**
+**Finally, we store the graph by simply calling `Data.Graph#sync`:**
 
-    graph.save(function(err) {
+    graph.syncfunction(err) {
       console.log('The Graph has been stored on the server');
     });
 

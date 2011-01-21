@@ -54,7 +54,7 @@ graph.fetch({'type': '/type/document'}, {expand: true}, function(err) {
   });
   
   // Store our modified graph on the server
-  graph.save(function(err) {
+  graph.sync(function(err) {
     // Now we create a whole new graph and fetch the protovis node to check if the changes have landed in the DB
     var anotherGraph = new Data.Graph();
     

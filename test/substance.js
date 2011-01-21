@@ -139,7 +139,7 @@ var graph = new Data.Graph(seedGraph);
 var doc, user;
 
 function storeSchema(callback) {
-  graph.save(function(err) {
+  graph.sync(function(err) {
     err ? callback(err) : callback();
   });
 };
