@@ -1151,6 +1151,7 @@
       
       node._deleted = true;
       node.dirty = true;
+      this.trigger('dirty');
     },
     
     // Set (add) a new node on the graph
