@@ -16,7 +16,6 @@ var CouchAdapter = function(config, callback) {
     return queryProperties.join(":").replace(/\//g, '.');
   }
   
-
   // flush
   // --------------
 
@@ -47,21 +46,34 @@ var CouchAdapter = function(config, callback) {
   // Takes a Data.Graph and persists it to CouchDB
   
   self.writeGraph = function(graph, callback) {
+    var result = {}; // updated graph with new revisions and merged changes
     function writeNode(nodeId, callback) {
       var target = _.extend(graph[nodeId], {
         _id: nodeId
       });
       
-      db.save(target, function (err, doc) {
-        err ? callback(err) : callback();
+      // First get latest revision from db
+      db.get(nodeId, function (err, doc) {
+        if (err || (doc._rev === target._rev)) {
+          db.save(target, function (err, newDoc) {
+            result[nodeId] = newDoc;
+            err ? callback(err) : callback();
+          });
+        } else {
+          // Return the latest valid db version instead of the conflicted one
+          // Later we can do a merge here
+          result[nodeId] = doc;
+          result[nodeId]._conflicted = true;
+          callback();
+        }
       });
     }
     
     async.forEach(Object.keys(graph), writeNode, function(err) {
-      err ? callback(err) : callback();
+      err ? callback(err) : callback(null, result);
     });
   };
-  
+
   
   // readGraph
   // --------------
@@ -248,7 +260,7 @@ var CouchAdapter = function(config, callback) {
               }
             }, function(err) { callback(null, result); });
           } else {
-           callback(null, result); // super ready
+            callback(null, result); // super ready
           }
         });
       } else {

@@ -95,7 +95,6 @@
   // Helpers
   // -------
 
-
   // _.Events (borrowed from Backbone.js)
   // -----------------
   
@@ -685,6 +684,8 @@
       this.g = g; // belongs to the DataGraph
       this.key = id;
       this._id = id;
+      this._rev = type._rev;
+      this._conflicted = type._conflicted;
       this.type = type.type;
       this.name = type.name;
       this.meta = type.meta || {};
@@ -703,6 +704,8 @@
     // Serialize a single type node
     toJSON: function() {
       var result = {
+        _id: this._id,
+        _rev: this._rev,
         type: '/type/type',
         name: this.name,
         properties: {},
@@ -813,8 +816,9 @@
       
       // Pull off _id and _rev properties
       delete this.data._id;
-      this._rev = this.data._rev; delete this.data._rev;
-      this._deleted = this.data._deleted; delete this.data._deleted;
+      this._rev = this.data._rev; // delete this.data._rev;
+      this._conflicted = this.data._conflicted;
+      this._deleted = this.data._deleted; // delete this.data._deleted;
       
       // Initialize primary type (backward compatibility)
       this.type = this.g.get('objects', _.last(types));
@@ -1265,14 +1269,14 @@
         }
       });
       
-      Data.adapter.writeGraph(validNodes.toJSON(), function(err) {
+      Data.adapter.writeGraph(validNodes.toJSON(), function(err, g) {
         if (err) {
           callback(err);
         } else {
-          // Now all valid nodes are clean.
-          validNodes.each(function(n) {
-            n.dirty = false;
-          });
+          that.merge(g);
+          // Check if there are conflicts
+          var conflictedNodes = _.select(g, function(node) { return node._conflicted });
+          if (conflictedNodes.length > 0) that.trigger('conflicted');
           callback(invalidNodes.length > 0 ? 'Some invalid nodes' : null, invalidNodes);
         }
       });
@@ -1326,6 +1330,12 @@
     invalidNodes: function() {
       return this.all('objects').select(function(obj, key) {
         return (obj.errors && obj.errors.length > 0);
+      });
+    },
+    
+    conflictedNodes: function() {
+      return this.all('objects').select(function(obj, key) {
+        return obj._conflicted;
       });
     }
   });
@@ -1468,5 +1478,4 @@
       }
     }
   });
-  
 })();

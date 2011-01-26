@@ -13,8 +13,9 @@ var AjaxAdapter = function(config) {
       url: "/writegraph",
       data: JSON.stringify(graph),
       contentType: "application/json",
+      dataType: "json",
       success: function(status) {
-        callback(null);
+        callback(null, status.graph);
       },
       error: function(err) {
        callback(err);
