@@ -85,7 +85,7 @@ Graph Persistence is easy and fun. Let's have a look at the API:
     Data.setAdapter('couch', { url: 'http://localhost:5984/simpsons' });
 
     var graph = new Data.Graph(schema);
-    graph.sync); // Stores the Data.Graph in Couch, asynchronously
+    graph.sync(); // Stores the Data.Graph in Couch, asynchronously
     
 
 **Let's add a Person object:**

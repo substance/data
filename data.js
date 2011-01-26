@@ -5,7 +5,6 @@
 //     For all details and documentation:
 //     http://github.com/michael/data
 
-
 (function(){
 
   // Initial Setup
@@ -805,7 +804,7 @@
       return properties;
     },
     
-    // After all nodes are recognized the Item can be built
+    // After all nodes are recognized the object can be built
     build: function() {
       var types = _.isArray(this.data.type) ? this.data.type : [this.data.type];
       
@@ -927,7 +926,6 @@
         var obj = that.newReference(v);
         var prevKeys = that.all(p.key).keys();
         that.set(p.key, obj.key, obj);
-        
         
         that.trigger('set', p.key, that.all(p.key).keys(), prevKeys);
         
@@ -1066,17 +1064,16 @@
   // A `Data.Graph` can be used for representing arbitrary complex object
   // graphs. Relations between objects are expressed through links that
   // point to referred objects. Data.Graphs can be traversed in various ways.
-  // See the testsuite for usage. They're meant to be used read-only in a 
-  // functional style.
+  // See the testsuite for usage.
   
   Data.Graph = _.inherits(Data.Node, {
-    constructor: function(g) {
+    constructor: function(g, dirty) {
       var that = this;
       Data.Node.call(this);
       
       this.replace('objects', new Data.Hash());
       if (!g) return;
-      this.merge(g, true);
+      this.merge(g, dirty);
     },
     
     // Merges in another Graph
@@ -1145,7 +1142,6 @@
     },
     
     // Delete node by id, referenced nodes remain untouched
-    // Incoming links 
     del: function(id) {
       var node = this.get(id);
       
@@ -1261,17 +1257,15 @@
       
       // Validate nodes
       var invalidNodes = nodes.select(function(node, key) {
-        if (node.validate) {
-          return !node.validate();
+        if (!node.validate || (node.validate && node.validate())) {
+          validNodes.set(key, node);
+          return false;
         } else {
-          validNodes.set(node._id, node);
-          return false
-        };
+          return true;
+        }
       });
       
-      // if (invalidNodes.length > 0) return callback('validation_error', invalidNodes);
-      
-      Data.adapter.writeGraph(nodes.toJSON(), function(err) {
+      Data.adapter.writeGraph(validNodes.toJSON(), function(err) {
         if (err) {
           callback(err);
         } else {
@@ -1279,7 +1273,7 @@
           validNodes.each(function(n) {
             n.dirty = false;
           });
-          callback(null, invalidNodes);
+          callback(invalidNodes.length > 0 ? 'Some invalid nodes' : null, invalidNodes);
         }
       });
     },
@@ -1331,7 +1325,7 @@
     
     invalidNodes: function() {
       return this.all('objects').select(function(obj, key) {
-        return (obj.errors.length > 0);
+        return (obj.errors && obj.errors.length > 0);
       });
     }
   });
