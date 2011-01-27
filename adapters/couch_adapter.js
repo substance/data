@@ -45,7 +45,7 @@ var CouchAdapter = function(config, callback) {
 
   // Takes a Data.Graph and persists it to CouchDB
   
-  self.writeGraph = function(graph, callback) {
+  self.writeGraph = function(graph, callback, ctx) {
     var result = {}; // updated graph with new revisions and merged changes
     function writeNode(nodeId, callback) {
       var target = _.extend(graph[nodeId], {
@@ -54,7 +54,8 @@ var CouchAdapter = function(config, callback) {
       
       // First get latest revision from db
       db.get(nodeId, function (err, doc) {
-        if (err || (doc._rev === target._rev)) {
+        // TODO: Remove !target._rev -> unsafe overwrite!
+        if (err || !target._rev || (doc._rev === target._rev)) {
           db.save(target, function (err, newDoc) {
             result[nodeId] = newDoc;
             err ? callback(err) : callback();
@@ -66,6 +67,21 @@ var CouchAdapter = function(config, callback) {
           result[nodeId]._conflicted = true;
           callback();
         }
+      });
+    }
+    
+    // Apply write middleware for each node with ctx if ctx is there
+    if (ctx) {
+      _.each(graph, function(node, key) {
+        node._id = key;
+        _.each(Data.middleware.writegraph, function(fn) {
+          var filteredNode = fn(node, ctx);
+          if (filteredNode) {
+            graph[node._id] = filteredNode;
+          } else {
+            delete graph[node._id];
+          }
+        });
       });
     }
     
@@ -82,11 +98,29 @@ var CouchAdapter = function(config, callback) {
   // If you'd like to make a deep fetch, you just need to specify
   // expand: true in the options hash
   
-  self.readGraph = function(qry, targetGraph, options, callback) {
+  self.readGraph = function(qry, targetGraph, options, callback, ctx) {
     
     // Collects the subgraph that will be returned as a result
     var result = {};
     var sharedTypes = {};
+    
+    // Pass through middleware layers
+    function filter(graph) {
+      if (!ctx) return graph;
+      // Apply write middleware for each node with ctx
+      _.each(graph, function(node, key) {
+        node._id = key;
+        _.each(Data.middleware.readgraph, function(fn) {
+          var filteredNode = fn(node, ctx);
+          if (filteredNode) {
+            graph[node._id] = filteredNode;
+          } else {
+            delete graph[node._id];
+          }
+        });
+      });
+      return graph;
+    }
     
     // Fetches a node from the DB
     // --------
@@ -230,12 +264,11 @@ var CouchAdapter = function(config, callback) {
       });
     }
     
-    
     // First of all fetch all type nodes
     db.view(db.uri.pathname+'/_design/queries/_view/all_type_nodes', function(err, res) {
+      
       // Bug-workarount related to https://github.com/creationix/couch-client/issues#issue/3
       // Normally we'd just use the err object in an error case
-      
       if (!res.error) {
         _.each(res.rows, function(item) {
           sharedTypes[item.value._id] = item.value;
@@ -258,16 +291,15 @@ var CouchAdapter = function(config, callback) {
               } else {
                 callback();
               }
-            }, function(err) { callback(null, result); });
+            }, function(err) { callback(null, filter(result)); });
           } else {
-            callback(null, result); // super ready
+            callback(null, filter(result));
           }
         });
       } else {
         callback(res.error)
       }
     });
-    
   };
   
   self.db = db;

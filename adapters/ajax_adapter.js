@@ -18,7 +18,7 @@ var AjaxAdapter = function(config) {
         callback(null, status.graph);
       },
       error: function(err) {
-       callback(err);
+        callback(err);
       }
     });
   };

@@ -52,6 +52,11 @@
     }
   };
   
+  // Middleware registration
+  Data.middleware = {
+    readgraph: [],
+    writegraph: []
+  };
   
   /*!
   Math.uuid.js (v1.4)
@@ -870,7 +875,7 @@
             // FIXME: assumes that unloaded objects are valid properties
             if (!value.data) return true;
             
-            if (value instanceof Data.Object && _.include(types, value.type._id)) return true;
+            if (value instanceof Data.Object && _.intersect(types, value.types().keys()).length>0) return true;
             
             if (typeof value === 'object' && _.include(types, value.constructor.name.toLowerCase())) return true;
             return false;
@@ -1274,6 +1279,12 @@
           callback(err);
         } else {
           that.merge(g);
+
+          // No dirty nodes after sync
+          that.dirtyNodes().each(function(n) {
+            n.dirty = false;
+          });
+          
           // Check if there are conflicts
           var conflictedNodes = _.select(g, function(node) { return node._conflicted });
           if (conflictedNodes.length > 0) that.trigger('conflicted');
