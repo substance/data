@@ -85,7 +85,7 @@ var CouchAdapter = function(config, callback) {
       });
     }
     
-    async.forEach(Object.keys(graph), writeNode, function(err) {
+    async.forEach(_.keys(graph), writeNode, function(err) {
       err ? callback(err) : callback(null, result);
     });
   };
@@ -283,7 +283,7 @@ var CouchAdapter = function(config, callback) {
 
           // Prefetch associated nodes
           if (options.expand) {          
-            async.forEach(Object.keys(result), function(item, callback) {
+            async.forEach(_.keys(result), function(item, callback) {
               if (result[item].type !== 'type' && result[item].type !== '/type/type') {
                 fetchAssociated(item, function(err) {
                   err ? callback('error during fetching assciated nodes') : callback();

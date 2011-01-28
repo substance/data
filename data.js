@@ -726,7 +726,7 @@
         };
         if (property["default"]) p["default"] = property["default"];
         if (property.validator) p.validator = property.validator;
-        if (property.meta && Object.keys(property.meta).length > 0) p.meta = property.meta;
+        if (property.meta && _.keys(property.meta).length > 0) p.meta = property.meta;
       });
       
       return result;
