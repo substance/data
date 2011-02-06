@@ -1153,7 +1153,7 @@
     // Delete node by id, referenced nodes remain untouched
     del: function(id) {
       var node = this.get(id);
-      
+      if (!node) return;
       node._deleted = true;
       node.dirty = true;
       this.trigger('dirty');
