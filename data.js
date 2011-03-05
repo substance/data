@@ -510,7 +510,9 @@
   Data.Transformers = {
     group: function(g, type, keys, properties) {
       var gspec = {},
-          type = g.get(type);
+          type = g.get(type),
+          groups = {},
+          count = 0;
 
       gspec[type._id] = {"type": "/type/type", "properties": {}};
 
@@ -523,12 +525,9 @@
       });
 
       // Compute group memberships
-      var groups = {};
       _.each(keys, function(key) {
         groups[key] = type.properties().get(key).all('values');
       });
-
-      var count = 0;
 
       function aggregate(key) {
         var members = new Data.Hash();
