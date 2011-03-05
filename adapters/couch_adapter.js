@@ -1,4 +1,4 @@
-var CouchClient = require('couch-client');
+var CouchClient = require('../lib/couch-client');
 var Data = require('../data');
 var _ = require('underscore');
 var async = require('async');
