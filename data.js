@@ -484,6 +484,90 @@
     return values.length;
   };
   
+  
+  // Data.Modifiers
+  // --------------
+  
+  Data.Modifiers = {};
+
+  // The default modifier simply does nothing
+  Data.Modifiers.DEFAULT = function (attribute) {
+    return attribute;
+  };
+
+  Data.Modifiers.MONTH = function (attribute) {
+    return attribute.getMonth();
+  };
+
+  Data.Modifiers.QUARTER = function (attribute) {
+    return Math.floor(attribute.getMonth() / 3) + 1;
+  };
+  
+  
+  // Data.Transformers
+  // --------------
+  
+  Data.Transformers = {
+    group: function(g, type, keys, properties) {
+      var gspec = {},
+          type = g.get(type);
+
+      gspec[type._id] = {"type": "/type/type", "properties": {}};
+
+      // Compute properties for the output graph
+      type.properties().each(function(p, key) {
+        // Only include group keys and number properties
+        if (_.include(keys, key) || p.expectedTypes[0] === 'number') {
+          gspec[type._id].properties[key] = p.toJSON();
+        }
+      });
+
+      // Compute group memberships
+      var groups = {};
+      _.each(keys, function(key) {
+        groups[key] = type.properties().get(key).all('values');
+      });
+
+      var count = 0;
+
+      function aggregate(key) {
+        var members = new Data.Hash();
+        _.each(keys, function(k, index) {
+          var objects = groups[keys[index]].get(key[index]).referencedObjects;
+          index === 0 ? members.union(objects) : members.intersect(objects);
+        });
+
+        var res = {type: type._id};
+        _.each(gspec[type._id].properties, function(p, pk) {
+          if (_.include(keys, pk)) {
+            res[pk] = key[_.indexOf(keys, pk)];
+          } else {
+            var numbers = members.map(function(obj) {
+              return obj.get(pk);
+            });
+            res[pk] = Data.Aggregators.SUM(numbers);
+          }
+        });
+        return res;
+      }
+
+      function extractGroups(keyIndex, key) {
+        if (keyIndex === keys.length-1) {
+          gspec[count++] = aggregate(key);
+        } else {
+          keyIndex += 1;
+          groups[keys[keyIndex]].each(function(grp, grpkey) {
+            extractGroups(keyIndex, key.concat([grpkey]));
+          });
+        }
+      }
+
+      extractGroups(-1, []);
+      return new Data.Graph(gspec);
+    }
+  };
+  
+  
   // Data.Node
   // --------------
   
@@ -625,7 +709,7 @@
       this.type = type;
       this.unique = options.unique;
       this.name = options.name;
-      this.meta = options.meta || {};
+      this.meta = options.meta || {};
       this.validator = options.validator;
       this.required = options["required"];
       this["default"] = options["default"];
@@ -669,6 +753,19 @@
     // Aggregates the property's values
     aggregate: function (fn) {
       return fn(this.values("values"));
+    },
+    
+    // Serialize a propery definition
+    toJSON: function() {
+      return {
+        name: this.name,
+        type: this.expectedTypes,
+        unique: this.unique,
+        meta: this.meta,
+        valiate: this.validator,
+        required: this.required,
+        "default": this["default"]
+      }
     }
   });
   
@@ -693,7 +790,7 @@
       this._conflicted = type._conflicted;
       this.type = type.type;
       this.name = type.name;
-      this.meta = type.meta || {};
+      this.meta = type.meta || {};
   
       // extract properties
       _.each(type.properties, function(property, key) {
@@ -702,8 +799,13 @@
     },
     
     // Convenience function for accessing properties
-    properties: function() {
+    properties: function() {
       return this.all('properties');
+    },
+    
+    // Objects of this type
+    objects: function() {
+      return this.all('objects');
     },
     
     // Serialize a single type node
@@ -797,7 +899,7 @@
     },
     
     toString: function() {
-      return this.get('name') || this.val || this._id;
+      return this.get('name') || this.val || this._id;
     },
     
     // Properties from all associated types
@@ -805,7 +907,7 @@
       var properties = new Data.Hash();
       // Prototypal inheritance in action: overriden properties belong to the last type specified
       this._types.each(function(type) {
-        type.all('properties').each(function(property) {
+        type.all('properties').each(function(property) {
           properties.set(property.key, property);
         });
       });
@@ -861,7 +963,7 @@
       this.errors = [];
       this.properties().each(function(property, key) {
         // Required property?
-        if ((that.get(key) === undefined || that.get(key) === null) || that.get(key) === "") {
+        if ((that.get(key) === undefined || that.get(key) === null) || that.get(key) === "") {
           if (property.required) {
             that.errors.push({property: key, message: "Property \"" + property.name + "\" is required"});
           }
@@ -898,7 +1000,7 @@
         }
         
         if (property.validator) {
-          if (!validValue()) {
+          if (!validValue()) {
             that.errors.push({property: key, message: "Invalid value for property \"" + property.name + "\""});
           }
         }
@@ -1258,7 +1360,7 @@
     
     // Synchronize all new and dirty, as well as deleted nodes to the server
     sync: function(callback) {
-      callback = callback || function() {};
+      callback = callback || function() {};
       var that = this,
           nodes = that.dirtyNodes();
       
@@ -1316,6 +1418,12 @@
       return new Data.Graph(g2);
     },
     
+    group: function(type, keys, properties) {
+      var res = new Data.Collection();
+      res.g = Data.Transformers.group(this, type, keys, properties);
+      return res;
+    },
+    
     // Type nodes
     types: function() {
       return this.all('objects').select(function(node, key) {
@@ -1367,7 +1475,7 @@
   Data.Collection = function(spec) {
     var that = this,
         gspec = { "/type/item": {"type": "/type/type", "properties": {}}};
-
+        
     // Convert to Data.Graph serialization format
     if (spec) {
       _.each(spec.properties, function(property, key) {
@@ -1394,12 +1502,26 @@
       }
     },
     
-    all: function() {
+    all: function(property) {
       if (property === 'properties') {
         return this.g.get('objects', '/type/item').all('properties');
       } else if (property === 'items') {
-        return this.g.all('objects', key);
+        return this.g.all('objects');
       }
+    },
+    
+    group: function(keys, properties) {
+      var res = new Data.Collection();
+      res.g = Data.Transformers.group(this.g, "/type/item", keys, properties);
+      return res;
+    },
+    
+    properties: function() {
+      return this.g.get('objects', '/type/item').all('properties');
+    },
+    
+    items: function() {
+      return this.g.objects();
     }
   });
 
