@@ -251,17 +251,18 @@
     
     // Set a value at a given *key*
     set: function (key, value, targetIndex) {
+      var index;
       if (key === undefined)
         return this;
-
+      
       if (!this.data[key]) {
         if (targetIndex !== undefined) { // insert at a given index
-          var front = this.select(function(item, key, index) {
-            return index < targetIndex;
+          var front = this.select(function(item, key, i) {
+            return i < targetIndex;
           });
 
-          var back = this.select(function(item, key, index) {
-            return index >= targetIndex;
+          var back = this.select(function(item, key, i) {
+            return i >= targetIndex;
           });
 
           this.keyOrder = [].concat(front.keyOrder);
@@ -270,10 +271,13 @@
         } else {
           this.keyOrder.push(key);
         }
+        index = this.length;
         this.length += 1;
+      } else {
+        index = this.index(key);
       }
-
       this.data[key] = value;
+      this[index] = this.data[key];
       
       this.trigger('set', key);
       return this;
@@ -282,8 +286,10 @@
     // Delete entry at given *key*
     del: function (key) {
       if (this.data[key]) {
+        var index = this.index(key);
         delete this.data[key];
-        this.keyOrder.splice(this.index(key), 1);
+        this.keyOrder.splice(index, 1);
+        Array.prototype.splice.call(this, index, 1);
         this.length -= 1;
         this.trigger('del', key);
       }
@@ -513,6 +519,7 @@
           type = g.get(type),
           groups = {},
           count = 0;
+          
 
       gspec[type._id] = {"type": "/type/type", "properties": {}};
 
@@ -533,9 +540,9 @@
         var members = new Data.Hash();
         _.each(keys, function(k, index) {
           var objects = groups[keys[index]].get(key[index]).referencedObjects;
-          index === 0 ? members.union(objects) : members.intersect(objects);
+          members = index === 0 ? members.union(objects) : members.intersect(objects);
         });
-
+        
         var res = {type: type._id};
         _.each(gspec[type._id].properties, function(p, pk) {
           if (_.include(keys, pk)) {
