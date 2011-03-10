@@ -1253,26 +1253,6 @@
       });
     },
     
-    // API method for accessing objects in the graph space
-    // TODO: Ask the datastore if the node is not known in the local graph
-    //       use async method queues for this!
-    get: function(id) {
-      if (arguments.length === 1) {
-        return this.get('objects', id);
-      } else {
-        return Data.Node.prototype.get.call(this, arguments[0], arguments[1]);
-      }
-    },
-    
-    // Delete node by id, referenced nodes remain untouched
-    del: function(id) {
-      var node = this.get(id);
-      if (!node) return;
-      node._deleted = true;
-      node.dirty = true;
-      this.trigger('dirty');
-    },
-    
     // Set (add) a new node on the graph
     set: function(id, properties) {
       var that = this;
@@ -1293,6 +1273,17 @@
       }
     },
     
+    // API method for accessing objects in the graph space
+    // TODO: Ask the datastore if the node is not known in the local graph
+    //       use async method queues for this!
+    get: function(id) {
+      if (arguments.length === 1) {
+        return this.get('objects', id);
+      } else {
+        return Data.Node.prototype.get.call(this, arguments[0], arguments[1]);
+      }
+    },
+    
     // Get a node asynchronously
     // Handles cases where an object is not yet there and needs to be fetched from
     // the server first
@@ -1310,36 +1301,14 @@
       }
     },
     
-    // Serializes the graph to the JSON-based exchange format
-    toJSON: function() {
-      var result = {};
-      
-      // Serialize object nodes
-      this.all('objects').each(function(obj, key) {
-        // Only serialize fetched nodes
-        if (obj.data || obj instanceof Data.Type) {
-          result[key] = obj.toJSON();
-        }
-      });
-      
-      return result;
+    // Delete node by id, referenced nodes remain untouched
+    del: function(id) {
+      var node = this.get(id);
+      if (!node) return;
+      node._deleted = true;
+      node.dirty = true;
+      this.trigger('dirty');
     },
-    
-    // Fetches a new subgraph from the adapter and either merges the new nodes
-    // into the current set of nodes or replaces the graph completely with
-    // the query result
-    fetch: function(qry, options, callback) {
-      var that = this;
-      
-      Data.adapter.readGraph(qry, this, options, function(err, graph) {
-        if (graph) {
-          that.merge(graph, false);
-        } // else no nodes found
-        
-        err ? callback(err) : callback(null, graph);
-      });
-    },
-    
     
     // Only == and |= operators are yet implemented
     // TODO: Should support the same qry interface as Data.Graph#fetch
@@ -1370,7 +1339,22 @@
       });
     },
     
-    // Synchronize all new and dirty, as well as deleted nodes to the server
+    // Fetches a new subgraph from the adapter and either merges the new nodes
+    // into the current set of nodes or replaces the graph completely with
+    // the query result
+    fetch: function(qry, options, callback) {
+      var that = this;
+      
+      Data.adapter.readGraph(qry, this, options, function(err, graph) {
+        if (graph) {
+          that.merge(graph, false);
+        } // else no nodes found
+        
+        err ? callback(err) : callback(null, graph);
+      });
+    },
+
+    // Synchronize dirty nodes with the database
     sync: function(callback) {
       callback = callback || function() {};
       var that = this,
@@ -1409,6 +1393,7 @@
     
     // Perform a filter on the graph. Expects `Data.Criterion` object
     // describing the filter conditions
+    // DEPRECATED, will be removed with 0.3.0
     filter: function(criteria) {
       var g2 = {};
       
@@ -1418,6 +1403,8 @@
       });
       
       // Include all other objects that do not match the target type
+      // KNOWN BUG: this assumes that all type properties on all nested criterion
+      // objects have the same type
       this.objects().each(function(obj, key) {
         if (!_.include(obj.types().keys(), criteria.type)) g2[key] = obj.toJSON();
       });
@@ -1451,7 +1438,7 @@
     },
     
     // Dirty and volatile nodes
-    // Used by Data.Graph#save
+    // Used by Data.Graph#sync
     dirtyNodes: function() {
       return this.all('objects').select(function(obj, key) {
         return (obj.dirty && (obj.data || obj instanceof Data.Type));
@@ -1468,7 +1455,22 @@
       return this.all('objects').select(function(obj, key) {
         return obj._conflicted;
       });
-    }
+    },
+    
+    // Serializes the graph to the JSON-based exchange format
+    toJSON: function() {
+      var result = {};
+      
+      // Serialize object nodes
+      this.all('objects').each(function(obj, key) {
+        // Only serialize fetched nodes
+        if (obj.data || obj instanceof Data.Type) {
+          result[key] = obj.toJSON();
+        }
+      });
+      
+      return result;
+    },
   });
   
   _.extend(Data.Graph.prototype, _.Events);
