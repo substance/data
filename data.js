@@ -1474,7 +1474,7 @@
       });
       
       return result;
-    },
+    }
   });
   
   _.extend(Data.Graph.prototype, _.Events);
