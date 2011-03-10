@@ -286,11 +286,12 @@
     // Delete entry at given *key*
     del: function (key) {
       if (this.data[key]) {
+        var l = this.length;
         var index = this.index(key);
         delete this.data[key];
         this.keyOrder.splice(index, 1);
         Array.prototype.splice.call(this, index, 1);
-        this.length -= 1;
+        this.length = l-1;
         this.trigger('del', key);
       }
       return this;
