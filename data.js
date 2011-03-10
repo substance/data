@@ -1529,6 +1529,13 @@
     
     items: function() {
       return this.g.objects();
+    },
+    
+    toJSON: function() {
+      return {
+        properties: this.g.toJSON()["/type/item"].properties,
+        items: this.g.objects().toJSON()
+      }
     }
   });
 
