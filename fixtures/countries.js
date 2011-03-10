@@ -2,7 +2,7 @@ var countries_fixture = {
   "items": {
     "austria": {
       "name": "Austria",
-      "official_language": "Croatian language",
+      "official_language": "German Language",
       "form_of_government": [
         "Federal republic",
         "Parliamentary republic"
@@ -86,42 +86,42 @@ var countries_fixture = {
   "properties": {
     "name": {
       "name": "Country Name",
-      "expected_type": "string",
+      "type": "string",
       "unique": true
     },
     "official_language": {
       "name": "Official language",
-      "expected_type": "string",
+      "type": "string",
       "unique": true
     },
     "form_of_government": {
       "name": "Form of governmennt",
-      "expected_type": "string",
+      "type": "string",
       "unique": false
     },
     "currency_used": {
       "name": "Currency used",
-      "expected_type": "string",
+      "type": "string",
       "unique": true
     },
     "population": {
       "name": "Population",
-      "expected_type": "number",
+      "type": "number",
       "unique": true
     },
     "gdp_nominal": {
       "name": "GDP nominal",
-      "expected_type": "number",
+      "type": "number",
       "unique": true
     },
     "area": {
       "name": "Area",
-      "expected_type": "number",
+      "type": "number",
       "unique": true
     },
     "date_founded": {
       "name": "Date founded",
-      "expected_type": "date",
+      "type": "date",
       "unqiue": true
     }
   }

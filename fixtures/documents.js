@@ -6,22 +6,22 @@ var documents_fixture = {
       "title": {
         "name": "Document Title",
         "unique": true,
-        "expected_type": "string"
+        "type": "string"
       },
       "entities": {
         "name": "Associated Entities",
         "unique": false,
-        "expected_type": "/type/entity"
+        "type": "/type/entity"
       },
       "page_count": {
         "name": "Page Count",
         "unique": true,
-        "expected_type": "number"
+        "type": "number"
       },
       "authors": {
         "name": "Authors",
         "unique": false,
-        "expected_type": "string"
+        "type": "string"
       }
     }
   },
@@ -32,12 +32,12 @@ var documents_fixture = {
       "name": {
         "name": "Entity Name",
         "unique": true,
-        "expected_type": "string"
+        "type": "string"
       },
       "mentions": {
         "name": "Mentions",
         "unique": false,
-        "expected_type": "/type/mention"
+        "type": "/type/mention"
       }
     }
   },
@@ -48,17 +48,17 @@ var documents_fixture = {
       "document": {
         "name": "Document",
         "unique": true,
-        "expected_type": "/type/document"
+        "type": "/type/document"
       },
       "entity": {
         "name": "Entity",
         "unique": true,
-        "expected_type": "/type/entity"
+        "type": "/type/entity"
       },
       "page": {
         "name": "Occured on page",
         "unique": true,
-        "expected_type": "number"
+        "type": "number"
       }
     }
   },
