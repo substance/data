@@ -520,16 +520,19 @@
           type = g.get(type),
           groups = {},
           count = 0;
-          
-
+      
       gspec[type._id] = {"type": "/type/type", "properties": {}};
 
-      // Compute properties for the output graph
-      type.properties().each(function(p, key) {
-        // Only include group keys and number properties
-        if (_.include(keys, key) || p.expectedTypes[0] === 'number') {
-          gspec[type._id].properties[key] = p.toJSON();
-        }
+      // Include group keys to the output graph
+      _.each(keys, function(key) {
+        gspec[type._id].properties[key] = type.properties().get(key).toJSON();
+      });
+      
+      // Include additional properties
+      _.each(properties, function(options, key) {
+        var p = type.properties().get(key).toJSON();
+        if (options.name) p.name = options.name;
+        gspec[type._id].properties[key] = p;
       });
 
       // Compute group memberships
@@ -544,6 +547,7 @@
           members = index === 0 ? members.union(objects) : members.intersect(objects);
         });
         
+        
         var res = {type: type._id};
         _.each(gspec[type._id].properties, function(p, pk) {
           if (_.include(keys, pk)) {
@@ -552,15 +556,16 @@
             var numbers = members.map(function(obj) {
               return obj.get(pk);
             });
-            res[pk] = Data.Aggregators.SUM(numbers);
+            var aggregator = properties[pk].aggregator || Data.Aggregators.SUM
+            res[pk] = aggregator(numbers);
           }
         });
         return res;
       }
 
       function extractGroups(keyIndex, key) {
-        if (keyIndex === keys.length-1) {
-          gspec[count++] = aggregate(key);
+        if (keyIndex === keys.length-1) {
+          gspec[key.join('::')] = aggregate(key);
         } else {
           keyIndex += 1;
           groups[keys[keyIndex]].each(function(grp, grpkey) {

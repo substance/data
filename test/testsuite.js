@@ -615,6 +615,16 @@ test("get value of a property", function() {
   ok(population.value('values') === 8356700);
 });
 
+test("grouping", function() {
+  var languages = c.group(["official_language"], {
+    'area': { aggregator: Data.Aggregators.SUM, name: "Total Area" },
+    'population': { aggregator: Data.Aggregators.AVG, name: "Average Population" }
+  });
+    
+  ok(languages.items().get('German Language').get('population') === 45209450);
+  ok(languages.items().get('English Language').get('area') === 10071495);
+});
+
 
 module("Data.Aggregators");
 
