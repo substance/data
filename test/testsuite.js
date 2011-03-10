@@ -3,7 +3,6 @@
 
 var items;
 
-
 // Data.Hash
 // -------------
 
@@ -114,11 +113,10 @@ test("array semantics", function() {
   ok(items.last() === "Germany");
 });
 
+
 test("Data.Hash#del", function() {
   items.set("ch", "Switzerland");
   items.del('de');
-  
-  
   ok(items.length === 2);
   ok(items.keyOrder.length === 2);
   ok(items.get('de') === undefined);
@@ -368,6 +366,7 @@ test("Allows null as a key for property values", function() {
 });
 
 
+
 // Data.Graph
 // -------------
 
@@ -383,6 +382,7 @@ var graph,
     anotherMention;
 
 graph = new Data.Graph(documents_fixture);
+
 
 protovis = graph.get('objects', '/doc/protovis_introduction');
 unveil = graph.get('objects', '/doc/unveil_introduction');
@@ -424,7 +424,7 @@ test("Type inspection", function() {
 test("Property inspection", function() {
   entitiesProperty = documentType.get('properties', 'entities');
   ok(entitiesProperty.name === 'Associated Entities');
-  ok(entitiesProperty.expectedType === '/type/entity');
+  ok(_.include(entitiesProperty.expectedTypes, '/type/entity'));
 });
 
 
@@ -493,7 +493,7 @@ test("Querying information", function() {
   var cities = graph.all('objects').select(function(res, key) {
     return /or/.test(res.get('name'))
   });
-    
+  
   ok(cities.length === 3);
   ok(cities.get('/location/new_york'));
   ok(cities.get('/location/toronto'));
@@ -514,7 +514,6 @@ test("Value identity", function() {
   // Show all unique values of a certain property e.g. /type/document.authors
   ok(protovis.type.get('properties', 'authors').all('values').length === 6);
 });
-
 
 // Data.Object Manipulation
 
@@ -574,7 +573,6 @@ test("Set object properties of existing nodes", function() {
 });
 
 
-
 // Data.Collection
 // -------------
 
@@ -601,8 +599,6 @@ test("read item property values", function() {
   // Non-unique properties
   ok(item.get('form_of_government').length === 2);
 });
-
-
 
 test("get values of a property", function() {
   var population = c.get('properties', 'population');
@@ -652,8 +648,10 @@ test("allow aggregation of property values", function() {
 });
 
 
-// Data.Criterion
+// Data.Criterion 
 //-------------
+
+// DEPRECATED. Use graph.find() instead.
 
 module('Criterion');
 
@@ -666,7 +664,6 @@ module("Data.Graph", {
     delete graph;
   }
 });
-
 
 test('Data.Criterion.operators.CONTAINS', function() {
   // For value type properties
@@ -695,17 +692,16 @@ test('Data.Criterion.operators.GT', function() {
 
 test("nested criteria", function() {
   // the root criterion takes it all
-  var criteria = new Data.Criterion('AND'),
+  var criteria = new Data.Criterion('AND', '/type/document'),
       filteredGraph;
   
-  var titleprop = graph.get('objects', '/type/document').get('properties', 'title');
+  var titleprop = graph.get('/type/document').get('properties', 'title');
   
   criteria.add(new Data.Criterion('GT', '/type/document', 'page_count', 5));
-  criteria.add(new Data.Criterion('OR')
+  criteria.add(new Data.Criterion('OR', '/type/document')
     .add(new Data.Criterion('CONTAINS', '/type/document', 'title', 'Unveil.js'))
     .add(new Data.Criterion('CONTAINS', '/type/document', 'title', 'Processing.js')));
-    
+  
   filteredGraph = graph.filter(criteria);
-  ok(filteredGraph.objects().length === 2);
+  ok(filteredGraph.find({"type|=": "/type/document"}).length === 2);
 });
-
