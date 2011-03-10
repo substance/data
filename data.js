@@ -1,9 +1,9 @@
-//     (c) 2010 Michael Aufreiter
+//     (c) 2011 Michael Aufreiter
 //     Data.js is freely distributable under the MIT license.
 //     Portions of Daja.js are inspired or borrowed from Underscore.js,
 //     Backbone.js and Google's Visualization API.
 //     For all details and documentation:
-//     http://github.com/michael/data
+//     http://substance.io/#michael/data-js
 
 (function(){
 
@@ -438,6 +438,7 @@
     }
   });
   
+  
   // Data.Comparators
   // --------------
 
@@ -795,7 +796,7 @@
       var that = this;
       Data.Node.call(this);
   
-      this.g = g; // belongs to the DataGraph
+      this.g = g; // Belongs to the DataGraph
       this.key = id;
       this._id = id;
       this._rev = type._rev;
@@ -804,7 +805,7 @@
       this.name = type.name;
       this.meta = type.meta || {};
   
-      // extract properties
+      // Extract properties
       _.each(type.properties, function(property, key) {
         that.set('properties', key, new Data.Property(that, key, property));
       });
@@ -1417,6 +1418,7 @@
       return new Data.Graph(g2);
     },
     
+    // Perform a group operation on a Data.Graph
     group: function(type, keys, properties) {
       var res = new Data.Collection();
       res.g = Data.Transformers.group(this, type, keys, properties);
@@ -1437,7 +1439,7 @@
       });
     },
     
-    // Dirty and volatile nodes
+    // Get dirty nodes
     // Used by Data.Graph#sync
     dirtyNodes: function() {
       return this.all('objects').select(function(obj, key) {
@@ -1445,12 +1447,14 @@
       });
     },
     
+    // Get invalid nodes
     invalidNodes: function() {
       return this.all('objects').select(function(obj, key) {
         return (obj.errors && obj.errors.length > 0);
       });
     },
     
+    // Get conflicted nodes
     conflictedNodes: function() {
       return this.all('objects').select(function(obj, key) {
         return obj._conflicted;
@@ -1508,6 +1512,8 @@
   };
   
   _.extend(Data.Collection.prototype, {
+
+    // Get an object (item) from the collection
     get: function(key) {
       return this.g.get.apply(this.g, arguments);
     },
@@ -1517,20 +1523,24 @@
       this.g.set(id, _.extend(properties, {type: "/type/item"}));
     },
     
+    // Perform a group operation on the collection
     group: function(keys, properties) {
       var res = new Data.Collection();
       res.g = Data.Transformers.group(this.g, "/type/item", keys, properties);
       return res;
     },
     
+    // Convenience function for accessing properties
     properties: function() {
       return this.g.get('objects', '/type/item').all('properties');
     },
     
+    // Convenience function for accessing items
     items: function() {
       return this.g.objects();
     },
     
+    // Serialize
     toJSON: function() {
       return {
         properties: this.g.toJSON()["/type/item"].properties,
