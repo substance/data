@@ -1508,20 +1508,13 @@
   };
   
   _.extend(Data.Collection.prototype, {
-    get: function(property, key) {
-      if (property === 'properties') {
-        return this.g.get('objects', '/type/item').get('properties', key);
-      } else if (property === 'items') {
-        return this.g.get('objects', key);
-      }
+    get: function(key) {
+      return this.g.get.apply(this.g, arguments);
     },
     
-    all: function(property) {
-      if (property === 'properties') {
-        return this.g.get('objects', '/type/item').all('properties');
-      } else if (property === 'items') {
-        return this.g.all('objects');
-      }
+    // Set (add) a new object to the collection
+    set: function(id, properties) {
+      this.g.set(id, _.extend(properties, {type: "/type/item"}));
     },
     
     group: function(keys, properties) {
@@ -1542,7 +1535,9 @@
   
   // Data.Criterion
   // --------------
-
+  
+  // Deprecated. Will be removed with 0.3.0. Use Data.Graph.find instead
+  
   Data.Criterion = function (operator, type, property, value) {
     this.operator = operator;
     this.type = type;

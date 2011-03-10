@@ -581,18 +581,18 @@ module("Data.Collection");
 var c = new Data.Collection(countries_fixture);
 
 test("has some properties", function() {
-  ok(c.get('properties', 'area') instanceof Data.Node);
-  ok(c.get('properties', 'currency_used') instanceof Data.Node);
-  ok(c.get('properties', 'doesnotexit') === undefined);
+  ok(c.properties().get('area') instanceof Data.Node);
+  ok(c.properties().get('currency_used') instanceof Data.Node);
+  ok(c.properties().get('doesnotexit') === undefined);
 });
 
 test("property is connected to values", function() {
-  var governmentForms = c.get('properties', 'form_of_government');
+  var governmentForms = c.properties().get('form_of_government');
   ok(governmentForms.all('values').length === 10);
 });
 
 test("read item property values", function() {
-  var item = c.get('items', 'austria');
+  var item = c.get('austria');
   // Unique properties
   ok(item.get('name') === 'Austria');
   ok(item.get('area') === 83872);
@@ -601,13 +601,13 @@ test("read item property values", function() {
 });
 
 test("get values of a property", function() {
-  var population = c.get('properties', 'population');
+  var population = c.properties().get('population');
   ok(population.all('values').length === 6);
 });
 
 // useful for non-unique properties
 test("get value of a property", function() {
-  var population = c.get('properties', 'population');
+  var population = c.properties().get('population');
   ok(population.value('values') === 8356700);
 });
 
@@ -642,7 +642,7 @@ test("Aggregators", function() {
 
 
 test("allow aggregation of property values", function() {
-  var population = c.get("properties", "population");
+  var population = c.properties().get("population");
   ok(population.aggregate(Data.Aggregators.MIN) === 8356700);
   ok(population.aggregate(Data.Aggregators.MAX) === 306108000);
 });
