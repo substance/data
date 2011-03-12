@@ -20,7 +20,7 @@
   }
   
   // Current version of the library. Keep in sync with `package.json`.
-  Data.VERSION = '0.2.0';
+  Data.VERSION = '0.2.1';
 
   // Require Underscore, if we're on the server, and it's not already present.
   var _ = this._;
