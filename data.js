@@ -1311,8 +1311,7 @@
       this.trigger('dirty');
     },
     
-    // Only ==, |=, &= operators are yet implemented
-    // TODO: Should support the same qry interface as Data.Graph#fetch
+    // Find objects that match a particular query
     find: function(qry) {
       return this.objects().select(function(o) {
         var so = o.toJSON();
@@ -1338,7 +1337,14 @@
             var objectValues = _.isArray(so[property]) ? so[property] : [so[property]];
             condition = _.intersect(objectValues, values).length === values.length;
           } else { // regular operators
-            condition = _.isEqual(so[property], value);
+            switch (operator) {
+              case "!=": condition = !_.isEqual(so[property], value); break;
+              case ">": condition = so[property] > value; break;
+              case ">=": condition = so[property] >= value; break;
+              case "<": condition = so[property] < value; break;
+              case "<=": condition = so[property] <= value; break;
+              default : condition = _.isEqual(so[property], value);
+            }
           }
           
           if (!condition) rejected = true;
@@ -1530,7 +1536,7 @@
       this.g.set(id, _.extend(properties, {type: "/type/item"}));
     },
     
-    // Find object that match a particular query
+    // Find objects that match a particular query
     find: function(qry) {
       return this.g.find(qry);
     },

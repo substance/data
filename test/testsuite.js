@@ -638,7 +638,12 @@ test("Collection#find", function() {
     "form_of_government&=": ["Constitution", "Democracy"]
   });
   
-  ok(republicsAndDemocracies.length === 1);
+  // Test >= operator
+  var bigCountries = c.find({
+    "area>=": 700000
+  });
+  
+  ok(bigCountries.length === 1);
 });
 
 test("Collection#filter", function() {
