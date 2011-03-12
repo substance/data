@@ -621,6 +621,26 @@ test("grouping", function() {
   ok(languages.items().get('English Language').get('area') === 10071495);
 });
 
+test("faceted filtering", function() {
+  // Test ANY-OF operator
+  var englishAndGermanCountries = c.find({
+    "official_language|=": ["English Language", "German Language"]
+  });
+  
+  ok(englishAndGermanCountries.get('austria'));
+  ok(englishAndGermanCountries.get('ger'));
+  ok(englishAndGermanCountries.get('uk'));
+  ok(englishAndGermanCountries.get('usa'));
+  
+  // Test ALL-OF operator
+  var republicsAndDemocracies = c.find({
+    "official_language": "English Language",
+    "form_of_government&=": ["Constitution", "Democracy"]
+  });
+  
+  ok(republicsAndDemocracies.length === 1);
+});
+
 
 module("Data.Aggregators");
 

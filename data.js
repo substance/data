@@ -368,7 +368,7 @@
       var result = {};
       
       this.each(function(value, key) {
-        result[key] = value.toJSON();
+        result[key] = value.toJSON ? value.toJSON() : value;
       });
       return result;
     },
@@ -1311,7 +1311,7 @@
       this.trigger('dirty');
     },
     
-    // Only == and |= operators are yet implemented
+    // Only ==, |=, &= operators are yet implemented
     // TODO: Should support the same qry interface as Data.Graph#fetch
     find: function(qry) {
       return this.objects().select(function(o) {
@@ -1320,18 +1320,25 @@
         _.each(qry, function(value, key) {
           var condition;
           // Extract operator
-          var matches = key.match(/^([a-z_]{1,30})(!=|>|>=|<|<=|\|=)?$/),
+          var matches = key.match(/^([a-z_]{1,30})(!=|>|>=|<|<=|\|=|&=)?$/),
               property = matches[1],
               operator = matches[2] || '==';
           
           if (operator === "|=") { // one of operator
             var values = _.isArray(value) ? value : [value];
+            var objectValues = _.isArray(so[property]) ? so[property] : [so[property]];
             condition = false;
             _.each(values, function(val) {
-              if (_.include(so[property], val)) condition = true;
+              if (_.include(objectValues, val)) {
+                condition = true;
+              }
             });
+          } else if (operator === "&=") {
+            var values = _.isArray(value) ? value : [value];
+            var objectValues = _.isArray(so[property]) ? so[property] : [so[property]];
+            condition = _.intersect(objectValues, values).length === values.length;
           } else { // regular operators
-            condition = so[property] === value;
+            condition = _.isEqual(so[property], value);
           }
           
           if (!condition) rejected = true;
@@ -1523,6 +1530,10 @@
       this.g.set(id, _.extend(properties, {type: "/type/item"}));
     },
     
+    find: function(qry) {
+      return this.g.find(qry);
+    },
+        
     // Perform a group operation on the collection
     group: function(keys, properties) {
       var res = new Data.Collection();
