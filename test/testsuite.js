@@ -621,7 +621,7 @@ test("grouping", function() {
   ok(languages.items().get('English Language').get('area') === 10071495);
 });
 
-test("faceted filtering", function() {
+test("Collection#find", function() {
   // Test ANY-OF operator
   var englishAndGermanCountries = c.find({
     "official_language|=": ["English Language", "German Language"]
@@ -639,6 +639,13 @@ test("faceted filtering", function() {
   });
   
   ok(republicsAndDemocracies.length === 1);
+});
+
+test("Collection#filter", function() {
+  var filteredCollection = c.filter({
+    "official_language|=": ["German Language"]
+  });
+  ok(filteredCollection.items().length === 2);
 });
 
 

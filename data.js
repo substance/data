@@ -1530,8 +1530,17 @@
       this.g.set(id, _.extend(properties, {type: "/type/item"}));
     },
     
+    // Find object that match a particular query
     find: function(qry) {
       return this.g.find(qry);
+    },
+    
+    // Returns a filtered collection containing only items that match a certain query
+    filter: function(qry) {
+      return new Data.Collection({
+        properties: this.properties().toJSON(),
+        items: this.find(qry).toJSON()
+      });
     },
         
     // Perform a group operation on the collection
