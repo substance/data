@@ -1,6 +1,6 @@
 //     (c) 2011 Michael Aufreiter
 //     Data.js is freely distributable under the MIT license.
-//     Portions of Daja.js are inspired or borrowed from Underscore.js,
+//     Portions of Data.js are inspired or borrowed from Underscore.js,
 //     Backbone.js and Google's Visualization API.
 //     For all details and documentation:
 //     http://substance.io/#michael/data-js
@@ -411,8 +411,8 @@
     // Performs an intersection with the given *hash*
     intersect: function(hash) {
       var that = this,
-      result = new Data.Hash();
-    
+          result = new Data.Hash();
+          
       this.each(function(value, key) {
         hash.each(function(value2, key2) {
           if (key === key2) result.set(key, value);
@@ -424,8 +424,8 @@
     // Performs an union with the given *hash*
     union: function(hash) {
       var that = this,
-      result = new Data.Hash();
-    
+          result = new Data.Hash();
+          
       this.each(function(value, key) {
         if (!result.get(key))
           result.set(key, value);
@@ -433,6 +433,17 @@
       hash.each(function(value, key) {
         if (!result.get(key))
           result.set(key, value);
+      });
+      return result;
+    },
+    
+    // Computes the difference between the current *hash* and a given *hash*
+    difference: function(hash) {
+      var that = this,
+          result = this.clone();
+          
+      hash.each(function(value, key) {
+        if (result.get(key)) result.del(key);
       });
       return result;
     }
