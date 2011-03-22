@@ -13,4 +13,5 @@ coverage/*
 _Yardoc
 .yardoc
 tmp/*
-
+CHANGELOG
+README.bak
