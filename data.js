@@ -313,6 +313,14 @@
       return this.at(0);
     },
     
+    // Returns the rest of the elements. 
+    // Pass an index to return the items from that index onward.
+    rest: function(index) {
+      return this.select(function(value, key, i) {
+        return i >= index;
+      });
+    },
+    
     // Get last item
     last: function () {
       return this.at(this.length-1);

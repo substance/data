@@ -142,6 +142,14 @@ test("Data.Hash#values", function() {
   ok(values[2] === "Switzerland");
 });
 
+test("Data.Hash#rest", function() {
+  items.set("ch", "Switzerland");
+  var rest = items.rest(1);
+  
+  ok(rest.get('de') === 'Germany');
+  ok(rest.get('ch') === 'Switzerland');
+  ok(rest.length === 2);
+});
 
 test("Data.Hash#sort", function() {
   items.set("ch", "Switzerland");
@@ -157,7 +165,6 @@ test("Data.Hash#sort", function() {
   ok(sortedItems.at(1)==="Germany");
   ok(sortedItems.at(2)==="Austria");
 });
-
 
 
 test("Data.Hash#map", function() {
