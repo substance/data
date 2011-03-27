@@ -1380,7 +1380,7 @@
       var that = this,
           nodes = new Data.Hash(); // collects arrived nodes
       
-      // Body is optional
+      // options are optional
       if (typeof options === 'function' && typeof callback === 'undefined') {
         callback = options;
         options = {};
