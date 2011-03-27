@@ -1271,6 +1271,7 @@
           r.build();
         }
       });
+      return this;
     },
     
     // Set (add) a new node on the graph
