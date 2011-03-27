@@ -1377,14 +1377,24 @@
     // into the current set of nodes or replaces the graph completely with
     // the query result
     fetch: function(qry, options, callback) {
-      var that = this;
+      var that = this,
+          nodes = new Data.Hash(); // collects arrived nodes
+      
+      // Body is optional
+      if (typeof options === 'function' && typeof callback === 'undefined') {
+        callback = options;
+        options = {};
+      }
       
       Data.adapter.readGraph(qry, this, options, function(err, graph) {
         if (graph) {
           that.merge(graph, false);
+          _.each(graph, function(node, key) {
+            nodes.set(key, that.get(key));
+          });
         } // else no nodes found
         
-        err ? callback(err) : callback(null, graph);
+        err ? callback(err) : callback(null, nodes);
       });
     },
 
