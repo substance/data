@@ -910,7 +910,6 @@
           _.each(values, function(value) {
             p.registerValue(value, that.g.get(value), that);
           });
-        
         } else { // Value type property values
           // Unregister prev values
           _.each(prevValues, function(value) {
@@ -919,7 +918,9 @@
           
           // Register new values
           _.each(values, function(value) {
-            p.registerValue(value, value, that);
+            if (typeof value !== 'object') {
+              p.registerValue(value, value, that);
+            }
           });
         }
       });
