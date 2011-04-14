@@ -794,7 +794,7 @@
         type: this.expectedTypes,
         unique: this.unique,
         meta: this.meta,
-        valiate: this.validator,
+        validator: this.validator,
         required: this.required,
         "default": this["default"]
       }
