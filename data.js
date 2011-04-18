@@ -479,18 +479,16 @@
 
   Data.Aggregators.SUM = function (values) {
     var result = 0;
-
     values.each(function(value, key, index) {
-      result += value;
+      if (_.isNumber(value)) result += value;
     });
-
     return result;
   };
 
   Data.Aggregators.MIN = function (values) {
     var result = Infinity;
     values.each(function(value, key, index) {
-      if (value < result) result = value;
+      if (_.isNumber(value) && value < result) result = value;
     });
     return result;
   };
@@ -498,13 +496,21 @@
   Data.Aggregators.MAX = function (values) {
     var result = -Infinity;
     values.each(function(value, key, index) {
-      if (value > result) result = value;
+      if (_.isNumber(value) && value > result) result = value;
     });
     return result;
   };
 
   Data.Aggregators.AVG = function (values) {
-    return Data.Aggregators.SUM(values) / values.length;
+    var sum = 0,
+        count = 0;
+    values.each(function(value, key, index) {
+      if (_.isNumber(value)) {
+        sum += value;
+        count += 1;
+      }
+    });
+    return sum / count;
   };
 
   Data.Aggregators.COUNT = function (values) {
