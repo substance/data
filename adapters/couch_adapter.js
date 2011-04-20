@@ -74,14 +74,14 @@ var CouchAdapter = function(config, callback) {
     if (ctx) {
       _.each(graph, function(node, key) {
         node._id = key;
-        _.each(Data.middleware.writegraph, function(fn) {
-          var filteredNode = fn(node, ctx);
-          if (filteredNode) {
-            graph[node._id] = filteredNode;
-          } else {
-            delete graph[node._id];
-          }
-        });
+        // _.each(Data.middleware.writegraph, function(fn) {
+        //   var filteredNode = fn(node, ctx);
+        //   if (filteredNode) {
+        //     graph[node._id] = filteredNode;
+        //   } else {
+        //     delete graph[node._id];
+        //   }
+        // });
       });
     }
     
@@ -98,7 +98,7 @@ var CouchAdapter = function(config, callback) {
   // If you'd like to make a deep fetch, you just need to specify
   // expand: true in the options hash
   
-  self.readGraph = function(qry, targetGraph, options, callback, ctx) {
+  self.readGraph = function(qry, options, callback, ctx) {
     
     // Collects the subgraph that will be returned as a result
     var result = {};
@@ -110,14 +110,14 @@ var CouchAdapter = function(config, callback) {
       // Apply write middleware for each node with ctx
       _.each(graph, function(node, key) {
         node._id = key;
-        _.each(Data.middleware.readgraph, function(fn) {
-          var filteredNode = fn(node, ctx);
-          if (filteredNode) {
-            graph[node._id] = filteredNode;
-          } else {
-            delete graph[node._id];
-          }
-        });
+        // _.each(Data.middleware.readgraph, function(fn) {
+        //   var filteredNode = fn(node, ctx);
+        //   if (filteredNode) {
+        //     graph[node._id] = filteredNode;
+        //   } else {
+        //     delete graph[node._id];
+        //   }
+        // });
       });
       return graph;
     }
