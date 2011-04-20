@@ -1,0 +1,51 @@
+{
+  "/type/task": {
+    "_id": "/type/task",
+    "type": "/type/type",
+    "name": "Task",
+    "properties": {
+      "name": {
+        "name": "Task Name",
+        "unique": true,
+        "type": "string"
+      },
+      "project": {
+        "name": "Project Membership",
+        "unique": true,
+        "type": "/type/project"
+      }
+    }
+  },
+  
+  "/type/project": {
+    "_id": "/type/project",
+    "type": "/type/type",
+    "name": "Project",
+    "properties": {
+      "name": {
+        "name": "Name",
+        "unique": true,
+        "type": "string",
+        "default": ""
+      },
+      "descr": {
+        "name": "Description",
+        "unique": true,
+        "type": "string",
+        "default": ""
+      },
+      "tasks": {
+        "name": "Tasks",
+        "unique": false,
+        "type": ["/type/task"]
+      }
+    }
+  },
+  
+  "/project/test": {
+    "type": ["/type/project"],
+    "name": "My Project",
+    "descr": "A project description",
+    "tasks": []
+  }
+}

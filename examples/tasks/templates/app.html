@@ -1,0 +1,59 @@
+<!DOCTYPE html> 
+<html> 
+  <head> 
+    <meta http-equiv="content-type" content="text/html;charset=utf-8"> 
+    <title>Tasks — Realtime Task Management</title> 
+    
+    <script>
+      var seed = {{{{seed}}}};
+      var session = {{{{session}}}};
+    </script>
+    
+    <script type="text/x-ejs-template" name="project">
+      <div>
+        <h1><%= project.get('name') %></h1>
+        <p><%= project.get('descr') %></p>
+        
+        <div id="new_task">
+          <form id="new_task_form">
+            <input type="text" name="task_name" id="task_name"/>
+            <input type="submit" value="Add Task"/>
+          </form>
+        </div>
+        <div id="tasks">
+          <% project.get('tasks').each(function(task, key) { %>
+            <div><%= task.get('name') %></div>
+          <% }); %>
+        </div>
+      </div>
+    </script>
+    
+    <!-- Libs -->
+    <script type="text/javascript" src="/javascripts/jquery.js"></script>
+    <script type="text/javascript" src="/javascripts/underscore.js"></script>
+    <script type="text/javascript" src="/javascripts/backbone.js"></script>
+    <script type="text/javascript" src="/data.js"></script>
+    <script type="text/javascript" src="/adapters/nowjs_adapter.js"></script>
+    
+    <script type="text/javascript" src="/nowjs/now.js"></script>
+    
+    <!-- Views -->
+    <script type="text/javascript" src="/javascripts/views/app.js"></script>
+    <script type="text/javascript" src="/javascripts/views/project.js"></script>
+    
+    
+    <style type="text/css">
+      /*@import url("/stylesheets/reset.css");
+      @import url("/stylesheets/style.css");*/
+    </style>
+  </head>
+  <body>
+    <div id="sync_state" class="style: position: absolute; top: 0px;"></div>
+    <div id="container">
+      <div id="project">
+        
+      </div>
+    </div>
+    
+  </body> 
+</html>
