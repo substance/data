@@ -42,21 +42,6 @@
     return _.include(Data.VALUE_TYPES, type);
   };
   
-  // Set a new Data.Adapter and enable Persistence API
-  Data.setAdapter = function(name, config) {
-    if (typeof exports !== 'undefined') {
-      var Adapter = require('./adapters/'+name+'_adapter');
-      Data.adapter = new Adapter(config);
-    } else {
-      Data.adapter = new window[name](config);
-    }
-  };
-  
-  // Middleware registration
-  Data.middleware = {
-    readgraph: [],
-    writegraph: []
-  };
   
   /*!
   Math.uuid.js (v1.4)
@@ -1216,6 +1201,9 @@
   // point to referred objects. Data.Graphs can be traversed in various ways.
   // See the testsuite for usage.
   
+  // Set a new Data.Adapter and enable Persistence API
+
+  
   Data.Graph = _.inherits(Data.Node, {
     constructor: function(g, dirty) {
       var that = this;
@@ -1224,6 +1212,24 @@
       this.replace('objects', new Data.Hash());
       if (!g) return;
       this.merge(g, dirty);
+    },
+    
+    middleware: {
+      readgraph: [],
+      writegraph: []
+    },
+    
+    setAdapter: function(name, config) {
+      if (typeof exports !== 'undefined') {
+        var Adapter = require(__dirname + '/adapters/'+name+'_adapter');
+        this.adapter = new Adapter(config);
+      } else {
+        this.adapter = new window[name](config);
+      }
+    },
+    
+    serve: function(server, options){
+      require(__dirname + '/servers/nowjs_server').initialize(server, this);
     },
     
     // Merges in another Graph
@@ -1393,7 +1399,7 @@
         options = {};
       }
       
-      Data.adapter.readGraph(qry, this, options, function(err, graph) {
+      this.adapter.readGraph(qry, options, function(err, graph) {
         if (graph) {
           that.merge(graph, false);
           _.each(graph, function(node, key) {
@@ -1412,7 +1418,6 @@
           nodes = that.dirtyNodes();
       
       var validNodes = new Data.Hash();
-      
       // Validate nodes
       var invalidNodes = nodes.select(function(node, key) {
         if (!node.validate || (node.validate && node.validate())) {
@@ -1423,17 +1428,15 @@
         }
       });
       
-      Data.adapter.writeGraph(validNodes.toJSON(), function(err, g) {
+      this.adapter.writeGraph(validNodes.toJSON(), function(err, g) {
         if (err) {
           callback(err);
         } else {
-          that.merge(g);
-
           // No dirty nodes after sync
           that.dirtyNodes().each(function(n) {
             n.dirty = false;
           });
-          
+          that.merge(g, false);
           // Check if there are conflicts
           var conflictedNodes = _.select(g, function(node) { return node._conflicted });
           if (conflictedNodes.length > 0) that.trigger('conflicted');
@@ -1528,6 +1531,7 @@
   });
   
   _.extend(Data.Graph.prototype, _.Events);
+  
   
   // Data.Collection
   // --------------
