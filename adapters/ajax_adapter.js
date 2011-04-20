@@ -30,7 +30,7 @@ var AjaxAdapter = function(config) {
   // If you'd like to make a deep fetch, you just need to specify
   // expand: true in the options hash
   
-  self.readGraph = function(qry, targetGraph, options, callback) {    
+  self.readGraph = function(qry, options, callback) {    
     $.ajax({
       type: "GET",
       url: config.url+"readgraph",
