@@ -1,0 +1,9 @@
+Install
+==================
+
+1. Have a CouchDB instance running
+2. Update config.json appropriately
+3. Seed the DB
+   $ node db/seed.js --flush
+4. Start the server
+   $ node server.js
