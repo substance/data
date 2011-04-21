@@ -30,8 +30,9 @@ var graph = new Data.Graph(seed, false);
 // Setup Data.Adapter
 graph.setAdapter('couch', { url: config.couchdb_url});
 
-// Serve backend along with an express server
+// Serve Data.js backend along with an express server
 graph.serve(app);
+
 
 // Routes
 // -----------

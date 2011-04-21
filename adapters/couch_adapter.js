@@ -52,21 +52,16 @@ var CouchAdapter = function(graph, config, callback) {
         _id: nodeId
       });
       
-      // First get latest revision from db
-      db.get(nodeId, function (err, doc) {
-        // TODO: Remove !target._rev -> unsafe overwrite!
-        if (err || !target._rev || (doc._rev === target._rev)) {
-          db.save(target, function (err, newDoc) {
-            result[nodeId] = newDoc;
-            err ? callback(err) : callback();
-          });
-        } else {
+      db.save(target, function (err, newDoc) {
+        if (err) {
+          // TODO: we assume conflict errors are the only errors
           // Return the latest valid db version instead of the conflicted one
-          // Later we can do a merge here
           result[nodeId] = doc;
           result[nodeId]._conflicted = true;
-          callback();
+        } else {
+          result[nodeId] = newDoc;
         }
+        callback();
       });
     }
     
@@ -144,10 +139,8 @@ var CouchAdapter = function(graph, config, callback) {
       
       function executeQuery(qry, callback) {
         var viewId = serializeQuery(qry);
-        db.view(db.uri.pathname+'/_design/queries/_view/'+viewId, function(err, res) {
-          // Bug-workarount related to https://github.com/creationix/couch-client/issues#issue/3
-          // Normally we'd just use the err object in an error case
-          res.error ? callback(res.error) : callback(null, _.map(res.rows, function(item) {
+        db.view('queries/'+viewId, function(err, res) {
+          err ? callback(er) : callback(null, _.map(res.rows, function(item) {
             return item.value;
           }));
         });
@@ -265,11 +258,8 @@ var CouchAdapter = function(graph, config, callback) {
     }
     
     // First of all fetch all type nodes
-    db.view(db.uri.pathname+'/_design/queries/_view/all_type_nodes', function(err, res) {
-      
-      // Bug-workarount related to https://github.com/creationix/couch-client/issues#issue/3
-      // Normally we'd just use the err object in an error case
-      if (!res.error) {
+    db.view('queries/all_type_nodes', function(err, res) {
+      if (!err) {
         _.each(res.rows, function(item) {
           sharedTypes[item.value._id] = item.value;
         });
@@ -297,7 +287,7 @@ var CouchAdapter = function(graph, config, callback) {
           }
         });
       } else {
-        callback(res.error)
+        callback(err)
       }
     });
   };
