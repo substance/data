@@ -1,4 +1,4 @@
-var AjaxAdapter = function(config) {  
+Data.Adapters["ajax"] = function(graph, config) {  
   
   config = config ? config : {url: '/'};
   

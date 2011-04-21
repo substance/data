@@ -736,7 +736,10 @@
   Data.Adapter = function(config) {
     // The config object is used to describe database credentials
     this.config = config;
-  };  
+  };
+  
+  // A namespace for data adapters
+  Data.Adapters = {};
   
   // Data.Property
   // --------------
@@ -1243,13 +1246,18 @@
     setAdapter: function(name, config) {
       if (typeof exports !== 'undefined') {
         var Adapter = require(__dirname + '/adapters/'+name+'_adapter');
-        this.adapter = new Adapter(config);
+        this.adapter = new Adapter(this, config);
       } else {
-        this.adapter = new window[name](config);
+        this.adapter = new Data.Adapters[name](this, config);
       }
+      return this;
     },
     
-    serve: function(server, options){
+    ready: function(callback) {
+      this.readyCallback = callback;
+    },
+    
+    serve: function(server, options) {
       require(__dirname + '/servers/nowjs_server').initialize(server, this);
     },
     

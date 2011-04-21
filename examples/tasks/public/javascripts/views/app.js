@@ -19,30 +19,17 @@ var Application = Backbone.View.extend({
   }
 });
 
-var app,                                 // The Application
-    graph = new Data.Graph(seed, false); // The database
+var app;
+var graph = new Data.Graph(seed, false).setAdapter('nowjs');
 
 (function() {
   $(function() {
     
     // Init Application
     // --------------
-    
-    // When updates arrive, appy them and re-render
-    // TODO: We want an API for that
-    now.update = function(channel, rawNodes) {
-      var nodes = new Data.Hash(); // collects arrived nodes
-      graph.merge(rawNodes, false);
-      _.each(rawNodes, function(node, key) {
-        nodes.set(key, graph.get(key));
-      });
-      // Find and call the corresponding watcher callback
-      graph.watchers[channel](null, nodes);
-    };
-    
-    // Once NowJS is ready
-    now.ready(function() {
-      graph.setAdapter('NowjsAdapter', now);
+        
+    // Once the graph is ready
+    graph.ready(function() {
       
       app = new Application({el: '#container', session: session});
       app.render();

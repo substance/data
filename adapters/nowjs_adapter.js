@@ -1,10 +1,12 @@
-var NowjsAdapter = function(now) {  
+Data.Adapters["nowjs"] = function(graph, options) {  
+  
+  var self = {};
   
   // write
   // --------------
-
+  
   // Takes a Data.Graph and calls the server to persist it
-
+  
   self.write = function(graph, callback) {    
     now.write(graph, function(err, graph) {
       callback(err, graph);
@@ -24,17 +26,44 @@ var NowjsAdapter = function(now) {
     });
   };
   
+  // watch
+  // --------------
+  
   self.watch = function(name, query, callback) {
     now.watch(name, query, function(err) {
       callback(err);
     });
   };
   
+  // unwatch
+  // --------------
+  
   self.unwatch = function(name, callback) {
     now.unwatch(name, function(err) {
       callback(err);
     });
   };
+  
+  // update
+  // --------------
+  
+  // Gets called by the server when updates arrive.
+  // It applies them and calls the corresponding watcher callback
+  
+  now.update = function(channel, rawNodes) {
+    var nodes = new Data.Hash(); // collects arrived nodes
+    graph.merge(rawNodes, false);
+    _.each(rawNodes, function(node, key) {
+      nodes.set(key, graph.get(key));
+    });
+    graph.watchers[channel](null, nodes);
+  };
+  
+  // Delegate ready callback
+  
+  now.ready(function() {
+    graph.readyCallback();
+  });
   
   // Expose Public API
   return self;

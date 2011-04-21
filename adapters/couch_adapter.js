@@ -3,7 +3,7 @@ var Data = require('../data');
 var _ = require('underscore');
 var async = require('async');
 
-var CouchAdapter = function(config, callback) {
+var CouchAdapter = function(graph, config, callback) {
   var db = CouchClient(config.url);
   var self = {};
   

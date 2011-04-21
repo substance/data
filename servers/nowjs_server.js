@@ -8,12 +8,8 @@ exports.initialize = function(server, graph) {
   // Watcher groups
   var channels = {};
   
-  // Nowjs stuff
-  everyone.connected(function() {
-  });
-  
-  everyone.disconnected(function(){
-  });
+  everyone.connected(function() {});
+  everyone.disconnected(function(){});
   
   // Dispatch to all interested parties
   function dispatchUpdates(nodes) {
@@ -22,7 +18,7 @@ exports.initialize = function(server, graph) {
     // For each node, check channels
     _.each(nodes, function(node, key, index) {
       _.each(channels, function(channel) {
-        if (Data.matches(node, channel.query)) { // TODO: if updates match query
+        if (Data.matches(node, channel.query)) {
           notifications[channel.name] = notifications[channel.name] ? notifications[channel.name] : {};
           notifications[channel.name][key] = node;
         }
