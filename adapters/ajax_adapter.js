@@ -2,15 +2,15 @@ var AjaxAdapter = function(config) {
   
   config = config ? config : {url: '/'};
   
-  // writeGraph
+  // write
   // --------------
 
   // Takes a Data.Graph and calls a webservice to persist it
   
-  self.writeGraph = function(graph, callback) {    
+  self.write = function(graph, callback) {    
     $.ajax({
       type: "PUT",
-      url: "/writegraph",
+      url: config.url+"write",
       data: JSON.stringify(graph),
       contentType: "application/json",
       dataType: "json",
@@ -23,17 +23,17 @@ var AjaxAdapter = function(config) {
     });
   };
   
-  // readGraph
+  // read
   // --------------
 
   // Takes a query object and reads all matching nodes
   // If you'd like to make a deep fetch, you just need to specify
   // expand: true in the options hash
   
-  self.readGraph = function(qry, options, callback) {    
+  self.read = function(qry, options, callback) {    
     $.ajax({
       type: "GET",
-      url: config.url+"readgraph",
+      url: config.url+"read",
       data: {
         qry: JSON.stringify(qry),
         options: JSON.stringify(options)

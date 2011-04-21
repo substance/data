@@ -1,25 +1,24 @@
 var NowjsAdapter = function(now) {  
-  // config = config ? config : {url: '/'};
   
-  // writeGraph
+  // write
   // --------------
 
-  // Takes a Data.Graph and calls a webservice to persist it
+  // Takes a Data.Graph and calls the server to persist it
 
-  self.writeGraph = function(graph, callback) {    
+  self.write = function(graph, callback) {    
     now.write(graph, function(err, graph) {
       callback(err, graph);
     });
   };
 
-  // readGraph
+  // read
   // --------------
 
   // Takes a query object and reads all matching nodes
   // If you'd like to make a deep fetch, you just need to specify
   // expand: true in the options hash
 
-  self.readGraph = function(qry, options, callback) {    
+  self.read = function(qry, options, callback) {    
     now.read(qry, options, function(err, graph) {
       callback(err, graph);
     });
@@ -27,6 +26,12 @@ var NowjsAdapter = function(now) {
   
   self.watch = function(name, query, callback) {
     now.watch(name, query, function(err) {
+      callback(err);
+    });
+  };
+  
+  self.unwatch = function(name, callback) {
+    now.unwatch(name, function(err) {
       callback(err);
     });
   };

@@ -40,12 +40,12 @@ var CouchAdapter = function(config, callback) {
   };
   
   
-  // writeGraph
+  // write
   // --------------
 
   // Takes a Data.Graph and persists it to CouchDB
   
-  self.writeGraph = function(graph, callback, ctx) {
+  self.write = function(graph, callback, ctx) {
     var result = {}; // updated graph with new revisions and merged changes
     function writeNode(nodeId, callback) {
       var target = _.extend(graph[nodeId], {
@@ -74,7 +74,7 @@ var CouchAdapter = function(config, callback) {
     if (ctx) {
       _.each(graph, function(node, key) {
         node._id = key;
-        // _.each(Data.middleware.writegraph, function(fn) {
+        // _.each(Data.middleware.write, function(fn) {
         //   var filteredNode = fn(node, ctx);
         //   if (filteredNode) {
         //     graph[node._id] = filteredNode;
@@ -91,14 +91,14 @@ var CouchAdapter = function(config, callback) {
   };
 
   
-  // readGraph
+  // read
   // --------------
 
   // Takes a query object and reads all matching nodes
   // If you'd like to make a deep fetch, you just need to specify
   // expand: true in the options hash
   
-  self.readGraph = function(qry, options, callback, ctx) {
+  self.read = function(qry, options, callback, ctx) {
     
     // Collects the subgraph that will be returned as a result
     var result = {};
@@ -110,7 +110,7 @@ var CouchAdapter = function(config, callback) {
       // Apply write middleware for each node with ctx
       _.each(graph, function(node, key) {
         node._id = key;
-        // _.each(Data.middleware.readgraph, function(fn) {
+        // _.each(Data.middleware.read, function(fn) {
         //   var filteredNode = fn(node, ctx);
         //   if (filteredNode) {
         //     graph[node._id] = filteredNode;
