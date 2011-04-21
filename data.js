@@ -20,7 +20,7 @@
   }
   
   // Current version of the library. Keep in sync with `package.json`.
-  Data.VERSION = '0.2.2';
+  Data.VERSION = '0.3.0';
 
   // Require Underscore, if we're on the server, and it's not already present.
   var _ = this._;
@@ -40,6 +40,54 @@
   
   Data.isValueType = function (type) {
     return _.include(Data.VALUE_TYPES, type);
+  };
+  
+  // Returns true if a certain object matches a particular query object
+  // TODO: optimize!
+  Data.matches = function(node, queries) {
+    queries = _.isArray(queries) ? queries : [queries];
+    var matched = false;
+    // Matches at least one query
+    _.each(queries, function(qry) {
+      if (matched) return;
+      var rejected = false;
+      _.each(qry, function(value, key) {
+        if (rejected) return;
+        var condition;
+        // Extract operator
+        var matches = key.match(/^([a-z_]{1,30})(!=|>|>=|<|<=|\|=|&=)?$/),
+            property = matches[1],
+            operator = matches[2] || '==';
+
+        if (operator === "|=") { // one of operator
+          var values = _.isArray(value) ? value : [value];
+          var objectValues = _.isArray(node[property]) ? node[property] : [node[property]];
+          condition = false;
+          _.each(values, function(val) {
+            if (_.include(objectValues, val)) {
+              condition = true;
+            }
+          });
+        } else if (operator === "&=") {
+          var values = _.isArray(value) ? value : [value];
+          var objectValues = _.isArray(node[property]) ? node[property] : [node[property]];
+          condition = _.intersect(objectValues, values).length === values.length;
+        } else { // regular operators
+          switch (operator) {
+            case "!=": condition = !_.isEqual(node[property], value); break;
+            case ">": condition = node[property] > value; break;
+            case ">=": condition = node[property] >= value; break;
+            case "<": condition = node[property] < value; break;
+            case "<=": condition = node[property] <= value; break;
+            default : condition = _.isEqual(node[property], value); break;
+          }
+        }
+        // TODO: Make sure we exit the loop and return immediately when a condition is not met
+        if (!condition) return rejected = true;
+      });
+      if (!rejected) return matched = true;
+    });
+    return matched;
   };
   
   
@@ -688,34 +736,7 @@
   Data.Adapter = function(config) {
     // The config object is used to describe database credentials
     this.config = config;
-  };
-  
-  _.extend(Data.Adapter.prototype, {
-    
-    // Flush the database
-    flush: function() {},
-    
-    // Takes a query object to match objects in the database 
-    // and return them as a Data.Graph
-    // 
-    // Fetch all nodes of `/type/document`:
-    //
-    //      {
-    //        "type": "/type/document"
-    //      }
-    // 
-    // Fetch all nodes of `/type/document` associated with user `/user/michael`
-    // 
-    //      {
-    //        "type": "/type/document"
-    //        "user": "/user/michael"
-    //      }
-    readGraph: function(qry, targetGraph, options, callback) {},
-    
-    // Takes a serialized graph object and persists it
-    writeGraph: function(graph, callback) {}
-  });
-  
+  };  
   
   // Data.Property
   // --------------
@@ -1203,20 +1224,20 @@
   
   // Set a new Data.Adapter and enable Persistence API
 
-  
   Data.Graph = _.inherits(Data.Node, {
     constructor: function(g, dirty) {
       var that = this;
       Data.Node.call(this);
       
+      this.watchers = {};
       this.replace('objects', new Data.Hash());
       if (!g) return;
       this.merge(g, dirty);
     },
     
     middleware: {
-      readgraph: [],
-      writegraph: []
+      read: [],
+      write: []
     },
     
     setAdapter: function(name, config) {
@@ -1230,6 +1251,16 @@
     
     serve: function(server, options){
       require(__dirname + '/servers/nowjs_server').initialize(server, this);
+    },
+    
+    watch: function(channel, qry, callback) {
+      this.watchers[channel] = callback;
+      this.adapter.watch(channel, qry, function(err) {});
+    },
+    
+    unwatch: function(channel, callback) {
+      delete this.watchers[channel];
+      this.adapter.unwatch(channel, function() {});
     },
     
     // Merges in another Graph
@@ -1347,42 +1378,7 @@
     // Find objects that match a particular query
     find: function(qry) {
       return this.objects().select(function(o) {
-        var so = o.toJSON();
-        var rejected = false;
-        _.each(qry, function(value, key) {
-          var condition;
-          // Extract operator
-          var matches = key.match(/^([a-z_]{1,30})(!=|>|>=|<|<=|\|=|&=)?$/),
-              property = matches[1],
-              operator = matches[2] || '==';
-          
-          if (operator === "|=") { // one of operator
-            var values = _.isArray(value) ? value : [value];
-            var objectValues = _.isArray(so[property]) ? so[property] : [so[property]];
-            condition = false;
-            _.each(values, function(val) {
-              if (_.include(objectValues, val)) {
-                condition = true;
-              }
-            });
-          } else if (operator === "&=") {
-            var values = _.isArray(value) ? value : [value];
-            var objectValues = _.isArray(so[property]) ? so[property] : [so[property]];
-            condition = _.intersect(objectValues, values).length === values.length;
-          } else { // regular operators
-            switch (operator) {
-              case "!=": condition = !_.isEqual(so[property], value); break;
-              case ">": condition = so[property] > value; break;
-              case ">=": condition = so[property] >= value; break;
-              case "<": condition = so[property] < value; break;
-              case "<=": condition = so[property] <= value; break;
-              default : condition = _.isEqual(so[property], value);
-            }
-          }
-          
-          if (!condition) rejected = true;
-        });
-        return !rejected;
+        return Data.matches(o.toJSON(), qry);
       });
     },
     
@@ -1399,7 +1395,7 @@
         options = {};
       }
       
-      this.adapter.readGraph(qry, options, function(err, graph) {
+      this.adapter.read(qry, options, function(err, graph) {
         if (graph) {
           that.merge(graph, false);
           _.each(graph, function(node, key) {
@@ -1428,7 +1424,7 @@
         }
       });
       
-      this.adapter.writeGraph(validNodes.toJSON(), function(err, g) {
+      this.adapter.write(validNodes.toJSON(), function(err, g) {
         if (err) {
           callback(err);
         } else {
