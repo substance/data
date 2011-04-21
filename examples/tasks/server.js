@@ -42,5 +42,5 @@ app.get('/', function(req, res) {
                .replace('{{{{session}}}}', JSON.stringify(req.session)));
 });
 
-console.log('READY: Server is listening http://localhost:'+config['server_port']);
-app.listen(config['server_port']);
+console.log('READY: Server is listening http://'+config['server_host']+':'+config['server_port']);
+app.listen(config['server_port'], config['server_host']);
