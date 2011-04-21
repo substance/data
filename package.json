@@ -5,8 +5,8 @@
   "keywords"      : ["util", "functional", "linked-data", "server", "client", "browser"],
   "author"        : "Michael Aufreiter",
   "contributors"  : [],
-  "dependencies"  : ["underscore"],
+  "dependencies"  : ["underscore", "now"],
   "lib"           : ".",
   "main"          : "data.js",
-  "version"       : "0.2.2"
+  "version"       : "0.3.0"
 }
