@@ -44,7 +44,14 @@
   
   "/project/test": {
     "type": ["/type/project"],
-    "name": "My Project",
+    "name": "Realtime Tasks",
+    "descr": "A project description",
+    "tasks": []
+  },
+  
+  "/project/test2": {
+    "type": ["/type/project"],
+    "name": "Realtime Tasks 2",
     "descr": "A project description",
     "tasks": []
   }
