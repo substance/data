@@ -1,6 +1,7 @@
 var Project = Backbone.View.extend({
   events: {
-    'submit #new_task_form': 'createProject'
+    'submit #new_task_form': 'createTask',
+    'click .load-project': 'loadProject'
   },
   
   el: '#project',
@@ -9,13 +10,19 @@ var Project = Backbone.View.extend({
     this.load("/project/test");
   },
   
-  createProject: function(e) {
+  loadProject: function(e) {
+    this.load($(e.currentTarget).attr('project'))
+    return false;
+  },
+  
+  createTask: function(e) {
     var task = graph.set(null, {
       type: "/type/task",
       name: $('#task_name').val(),
       project: this.model._id
     });
     
+    // Append a new task to the project
     this.model.set({
       tasks: this.model.get('tasks').keys().concat([task._id])
     });
@@ -28,10 +35,26 @@ var Project = Backbone.View.extend({
   // Load a specific project
   load: function(id) {
     var that = this;
+    if (this.previousId) {
+      graph.unwatch(this.previousId);
+    }
     
+    this.previousId = id;
     graph.fetch({_id: id}, {expand: true}, function(err, nodes) {
       that.model = graph.get(id);
       that.render();
+      
+      var qry = [
+        {"type|=": "/type/project", "_id": id},
+        {"type|=": "/type/task", "project": id}
+      ];
+      
+      // Watch for updates in realtime
+      graph.watch(id, qry, function(err, nodes) {
+        console.log('incoming updates');
+        console.log(nodes.keys());
+        app.project.render();
+      });
     });
   },
   

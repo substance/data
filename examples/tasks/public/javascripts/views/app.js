@@ -3,10 +3,9 @@ _.tpl = function(tpl, ctx) {
   return _.template(source, ctx);
 };
 
-
 var Application = Backbone.View.extend({
   events: {
-
+    
   },
   
   initialize: function() {
@@ -15,7 +14,6 @@ var Application = Backbone.View.extend({
   },
   
   render: function() {
-    // Should be rendered just once
     this.project.render();
     return this;
   }
@@ -32,18 +30,19 @@ var app,                                 // The Application
     
     // When updates arrive, appy them and re-render
     // TODO: We want an API for that
-    now.update = function(nodes) {
-      graph.merge(nodes, false);
-      app.project.render();
+    now.update = function(channel, rawNodes) {
+      var nodes = new Data.Hash(); // collects arrived nodes
+      graph.merge(rawNodes, false);
+      _.each(rawNodes, function(node, key) {
+        nodes.set(key, graph.get(key));
+      });
+      // Find and call the corresponding watcher callback
+      graph.watchers[channel](null, nodes);
     };
     
     // Once NowJS is ready
     now.ready(function() {
       graph.setAdapter('NowjsAdapter', now);
-      
-      graph.adapter.watch("task_updates", {"type|=": "/type/task", "_id": "/project/c837ec12946eaf2a1787108304352b28"}, function(err) {
-        // console.log('watcher registered');
-      });
       
       app = new Application({el: '#container', session: session});
       app.render();
@@ -92,6 +91,5 @@ var app,                                 // The Application
         });
       });
     });
-    
   });
 })();

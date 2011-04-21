@@ -10,6 +10,10 @@
     </script>
     
     <script type="text/x-ejs-template" name="project">
+      <div id="projects">
+        <a href="" class="load-project" project="/project/test">Project 1</a>
+        <a href="" class="load-project" project="/project/test2">Project 2</a>
+      </div>
       <div>
         <h1><%= project.get('name') %></h1>
         <p><%= project.get('descr') %></p>
@@ -48,7 +52,7 @@
     </style>
   </head>
   <body>
-    <div id="sync_state" class="style: position: absolute; top: 0px;"></div>
+    <div id="sync_state" style="position: absolute; top: 0px; left: 200px"></div>
     <div id="container">
       <div id="project">
         
