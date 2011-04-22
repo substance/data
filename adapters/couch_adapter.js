@@ -7,14 +7,34 @@ var CouchAdapter = function(graph, config, callback) {
   var db = CouchClient(config.url);
   var self = {};
   
-  function serializeQuery(qry) {
-    var queryHash = new Data.Hash(qry).sort(Data.Comparators.ASC);
-    var queryProperties = [];
-    queryHash.each(function(value, property) {
-      queryProperties.push(property + "=" + value);
+  // Setup index views for type nodes
+  // --------
+  
+  function setupIndexes(node, callback) {
+    // Extract local typename
+    var typename = node._id.split('/')[2];
+    views = {
+      "all": {
+        "properties": ["_id"],
+        "map": "function(doc) { if (doc.type.indexOf('"+node._id+"')>=0) { emit([doc._id], doc); } }"
+      }
+    };
+    if (node.indexes) {
+      _.each(node.indexes, function(properties, indexName) {
+        var keyExpr = "["+ _.map(properties, function(p) { return "doc."+p;}).join(',')+ "]";
+        views[indexName] = {
+          "properties": properties,
+          "map": "function(doc) { if (doc.type.indexOf('"+node._id+"')>=0) { emit("+keyExpr+", doc); } }"
+        };
+      });
+    }
+    db.save({
+      _id: '_design/'+typename,
+      views: views
+    }, function (err, doc) {
+      err ? callback(err) : callback();
     });
-    return queryProperties.join(":").replace(/\//g, '.');
-  }
+  };
   
   // flush
   // --------------
@@ -26,9 +46,9 @@ var CouchAdapter = function(graph, config, callback) {
       db.request("PUT", db.uri.pathname, function(err) {
         err ? callback(err) 
             : db.save({
-                _id: '_design/queries',
+                _id: '_design/type',
                 views: {
-                  "all_type_nodes": {
+                  "all": {
                     "map": "function(doc) { if (doc.type === \"/type/type\") emit(doc._id, doc); }"
                   }
                 }
@@ -54,29 +74,26 @@ var CouchAdapter = function(graph, config, callback) {
       
       db.save(target, function (err, newDoc) {
         if (err) {
-          // TODO: we assume conflict errors are the only errors
           // Return the latest valid db version instead of the conflicted one
-          result[nodeId] = doc;
-          result[nodeId]._conflicted = true;
+          // TODO: we assume conflict errors are the only errors here
+          db.get(nodeId, function(err, node) {
+            result[nodeId] = node;
+            result[nodeId]._conflicted = true;
+            callback();
+          });
         } else {
-          result[nodeId] = newDoc;
+          // If we've got a type node, setup index views
+          if (newDoc.type == "/type/type") {
+            setupIndexes(newDoc, function(err) {
+              if (err) { console.log('error during index creation'); };
+              result[nodeId] = newDoc;
+              callback();            
+            });
+          } else {
+            result[nodeId] = newDoc;
+            callback();
+          }
         }
-        callback();
-      });
-    }
-    
-    // Apply write middleware for each node with ctx if ctx is there
-    if (ctx) {
-      _.each(graph, function(node, key) {
-        node._id = key;
-        // _.each(Data.middleware.write, function(fn) {
-        //   var filteredNode = fn(node, ctx);
-        //   if (filteredNode) {
-        //     graph[node._id] = filteredNode;
-        //   } else {
-        //     delete graph[node._id];
-        //   }
-        // });
       });
     }
     
@@ -90,205 +107,64 @@ var CouchAdapter = function(graph, config, callback) {
   // --------------
 
   // Takes a query object and reads all matching nodes
-  // If you'd like to make a deep fetch, you just need to specify
-  // expand: true in the options hash
   
-  self.read = function(qry, options, callback, ctx) {
+  self.read = function(queries, options, callback, ctx) {
     
     // Collects the subgraph that will be returned as a result
     var result = {};
-    var sharedTypes = {};
-    
-    // Pass through middleware layers
-    function filter(graph) {
-      if (!ctx) return graph;
-      // Apply write middleware for each node with ctx
-      _.each(graph, function(node, key) {
-        node._id = key;
-        // _.each(Data.middleware.read, function(fn) {
-        //   var filteredNode = fn(node, ctx);
-        //   if (filteredNode) {
-        //     graph[node._id] = filteredNode;
-        //   } else {
-        //     delete graph[node._id];
-        //   }
-        // });
-      });
-      return graph;
-    }
-    
-    // Fetches a node from the DB
-    // --------
-    
-    function fetchNode(id, callback) {
-      db.get(id, function(err, node) {
-        if (err) return callback(err);
-        
-        // Attach to result graph
-        result[node._id] = node;
-        callback(null, node);
-      });
-    }
+    queries = _.isArray(queries) ? queries : [queries];
     
     // Performs a query and returns a list of matched nodes
     // --------
-
-    function query(qry, callback) {
+    
+    function performQuery(qry, callback) {
+      console.log('Performing query:');
+      console.log(qry);
       
-      if (!qry) throw "No query specified";
+      var typeName = qry.type.split('/')[2];
+      delete qry.type;
+      var properties = _.keys(qry);
       
-      function executeQuery(qry, callback) {
-        var viewId = serializeQuery(qry);
-        db.view('queries/'+viewId, function(err, res) {
-          err ? callback(er) : callback(null, _.map(res.rows, function(item) {
-            return item.value;
-          }));
+      // Lookup view
+      db.get('_design/'+typeName, function(err, node) {
+        // Pick the right index based on query parameters
+        var viewName = null;
+        _.each(node.views, function(view, key) {
+          if (view.properties.length == properties.length && _.intersect(view.properties, properties).length == view.properties.length) viewName = key;
         });
-      };
-      
-      function createQuery(qry, callback) {
-        var viewId = serializeQuery(qry);
         
-        db.get('_design/queries', function(err, node) {
-          if (!err) {
-            // Dynamically generate a view function
-            var conditions = [];
-            var fn = "function(doc) { if (##conditions##) emit(doc._id, doc); }";
-            
-            _.each(qry, function(value, key) {
-              // Extract operator
-              var matches = key.match(/^([a-z_]{1,30})(!=|>|>=|<|<=|\|=)?$/),
-                  property = matches[1],
-                  operator = matches[2] || '==';
-              
-              if (operator === "|=") { // one of operator
-                var values = _.isArray(value) ? value : [value];
-                var subconditions = [];
-                _.each(values, function(val) {
-                  subconditions.push("doc."+property+".indexOf(\""+val+"\") >= 0");
-                });
-                conditions.push("("+subconditions.join(' || ')+")");
-              } else { // regular operators
-                conditions.push("doc."+property+" "+operator+" "+(typeof value === "string" ? "\""+value+"\"": value));
-              }
-            });
-            
-            fn = fn.replace('##conditions##', conditions.join(' && '));
-            
-            if (viewId && viewId.length > 0) {
-              node.views[viewId] = { map: fn };
-              db.save(node, function(err, doc) {
-                err ? callback('Error during saving the view') : callback();
-              });
-            }
-          } else {
-            throw('_design/queries not found.');
-          }
-        });
-      }
-      
-      async.waterfall([
-        // Query view
-        function(callback) {
-          executeQuery(qry, function(err, matchedNodes) {
-            err ? callback(null,false, null) : callback(null, true, matchedNodes);
+        if (viewName) {
+          // Use view to lookup for matching objects efficiently
+          var key = [];
+          _.each(node.views[viewName].properties, function(p) {
+            key.push(qry[p]);
           });
-        },
-
-        // Create a view if not exists
-        function(done, matchedNodes, callback) {
-          if (done) return callback(null, matchedNodes);
-          createQuery(qry, function(err) {
-            if (err) return callback('Error during view creation');
-            // And now execute it.
-            executeQuery(qry, function(err, matchedNodes) {
-              err ? callback(err) : callback(null, matchedNodes);
+          
+          db.view(typeName+'/'+viewName, {key: key}, function(err, res) {
+            if (err) callback(err);
+            _.each(res.rows, function(row) {
+              result[row.value._id] = row.value;
             });
+            callback();
+          });
+        } else { // Fetch all objects of this type and check manually
+          console.log('WARNING: No index could be found for this query:');
+          console.log(qry);
+          qry["type|="] = "/type/"+typeName;
+          db.view(typeName+'/all', function(err, res) {
+            if (err) return callback(err);
+            _.each(res.rows, function(row) {
+              if (Data.matches(row.value, qry)) result[row.value._id] = row.value;
+            });
+            callback();
           });
         }
-      ], function(err, matchedNodes) {
-        err ? callback(err) : callback(null, matchedNodes);
-      });
-    };
-    
-    // Fetches associated objects
-    function fetchAssociated(nodeKey, callback) {
-      
-      // Assumes that corresponding type nodes are already there
-      var node = result[nodeKey];
-      var types = _.isArray(node.type) ? node.type : [node.type];
-      
-      var properties = [];
-      _.each(types, function(type) {
-        _.each(sharedTypes[type].properties, function(property, key) {
-          properties.push({
-            key: key,
-            // Ensure that type property is always an array (of allowed types for the property)
-            type: _.isArray(property.type) ? property.type : [property.type]
-          });
-        });
-      });
-      
-      // Combine properties
-      
-      async.forEach(properties, function(property, callback) {
-        // Assumes that a property allows either object types or value types
-        if (!Data.isValueType(property.type[0])) {
-          nodes = _.isArray(node[property.key]) ? node[property.key] : [node[property.key]];
-          async.forEach(nodes, function(item, callback) {
-            
-            if (!result[item]) {
-              fetchNode(item, function(err, node) {
-                if (err) return callback(err);
-                result[node._id] = node;
-                fetchAssociated(node._id, function(err) {
-                  err ? callback(err) : callback();
-                });
-              });
-            } else {
-              callback();
-            }
-          }, function(err) { callback(); });
-          
-        } else { callback(); }
-      }, function(err) {
-        // All properties resolved
-        callback();
       });
     }
     
-    // First of all fetch all type nodes
-    db.view('queries/all_type_nodes', function(err, res) {
-      if (!err) {
-        _.each(res.rows, function(item) {
-          sharedTypes[item.value._id] = item.value;
-        });
-        
-        // Start the fun
-        query(qry, function(err, nodes) {
-          if (err) return callback(err);
-          _.each(nodes, function(node) {
-            result[node._id] = node; // Attach node to the result graph
-          });
-
-          // Prefetch associated nodes
-          if (options.expand) {          
-            async.forEach(_.keys(result), function(item, callback) {
-              if (result[item].type !== 'type' && result[item].type !== '/type/type') {
-                fetchAssociated(item, function(err) {
-                  err ? callback('error during fetching assciated nodes') : callback();
-                });
-              } else {
-                callback();
-              }
-            }, function(err) { callback(null, filter(result)); });
-          } else {
-            callback(null, filter(result));
-          }
-        });
-      } else {
-        callback(err)
-      }
+    // Perform queries
+    async.forEach(queries, performQuery, function(err) {
+      err ? callback(err) : callback(null, result);
     });
   };
   

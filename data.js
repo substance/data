@@ -838,7 +838,7 @@
       this.type = type.type;
       this.name = type.name;
       this.meta = type.meta || {};
-  
+      this.indexes = type.indexes;
       // Extract properties
       _.each(type.properties, function(property, key) {
         that.set('properties', key, new Data.Property(that, key, property));
@@ -862,9 +862,11 @@
         _rev: this._rev,
         type: '/type/type',
         name: this.name,
-        properties: {},
-        meta: this.meta
+        properties: {}
       };
+      
+      if (this.meta && _.keys(this.meta).length > 0) result.meta = this.meta;
+      if (this.indexes && _.keys(this.indexes).length > 0) result.indexes = this.indexes;
       
       this.all('properties').each(function(property) {
         var p = result.properties[property.key] = {
@@ -1511,8 +1513,8 @@
       });
     },
     
-    // Get conflicted nodes
-    conflictedNodes: function() {
+    // Get conflicting nodes
+    conflictingNodes: function() {
       return this.all('objects').select(function(obj, key) {
         return obj._conflicted;
       });
