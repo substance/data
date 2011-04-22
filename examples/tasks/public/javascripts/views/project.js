@@ -40,17 +40,24 @@ var Project = Backbone.View.extend({
     }
     
     this.previousId = id;
-    graph.fetch({_id: id}, {expand: true}, function(err, nodes) {
+    
+    // Fetch project along with tasks in one go
+    var query =  [
+      {"type": "/type/project", "_id": id},
+      {"type": "/type/task", "project": id}
+    ];
+    
+    graph.fetch(query, function(err, nodes) {
       that.model = graph.get(id);
       that.render();
       
-      var qry = [
+      var watchQry = [
         {"type|=": "/type/project", "_id": id},
         {"type|=": "/type/task", "project": id}
       ];
       
       // Watch for updates in realtime
-      graph.watch(id, qry, function(err, nodes) {
+      graph.watch(id, watchQry, function(err, nodes) {
         console.log('incoming updates');
         console.log(nodes.keys());
         app.project.render();

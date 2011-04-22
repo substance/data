@@ -29,6 +29,10 @@ if (process.argv[2] == "--flush") {
   graph.sync(function(err, invalidNodes) {
     console.log('invalidNodes:');
     if (invalidNodes) console.log(invalidNodes.keys());
+    
+    console.log('conflictingNodes:');
+    console.log(graph.conflictingNodes().keys());
+    
     err ? console.log(err)
         : console.log('Couch seeded successfully.\nStart the server: $ node server.js');
   });

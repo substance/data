@@ -63,6 +63,7 @@ var graph = new Data.Graph(seed, false).setAdapter('nowjs');
         }
       });
 
+      // Rather handle this within sync? sync should probably return conflicting nodes as well
       graph.bind('conflicted', function() {
         if (!app.document.model) return;
         graph.fetch({
