@@ -1,6 +1,5 @@
-Data.Adapters["nowjs"] = function(graph, options) {  
-  
-  var self = {};
+Data.Adapters["nowjs"] = function(graph, options) {
+  var self = {realtime: true};
   
   // write
   // --------------
@@ -51,7 +50,7 @@ Data.Adapters["nowjs"] = function(graph, options) {
   // It applies them and calls the corresponding watcher callback
   
   now.update = function(channel, rawNodes) {
-    var nodes = new Data.Hash(); // collects arrived nodes
+    var nodes = new Data.Hash();
     graph.merge(rawNodes, false);
     _.each(rawNodes, function(node, key) {
       nodes.set(key, graph.get(key));
@@ -61,7 +60,7 @@ Data.Adapters["nowjs"] = function(graph, options) {
   
   // Delegate ready callback
   
-  now.ready(function() {
+  now.ready(function() {
     graph.readyCallback();
   });
   
