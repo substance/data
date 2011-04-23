@@ -126,7 +126,6 @@
         }
       }
     }
-    
     return (prefix ? prefix : "") + uuid.join('');
   };
 
@@ -689,7 +688,6 @@
       this._properties[property].set(key, value instanceof Data.Node ? value : new Data.Node({value: value}));
       return this;
     },
-    
 
     // Get node for given *property* at given *key*
     get: function (property, key) {
@@ -879,7 +877,6 @@
         if (property.validator) p.validator = property.validator;
         if (property.meta && _.keys(property.meta).length > 0) p.meta = property.meta;
       });
-      
       return result;
     }
   });
@@ -993,7 +990,7 @@
             property.isObjectType() ? that.setObjectProperty(property, values)
                                     : that.setValueProperty(property, values);
           }
-
+          
           if (that.data[key] !== undefined) {
             applyValue(that.data[key]);
           } else if (property["default"]) {
@@ -1026,9 +1023,7 @@
             
             // FIXME: assumes that unloaded objects are valid properties
             if (!value.data) return true;
-            
             if (value instanceof Data.Object && _.intersect(types, value.types().keys()).length>0) return true;
-            
             if (typeof value === 'object' && _.include(types, value.constructor.name.toLowerCase())) return true;
             return false;
           }
@@ -1154,19 +1149,6 @@
       }
     },
     
-    // Get a property asynchronously
-    // Handles cases where an object is not yet populated with data
-    getAsync: function(property, callback) {
-      var that = this;
-      if (!this.data) {
-        this.g.fetch({_id: this._id}, {}, function(err) {
-          err ? callback(err) : callback(null, that.get(property));
-        });
-      } else {
-        callback(null, that.get(property)); // Delegate to Data.Object#get
-      }
-    },
-    
     // Sets properties on the object
     // Existing properties are overridden / replaced
     set: function(properties) {
@@ -1245,14 +1227,19 @@
         var Adapter = require(__dirname + '/adapters/'+name+'_adapter');
         this.adapter = new Adapter(this, config);
       } else {
-        if (!Data.Adapters[name]) throw new Error('Adapter not found');
+        if (!Data.Adapters[name]) throw new Error('Adapter "'+name+'" not found');
         this.adapter = new Data.Adapters[name](this, config);
       }
       return this;
     },
     
+    // Called when the Data.Adapter is ready
     ready: function(callback) {
-      this.readyCallback = callback;
+      if (this.adapter.realtime) {
+        this.readyCallback = callback;
+      } else {
+        callback();
+      }
     },
     
     // Serve graph along with an httpServer instance
@@ -1355,23 +1342,6 @@
         return this.get('objects', id);
       } else {
         return Data.Node.prototype.get.call(this, arguments[0], arguments[1]);
-      }
-    },
-    
-    // Get a node asynchronously
-    // Handles cases where an object is not yet there and needs to be fetched from
-    // the server first
-    getAsync: function(id, callback) {
-      var that = this,
-          node = this.get(id);
-      
-      if (!node || !node.data) {
-        that.fetch({_id: id}, {}, function(err) {
-          err ? callback(err) : callback(null, that.get(id));
-        });
-      } else {
-        // Delegate to Data.Graph#get
-        callback(null, node);
       }
     },
     

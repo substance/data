@@ -25,9 +25,31 @@ app.configure(function() {
 });
 
 var graph = new Data.Graph(seed, false);
+var myapp = {};
+
+// Showcasing middleware functionality
+var Filters = {};
+Filters.makeCrazy = function() {
+  return {
+    read: function(node, next, ctx) {
+      node.crazy = true;
+      next(node); // passes through the filtered node
+    },
+
+    write: function(node, next,ctx) {
+      next(node); // no-op
+    }
+  };
+};
+
 
 // Setup Data.Adapter
-graph.setAdapter('couch', { url: config.couchdb_url});
+graph.setAdapter('couch', { 
+  url: config.couchdb_url,
+  filters: [
+    Filters.makeCrazy()
+  ]
+});
 
 // Serve Data.js backend along with an express server
 graph.serve(app);
