@@ -5,7 +5,7 @@ var async = require('async');
 
 var applyFilters = function(filters, nodes, mode, ctx, callback) {
   var filteredNodes = {};
-  if (filters.length === 0) callback(null, nodes); // Skip
+  if (!filters || filters.length === 0) return callback(null, nodes); // Skip
   
   async.forEach(_.keys(nodes), function(key, callback) {
     var idx = 0;
