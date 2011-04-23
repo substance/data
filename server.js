@@ -1,7 +1,43 @@
 var _ = require('underscore');
 var Data = require('../data');
+var async = require('async');
 
-exports.initialize = function(server, graph) {
+exports.initialize = function(server, graph, config) {
+  
+  // AJAX interface
+  // --------------
+  
+  server.get('/graph/read', function(req, res) {
+    var callback = req.query.callback,
+        query = JSON.parse(req.query.qry),
+        options = JSON.parse(req.query.options)
+    graph.adapter.read(JSON.parse(req.query.qry), JSON.parse(req.query.options), function(err, g) {
+      err ? res.send(callback+"("+JSON.stringify(err)+");")
+          : res.send(callback+"("+JSON.stringify(g)+");");
+    }, req.session);
+  });
+
+  server.put('/graph/write', function(req, res) {
+    graph.adapter.write(req.body, function(err, g) {
+      err ? res.send(err) : res.send(JSON.stringify({"status": "ok", "graph": g}));
+    }, req.session);
+  });
+  
+  server.get('/graph/watch', function(req, res) {
+    send('no-op');
+    // var callback = req.query.callback,
+    //     query = JSON.parse(req.query.qry),
+    //     options = JSON.parse(req.query.options)
+    // graph.adapter.read(JSON.parse(req.query.qry), JSON.parse(req.query.options), function(err, g) {
+    //   err ? res.send(callback+"("+JSON.stringify(err)+");")
+    //       : res.send(callback+"("+JSON.stringify(g)+");");
+    // }, req.session);
+  });
+  
+  
+  // NowJS interface
+  // --------------
+  
   var nowjs = require('now');
   var everyone = nowjs.initialize(server);
   
@@ -51,7 +87,7 @@ exports.initialize = function(server, graph) {
   
   // Read graph
   everyone.now.read = function(query, options, callback) {
-    graph.adapter.read(query, options, function(err, g) {
+    graph.adapter.read(query, options, function(err, g) {      
       callback(err, g);
     }, this.user);
   };
