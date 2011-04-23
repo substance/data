@@ -7,6 +7,6 @@
   "contributors"  : [],
   "dependencies"  : ["underscore", "now"],
   "lib"           : ".",
-  "main"          : "data.js",
+  "main"          : "index",
   "version"       : "0.3.0"
 }
