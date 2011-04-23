@@ -1,6 +1,6 @@
 Data.Adapters["ajax"] = function(graph, config) {  
   
-  config = config ? config : {url: '/'};
+  config = config ? config : {url: '/graph/'};
   
   // write
   // --------------
@@ -27,8 +27,6 @@ Data.Adapters["ajax"] = function(graph, config) {
   // --------------
 
   // Takes a query object and reads all matching nodes
-  // If you'd like to make a deep fetch, you just need to specify
-  // expand: true in the options hash
   
   self.read = function(qry, options, callback) {    
     $.ajax({
@@ -46,6 +44,14 @@ Data.Adapters["ajax"] = function(graph, config) {
        callback(err);
       }
     });
+  };
+  
+  self.watch = function() {
+    // no-op
+  };
+  
+  self.unwatch = function() {
+    // no-op
   };
   
   // Expose Public API

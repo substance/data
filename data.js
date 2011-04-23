@@ -1240,16 +1240,12 @@
       this.merge(g, dirty);
     },
     
-    middleware: {
-      read: [],
-      write: []
-    },
-    
     setAdapter: function(name, config) {
       if (typeof exports !== 'undefined') {
         var Adapter = require(__dirname + '/adapters/'+name+'_adapter');
         this.adapter = new Adapter(this, config);
       } else {
+        if (!Data.Adapters[name]) throw new Error('Adapter not found');
         this.adapter = new Data.Adapters[name](this, config);
       }
       return this;
@@ -1259,15 +1255,18 @@
       this.readyCallback = callback;
     },
     
+    // Serve graph along with an httpServer instance
     serve: function(server, options) {
-      require(__dirname + '/servers/nowjs_server').initialize(server, this);
+      require(__dirname + '/server').initialize(server, this);
     },
     
+    // Watch for graph updates
     watch: function(channel, qry, callback) {
       this.watchers[channel] = callback;
       this.adapter.watch(channel, qry, function(err) {});
     },
     
+    // Stop watching that channel
     unwatch: function(channel, callback) {
       delete this.watchers[channel];
       this.adapter.unwatch(channel, function() {});
@@ -1406,7 +1405,7 @@
       }
       
       this.adapter.read(qry, options, function(err, graph) {
-        if (graph) {
+        if (graph) {          
           that.merge(graph, false);
           _.each(graph, function(node, key) {
             nodes.set(key, that.get(key));

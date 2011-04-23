@@ -3,6 +3,35 @@ var Data = require('../data');
 var _ = require('underscore');
 var async = require('async');
 
+var applyFilters = function(filters, nodes, mode, ctx, callback) {
+  var filteredNodes = {};
+  if (filters.length === 0) callback(null, nodes); // Skip
+  
+  async.forEach(_.keys(nodes), function(key, callback) {
+    var idx = 0;
+    function callLayer(node, callback) {
+      if (!node) return callback(null); // skip rejected nodes
+      if (filters[idx]) {
+        filters[idx][mode](node, function(n) {
+          idx += 1;
+          callLayer(n, function(n) {
+            callback(n);
+          });
+        }, ctx);
+      } else {
+        callback(node);
+      }
+    }
+    callLayer(nodes[key], function(node) {
+      if (node) filteredNodes[node._id] = node;
+      callback();
+    });
+  }, function(err) {
+    err ? callback(err) : callback(null, filteredNodes);
+  });
+};
+
+
 var CouchAdapter = function(graph, config, callback) {
   var db = CouchClient(config.url);
   var self = {};
@@ -41,7 +70,6 @@ var CouchAdapter = function(graph, config, callback) {
 
   // Flush the database
   self.flush = function(callback) {
-    // Delete DB if exists
     db.request("DELETE", db.uri.pathname, function (err) {
       db.request("PUT", db.uri.pathname, function(err) {
         err ? callback(err) 
@@ -67,6 +95,7 @@ var CouchAdapter = function(graph, config, callback) {
   
   self.write = function(graph, callback, ctx) {
     var result = {}; // updated graph with new revisions and merged changes
+    
     function writeNode(nodeId, callback) {
       var target = _.extend(graph[nodeId], {
         _id: nodeId
@@ -97,11 +126,14 @@ var CouchAdapter = function(graph, config, callback) {
       });
     }
     
-    async.forEach(_.keys(graph), writeNode, function(err) {
-      err ? callback(err) : callback(null, result);
+    applyFilters.call(this, config.filters, graph, 'write', ctx, function(err, filteredNodes) {
+      graph = filteredNodes;
+      async.forEach(_.keys(graph), writeNode, function(err) {
+        err ? callback(err) : callback(null, result);
+      });
     });
   };
-
+  
   
   // read
   // --------------
@@ -118,8 +150,8 @@ var CouchAdapter = function(graph, config, callback) {
     // --------
     
     function performQuery(qry, callback) {
-      console.log('Performing query:');
-      console.log(qry);
+      // console.log('Performing query:');
+      // console.log(qry);
       
       var typeName = qry.type.split('/')[2];
       delete qry.type;
@@ -164,7 +196,10 @@ var CouchAdapter = function(graph, config, callback) {
     
     // Perform queries
     async.forEach(queries, performQuery, function(err) {
-      err ? callback(err) : callback(null, result);
+      if (err) return callback(err);
+      applyFilters.call(this, config.filters, result, 'read', ctx, function(err, filteredNodes) {
+        callback(null, filteredNodes);
+      });
     });
   };
   
