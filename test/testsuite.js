@@ -415,9 +415,9 @@ test("valid construction", function() {
   
   ok(graph.types().length == 3);
   
-  ok(graph.get('objects', '/type/document') instanceof Data.Type);
-  ok(graph.get('objects', '/type/entity') instanceof Data.Type);
-  ok(graph.get('objects', '/type/mention') instanceof Data.Type);
+  ok(graph.types().get('/type/document') instanceof Data.Type);
+  ok(graph.types().get('/type/entity') instanceof Data.Type);
+  ok(graph.types().get('/type/mention') instanceof Data.Type);
 });
 
 
@@ -574,9 +574,34 @@ test("Set object properties of existing nodes", function() {
   });
     
   ok(protovis.get('entities').first() === graph.get('/location/toronto'));
-  // TODO: activate (proper value registration management)
-  // ok(protovis.type.get('properties', 'entities').all('values').length === 1);
   ok(protovis.type.get('properties', 'entities').get('values', '/location/toronto'));
+});
+
+
+test("Proper value registration / deregistration", function() {  
+  var documentType = graph.types().get('/type/document');
+  
+  var values = documentType.properties().get('title').all('values');
+  var valueCount = values.length;
+
+  unveil.set({
+    title: "Unveil Introduction"
+  });
+  
+  ok(values.keys().length === valueCount);
+  
+  var valueCount = values.length;
+
+  // Overwrite existing object
+  graph.set("/doc/unveil_introduction", {
+    "type": "/type/document",
+    "title": "Unveil.js Introduction",
+    "authors": ["Michael Aufreiter", "Lindsay Kay"],
+    "page_count": 8,
+    "entities": []
+  });
+  
+  ok(values.keys().length === valueCount);
 });
 
 
@@ -612,17 +637,14 @@ test("get values of a property", function() {
   ok(population.all('values').length === 6);
 });
 
-// useful for non-unique properties
-test("get value of a property", function() {
-  var population = c.properties().get('population');
-  ok(population.value('values') === 8356700);
-});
 
 test("grouping", function() {
   var languages = c.group(["official_language"], {
     'area': { aggregator: Data.Aggregators.SUM, name: "Total Area" },
     'population': { aggregator: Data.Aggregators.AVG, name: "Average Population" }
   });
+  
+  console.log(languages.items().get('German Language').get('population'));
     
   ok(languages.items().get('German Language').get('population') === 45209450);
   ok(languages.items().get('English Language').get('area') === 10071495);

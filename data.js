@@ -605,7 +605,6 @@
           members = index === 0 ? members.union(objects) : members.intersect(objects);
         });
         
-        
         var res = {type: type._id};
         _.each(gspec[type._id].properties, function(p, pk) {
           if (_.include(keys, pk)) {
@@ -736,7 +735,7 @@
     this.config = config;
   };
   
-  // A namespace for data adapters
+  // Namespace where Data.Adapters can register
   Data.Adapters = {};
   
   // Data.Property
@@ -764,6 +763,11 @@
       this.replace('values', new Data.Hash());
     },
     
+    // TODO: this desctroys Data.Node#values
+    // values: function() {
+    //   return this.all('values');
+    // },
+    
     isValueType: function() {
       return Data.isValueType(this.expectedTypes[0]);
     },
@@ -772,29 +776,54 @@
       return !this.isValueType();
     },
     
-    registerValue: function(key, value, obj) {
-      // Value could be an object or value depending on the property
-      if (this.isObjectType()) {
-        this.set('values', key, value);
-      } else {
-        var val = this.get('values', key);
-        if (!val) {
-          val = new Data.Node({value: value});
-          val.referencedObjects = new Data.Hash();
-        }
+    // Register values of a certain object
+    registerValues: function(values, obj) {
+      var that = this;
+      var res = new Data.Hash();
+      
+      _.each(values, function(v, index) {
+        if (!v) return; // skip
+        var val;
         
-        obj.set(this.key, key, val);
-        val.referencedObjects.set(obj.key, obj);
-        this.set('values', key, val); // vals are shared among objects
+        // Check if we can recycle an old value of that object
+        if (obj.all(that.key)) val = obj.all(that.key).get(v);
+        
+        if (!val) { // Can't recycle
+          val = that.get('values', v);
+          if (!val) {
+            // Well, a new value needs to be created
+            if (that.isObjectType()) {
+              // Create on the fly if an object is passed as a value
+              if (typeof v === 'object') v = that.type.g.set(null, v)._id;
+              val = that.type.g.get('objects', v);
+              if (!val) {
+                // Register the object (even if not yet loaded)
+                val = new Data.Object(that.type.g, v);
+                that.type.g.set('objects', v, obj);
+              }
+            } else {
+              val = new Data.Node({value: v});
+              val.referencedObjects = new Data.Hash();
+            }
+            
+            // Register value on the property
+            that.set('values', v, val);
+          }
+          val.referencedObjects.set(obj._id, obj);
+        }
+        res.set(v, val);
+      });
+      
+      // Deregister values that are no longer used on the object
+      if (obj.all(that.key)) {
+        var removedValues = obj.all(that.key).difference(res);
+        removedValues.each(function(val, key) {
+          if (val.referencedObjects.length<=1) that.all('values').del(key);
+        });
       }
+      return res;
     },
-    
-    unregisterValue: function(key, value) {
-      if (this.isObjectType()) {
-        this.all('values').del(key);
-      }
-    },
-    
+        
     // Aggregates the property's values
     aggregate: function (fn) {
       return fn(this.values("values"));
@@ -837,6 +866,7 @@
       this.name = type.name;
       this.meta = type.meta || {};
       this.indexes = type.indexes;
+      
       // Extract properties
       _.each(type.properties, function(property, key) {
         that.set('properties', key, new Data.Property(that, key, property));
@@ -857,12 +887,12 @@
     toJSON: function() {
       var result = {
         _id: this._id,
-        _rev: this._rev,
         type: '/type/type',
         name: this.name,
         properties: {}
       };
       
+      if (this._rev) result._rev = this._rev;
       if (this.meta && _.keys(this.meta).length > 0) result.meta = this.meta;
       if (this.indexes && _.keys(this.indexes).length > 0) result.indexes = this.indexes;
       
@@ -909,35 +939,6 @@
       
       // Memoize raw data for the build process
       if (data) this.data = data;
-      
-      // Bind function to the set event in order to keep property value links updated
-      this.bind('set', function(key, values, prevValues) {
-        var p = this.properties().get(key);
-        
-        if (p.isObjectType()) {
-          // Unregister prev values
-          _.each(prevValues, function(value) {
-            p.unregisterValue(value, that.g.get(value),that);
-          });
-          
-          // Register new values
-          _.each(values, function(value) {
-            p.registerValue(value, that.g.get(value), that);
-          });
-        } else { // Value type property values
-          // Unregister prev values
-          _.each(prevValues, function(value) {
-            p.unregisterValue(value, value, that);
-          });
-          
-          // Register new values
-          _.each(values, function(value) {
-            if (typeof value !== 'object') {
-              p.registerValue(value, value, that);
-            }
-          });
-        }
-      });
     },
     
     // Convenience function for accessing all related types
@@ -963,10 +964,11 @@
     
     // After all nodes are recognized the object can be built
     build: function() {
+      var that = this;
       var types = _.isArray(this.data.type) ? this.data.type : [this.data.type];
       
-      if (!this.data) throw 'object has no data, and cannot be built';
-      var that = this;
+      if (!this.data) throw new Error('Object has no data, and cannot be built');
+      
       
       // Pull off _id and _rev properties
       delete this.data._id;
@@ -986,9 +988,9 @@
             var values = _.isArray(value) ? value : [value];
 
             // Initialize Property
-            that.replace(property.key, new Data.Hash());
-            property.isObjectType() ? that.setObjectProperty(property, values)
-                                    : that.setValueProperty(property, values);
+            var vals = property.registerValues(values, that);
+            // Replace the old ones
+            that.replace(property.key, vals);
           }
           
           if (that.data[key] !== undefined) {
@@ -1054,70 +1056,6 @@
       return this.errors.length === 0;
     },
     
-    // Helper to create an object reference
-    newReference: function(id) {
-      var obj = this.g.get('objects', id);
-      if (!obj) {
-        // Register the object (even if not yet loaded)
-        obj = new Data.Object(this.g, id);
-        this.g.set('objects', id, obj);
-      }
-      // Register referenced `Data.Objects` on the object
-      obj.referencedObjects.set(this.key, this);
-      return obj;
-    },
-    
-    // Set an object type property
-    setObjectProperty: function(p, values)  {
-      var that = this;
-      
-      that.replace(p.key, new Data.Hash());
-      _.each(values, function(v, index) {
-        if (!v) return; // skip
-        
-        if (typeof v === 'object') {
-          v = that.g.set(null, v)._id;
-        }
-        
-        var obj = that.newReference(v);
-        var prevKeys = that.all(p.key).keys();
-        that.set(p.key, obj.key, obj);
-        
-        that.trigger('set', p.key, that.all(p.key).keys(), prevKeys);
-        
-        // p.registerValue(obj.key, obj);
-        // Register values on property - now automatically triggerd by set events
-        // p.set('values', obj.key, obj);
-      });
-    },
-    
-    // Set a value type property
-    setValueProperty: function(p, values) {
-      var that = this;
-
-      // Reset property
-      that.replace(p.key, new Data.Hash());
-      _.each(values, function(v, index) {
-        var val = p.get('values', v);
-        
-        // TODO: Move all val related code to registerValue()
-        // Check if the value is already registered
-        // on this property
-        if (!val) {
-          val = new Data.Node({value: v});
-          val.referencedObjects = new Data.Hash();
-        }
-        
-        var prevKeys = that.all(p.key).keys();
-        that.set(p.key, v, val);
-        that.trigger('set', p.key, that.all(p.key).keys(), prevKeys);
-        
-        // Register associated `Data.Objects` on the value        
-        // val.referencedObjects.set(that.key, that);
-        // that.set(p.key, v, val);
-        // p.set('values', v, val);
-      });
-    },
     
     // There are four different access scenarios for getting a certain property
     // 
@@ -1156,18 +1094,12 @@
       
       if (arguments.length === 1) {
         _.each(properties, function(value, key) {
-          // TODO: improve this
-          var prevValues = that.all('key') ? that.all(key).keys() : [];
           var p = that.properties().get(key);
           if (!p) return; // Property not found on type
           
-          if (p.isObjectType()) {
-            that.setObjectProperty(p, _.isArray(value) ? value : [value]);
-          } else {
-            that.setValueProperty(p, _.isArray(value) ? value : [value]);
-          }
+          // Setup values
+          that.replace(p.key, p.registerValues(_.isArray(value) ? value : [value], that));
           
-          that.trigger('set', key, that.all(key).keys(), prevValues);
           that.dirty = true;
           that.g.trigger('dirty');
         });
@@ -1292,8 +1224,7 @@
           // Check for type existence
           _.each(types, function(type) {
             if (!that.get('objects', type)) {
-              console.log("Type '"+type+"' not found for "+key+"...");
-              throw "Type '"+type+"' not found for "+key+"...";
+              throw new Error("Type '"+type+"' not found for "+key+"...");
             }
             that.get('objects', type).set('objects', key, res);
           });
@@ -1322,7 +1253,9 @@
       if (arguments.length === 2) {
         id = id ? id : Data.uuid('/' + _.last(_.last(types).split('/')) + '/');
         
-        var res = new Data.Object(that, id, properties, true);
+        // Recycle existing object if there is one
+        var res = that.get(id) ? that.get(id) : new Data.Object(that, id, properties, true);
+        res.data = properties;
         res.dirty = true;
         res.build();
         
@@ -1362,8 +1295,7 @@
     },
     
     // Fetches a new subgraph from the adapter and either merges the new nodes
-    // into the current set of nodes or replaces the graph completely with
-    // the query result
+    // into the current set of nodes
     fetch: function(qry, options, callback) {
       var that = this,
           nodes = new Data.Hash(); // collects arrived nodes
