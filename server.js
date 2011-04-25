@@ -35,7 +35,6 @@ exports.initialize = function(server, graph, config) {
     }, req.session);
   });
   
-  
   // NowJS interface
   // --------------
   

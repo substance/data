@@ -799,7 +799,7 @@
               if (!val) {
                 // Register the object (even if not yet loaded)
                 val = new Data.Object(that.type.g, v);
-                that.type.g.set('objects', v, obj);
+                that.type.g.set('objects', v, val);
               }
             } else {
               val = new Data.Node({value: v});
