@@ -572,7 +572,7 @@ test("Set object properties of existing nodes", function() {
     entities: ['/location/toronto'],
     authors: 'Michael Aufreiter'
   });
-    
+
   ok(protovis.get('entities').first() === graph.get('/location/toronto'));
   ok(protovis.type.get('properties', 'entities').get('values', '/location/toronto'));
 });
@@ -602,6 +602,12 @@ test("Proper value registration / deregistration", function() {
   });
   
   ok(values.keys().length === valueCount);
+  
+  // Proper value unregistration of nodes being deleted
+  graph.del("/doc/unveil_introduction");
+  var type = graph.get('/type/document');
+  ok(!type.properties().get("title").all('values').get("Unveil.js Introduction"));
+  ok(!type.properties().get("authors").all('values').get("Lindsay Kay"));
 });
 
 
@@ -643,8 +649,6 @@ test("grouping", function() {
     'area': { aggregator: Data.Aggregators.SUM, name: "Total Area" },
     'population': { aggregator: Data.Aggregators.AVG, name: "Average Population" }
   });
-  
-  console.log(languages.items().get('German Language').get('population'));
     
   ok(languages.items().get('German Language').get('population') === 45209450);
   ok(languages.items().get('English Language').get('area') === 10071495);
@@ -706,63 +710,4 @@ test("allow aggregation of property values", function() {
   var population = c.properties().get("population");
   ok(population.aggregate(Data.Aggregators.MIN) === 8356700);
   ok(population.aggregate(Data.Aggregators.MAX) === 306108000);
-});
-
-
-// Data.Criterion 
-//-------------
-
-// DEPRECATED. Use graph.find() instead.
-
-module('Criterion');
-
-var graph;    
-module("Data.Graph", {
-  setup: function() {
-    graph = new Data.Graph(documents_fixture);
-  },
-  teardown: function() {
-    delete graph;
-  }
-});
-
-test('Data.Criterion.operators.CONTAINS', function() {
-  // For value type properties
-  var matchedItems = Data.Criterion.operators.CONTAINS(graph, '/type/document', 'page_count', 8);
-  
-  ok(matchedItems.length === 2);
-  ok(matchedItems.at(0).value('page_count') === 8);
-  ok(matchedItems.at(1).value('page_count') === 8);
-  
-  var matchedItems = Data.Criterion.operators.CONTAINS(graph, '/type/document', 'title', 'Unveil.js');
-  ok(matchedItems.length === 1);
-  ok(matchedItems.at(0).value('title') === 'Unveil.js');
-  
-  // For object type properties
-  var matchedItems = Data.Criterion.operators.CONTAINS(graph, '/type/document', 'entities', '/location/new_york');
-  ok(matchedItems.length === 1);
-  ok(matchedItems.at(0).get('entities', '/location/new_york') instanceof Data.Object);
-});
-
-test('Data.Criterion.operators.GT', function() {
-  // For value type properties
-  var matchedItems = Data.Criterion.operators.GT(graph, '/type/document', 'page_count', 10);  
-  ok(matchedItems.length === 1);
-  ok(matchedItems.at(0).value('page_count') > 10);  
-});
-
-test("nested criteria", function() {
-  // the root criterion takes it all
-  var criteria = new Data.Criterion('AND', '/type/document'),
-      filteredGraph;
-  
-  var titleprop = graph.get('/type/document').get('properties', 'title');
-  
-  criteria.add(new Data.Criterion('GT', '/type/document', 'page_count', 5));
-  criteria.add(new Data.Criterion('OR', '/type/document')
-    .add(new Data.Criterion('CONTAINS', '/type/document', 'title', 'Unveil.js'))
-    .add(new Data.Criterion('CONTAINS', '/type/document', 'title', 'Processing.js')));
-  
-  filteredGraph = graph.filter(criteria);
-  ok(filteredGraph.find({"type|=": "/type/document"}).length === 2);
 });
