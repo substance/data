@@ -14,8 +14,8 @@ Data.Adapters["ajax"] = function(graph, config) {
       data: JSON.stringify(graph),
       contentType: "application/json",
       dataType: "json",
-      success: function(status) {
-        callback(null, status.graph);
+      success: function(res) {
+        res.error ? callback(res.error) : callback(null, res.graph);
       },
       error: function(err) {
         callback(err);
@@ -37,11 +37,11 @@ Data.Adapters["ajax"] = function(graph, config) {
         options: JSON.stringify(options)
       },
       dataType: "jsonp",
-      success: function(graph) {
-        callback(null, graph);
+      success: function(res) {
+        res.error ? callback(res.error) : callback(null, res);
       },
       error: function(err) {
-       callback(err);
+        callback(err);
       }
     });
   };

@@ -24,14 +24,14 @@ exports.initialize = function(server, graph, config) {
         query = JSON.parse(req.query.qry),
         options = JSON.parse(req.query.options)
     graph.adapter.read(JSON.parse(req.query.qry), JSON.parse(req.query.options), function(err, g) {
-      err ? res.send(callback+"("+JSON.stringify(err)+");")
+      err ? res.send(callback+"({\"error\": "+JSON.stringify(err)+"});")
           : res.send(callback+"("+JSON.stringify(g)+");");
     }, req.session);
   });
 
   server.put('/graph/write', function(req, res) {
     graph.adapter.write(req.body, function(err, g) {
-      err ? res.send(err) : res.send(JSON.stringify({"status": "ok", "graph": g}));
+      err ? res.send(JSON.stringify({error: err})) : res.send(JSON.stringify({"status": "ok", "graph": g}));
     }, req.session);
   });
   
