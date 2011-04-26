@@ -875,7 +875,7 @@ See the testsuite for usage.</p>             </td>             <td class="code">
     <span class="p">},</span>
     </pre></div>             </td>           </tr>                               <tr id="section-124">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-124">&#182;</a>               </div>               <p>Called when the Data.Adapter is ready</p>             </td>             <td class="code">               <div class="highlight"><pre>    <span class="nx">connected</span><span class="o">:</span> <span class="kd">function</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">adapter</span><span class="p">.</span><span class="nx">realtime</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">this</span><span class="p">.</span><span class="nx">readyCallback</span> <span class="o">=</span> <span class="nx">callback</span><span class="p">;</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">connectedCallback</span> <span class="o">=</span> <span class="nx">callback</span><span class="p">;</span>
       <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
         <span class="nx">callback</span><span class="p">();</span>
       <span class="p">}</span>
