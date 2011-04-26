@@ -43,8 +43,8 @@ Filters.makeCrazy = function() {
 };
 
 
-// Setup Data.Adapter
-graph.setAdapter('couch', { 
+// Connect to a data-store
+graph.connect('couch', { 
   url: config.couchdb_url,
   filters: [
     Filters.makeCrazy()

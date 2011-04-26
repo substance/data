@@ -1153,7 +1153,7 @@
       this.merge(g, dirty);
     },
     
-    setAdapter: function(name, config) {
+    connect: function(name, config) {
       if (typeof exports !== 'undefined') {
         var Adapter = require(__dirname + '/adapters/'+name+'_adapter');
         this.adapter = new Adapter(this, config);
@@ -1165,7 +1165,7 @@
     },
     
     // Called when the Data.Adapter is ready
-    ready: function(callback) {
+    connected: function(callback) {
       if (this.adapter.realtime) {
         this.readyCallback = callback;
       } else {

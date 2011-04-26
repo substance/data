@@ -20,7 +20,7 @@ var Application = Backbone.View.extend({
 });
 
 var app;
-var graph = new Data.Graph(seed, false).setAdapter('nowjs');
+var graph = new Data.Graph(seed, false).connect('nowjs');
 
 (function() {
   $(function() {
