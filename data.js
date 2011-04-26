@@ -48,10 +48,10 @@
     queries = _.isArray(queries) ? queries : [queries];
     var matched = false;
     // Matches at least one query
-    _.each(queries, function(qry) {
+    _.each(queries, function(query) {
       if (matched) return;
       var rejected = false;
-      _.each(qry, function(value, key) {
+      _.each(query, function(value, key) {
         if (rejected) return;
         var condition;
         // Extract operator
@@ -1179,9 +1179,9 @@
     },
     
     // Watch for graph updates
-    watch: function(channel, qry, callback) {
+    watch: function(channel, query, callback) {
       this.watchers[channel] = callback;
-      this.adapter.watch(channel, qry, function(err) {});
+      this.adapter.watch(channel, query, function(err) {});
     },
     
     // Stop watching that channel
@@ -1280,32 +1280,31 @@
     },
     
     // Find objects that match a particular query
-    find: function(qry) {
+    find: function(query) {
       return this.objects().select(function(o) {
-        return Data.matches(o.toJSON(), qry);
+        return Data.matches(o.toJSON(), query);
       });
     },
     
     // Fetches a new subgraph from the adapter and either merges the new nodes
     // into the current set of nodes
-    fetch: function(qry, options, callback) {
+    fetch: function(query, options, callback) {
       var that = this,
           nodes = new Data.Hash(); // collects arrived nodes
       
-      // options are optional
+      // Options are optional
       if (typeof options === 'function' && typeof callback === 'undefined') {
         callback = options;
         options = {};
       }
       
-      this.adapter.read(qry, options, function(err, graph) {
+      this.adapter.read(query, options, function(err, graph) {
         if (graph) {          
           that.merge(graph, false);
           _.each(graph, function(node, key) {
             nodes.set(key, that.get(key));
           });
-        } // else no nodes found
-        
+        }
         err ? callback(err) : callback(null, nodes);
       });
     },
@@ -1330,14 +1329,21 @@
         if (err) {
           callback(err);
         } else {
-          // No dirty nodes after sync
-          that.dirtyNodes().each(function(n) {
-            n.dirty = false;
-          });
           that.merge(g, false);
-          // Check if there are conflicts
-          var conflictedNodes = _.select(g, function(node) { return node._conflicted });
-          if (conflictedNodes.length > 0) that.trigger('conflicted');
+          
+          // Check for rejectedNodes
+          validNodes.each(function(n, key) {
+            if (g[key]) {
+              n.dirty = false;
+              n._rejected = false;
+            } else {
+              n._rejected = true;
+            }
+          });
+          
+          if (that.conflictedNodes().length > 0) that.trigger('conflicted');
+          if (that.rejectedNodes().length > 0) that.trigger('rejected');
+          
           callback(invalidNodes.length > 0 ? 'Some invalid nodes' : null, invalidNodes);
         }
       });
@@ -1380,9 +1386,15 @@
     },
     
     // Get conflicting nodes
-    conflictingNodes: function() {
+    conflictedNodes: function() {
       return this.all('objects').select(function(obj, key) {
         return obj._conflicted;
+      });
+    },
+    
+    rejectedNodes: function() {
+      return this.all('objects').select(function(obj, key) {
+        return obj._rejected;
       });
     },
     
@@ -1447,15 +1459,15 @@
     },
     
     // Find objects that match a particular query
-    find: function(qry) {
-      return this.g.find(qry);
+    find: function(query) {
+      return this.g.find(query);
     },
     
     // Returns a filtered collection containing only items that match a certain query
-    filter: function(qry) {
+    filter: function(query) {
       return new Data.Collection({
         properties: this.properties().toJSON(),
-        items: this.find(qry).toJSON()
+        items: this.find(query).toJSON()
       });
     },
         
