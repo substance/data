@@ -1167,7 +1167,7 @@
     // Called when the Data.Adapter is ready
     connected: function(callback) {
       if (this.adapter.realtime) {
-        this.readyCallback = callback;
+        this.connectedCallback = callback;
       } else {
         callback();
       }

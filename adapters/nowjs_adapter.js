@@ -61,7 +61,7 @@ Data.Adapters["nowjs"] = function(graph, options) {
   // Delegate ready callback
   
   now.ready(function() {
-    graph.readyCallback();
+    graph.connectedCallback();
   });
   
   // Expose Public API

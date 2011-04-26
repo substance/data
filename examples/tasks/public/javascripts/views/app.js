@@ -29,7 +29,7 @@ var graph = new Data.Graph(seed, false).connect('nowjs');
     // --------------
         
     // Once the graph is ready
-    graph.ready(function() {
+    graph.connected(function() {
       
       app = new Application({el: '#container', session: session});
       app.render();
