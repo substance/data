@@ -15,3 +15,4 @@ _Yardoc
 tmp/*
 CHANGELOG
 README.bak
+node_modules
