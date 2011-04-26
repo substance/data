@@ -1274,7 +1274,8 @@
       node.dirty = true;
       // Remove registered values
       node.properties().each(function(p, key) {
-        p.unregisterValues(node.all(key), node);
+        var values = node.all(key);
+        if (values) p.unregisterValues(values, node);
       });
       this.trigger('dirty');
     },
