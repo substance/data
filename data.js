@@ -786,7 +786,8 @@
         var val;
         
         // Skip registration for object type values
-        if (that.isValueType() && typeof v === 'object') {
+        // TODO: check edge cases!
+        if (that.isValueType() && that.expectedTypes[0] === 'object') {
           val = new Data.Node({value: v});
           res.set(index, val);
           return;
@@ -831,7 +832,7 @@
     unregisterValues: function(values, obj) {
       var that = this;
       values.each(function(val, key) {
-        if (val.referencedObjects.length>1) {
+        if (val.referencedObjects && val.referencedObjects.length>1) {
           val.referencedObjects.del(obj._id);
         } else {
           that.all('values').del(key);
