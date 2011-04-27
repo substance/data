@@ -388,7 +388,7 @@
 
     // Returns all keys in current order
     keys: function () {
-      return this.keyOrder;
+      return _.clone(this.keyOrder);
     },
     
     // Convert to an ordinary JavaScript Array containing
@@ -542,7 +542,7 @@
         count += 1;
       }
     });
-    return sum / count;
+    return count === 0 ? 0 : (sum / count);
   };
 
   Data.Aggregators.COUNT = function (values) {
@@ -592,7 +592,8 @@
         if (options.name) p.name = options.name;
         gspec[type._id].properties[key] = p;
       });
-
+      
+      var groupedGraph = new Data.Graph(gspec);
       // Compute group memberships
       _.each(keys, function(key) {
         groups[key] = type.properties().get(key).all('values');
@@ -622,7 +623,7 @@
 
       function extractGroups(keyIndex, key) {
         if (keyIndex === keys.length-1) {
-          gspec[key.join('::')] = aggregate(key);
+          groupedGraph.set(key.join('::'), aggregate(key));
         } else {
           keyIndex += 1;
           groups[keys[keyIndex]].each(function(grp, grpkey) {
@@ -632,7 +633,7 @@
       }
 
       extractGroups(-1, []);
-      return new Data.Graph(gspec);
+      return groupedGraph;
     }
   };
   
@@ -780,9 +781,9 @@
     registerValues: function(values, obj) {
       var that = this;
       var res = new Data.Hash();
-      
+            
       _.each(values, function(v, index) {
-        if (!v) return; // skip
+        if (v === undefined) return; // skip
         var val;
         
         // Skip registration for object type values
@@ -818,6 +819,7 @@
           }
           val.referencedObjects.set(obj._id, obj);
         }
+        
         res.set(v, val);
       });
       
@@ -831,6 +833,7 @@
     // Unregister values from a certain object
     unregisterValues: function(values, obj) {
       var that = this;
+
       values.each(function(val, key) {
         if (val.referencedObjects && val.referencedObjects.length>1) {
           val.referencedObjects.del(obj._id);
