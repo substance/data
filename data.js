@@ -785,6 +785,13 @@
         if (!v) return; // skip
         var val;
         
+        // Skip registration for object type values
+        if (that.isValueType() && typeof v === 'object') {
+          val = new Data.Node({value: v});
+          res.set(index, val);
+          return;
+        }
+        
         // Check if we can recycle an old value of that object
         if (obj.all(that.key)) val = obj.all(that.key).get(v);
         

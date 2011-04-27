@@ -556,6 +556,17 @@ test("Set value properties of existing nodes", function() {
   ok(protovis.get('page_count') === 20);
 });
 
+test("Set value type objects", function() {
+  protovis.set({
+    info: {"foo": "bar"}
+  });
+  ok(protovis.get('info').foo === "bar");
+  protovis.set({
+    info: {"bar": "baz"}
+  });
+  ok(protovis.get('info').bar === "baz");
+});
+
 
 test("Set object properties of existing nodes", function() {
   ok(protovis.get('entities').first().get('name') === 'Stanford');

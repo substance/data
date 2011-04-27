@@ -22,6 +22,11 @@ var documents_fixture = {
         "name": "Authors",
         "unique": false,
         "type": "string"
+      },
+      "info": {
+        "name": "Info",
+        "unique": true,
+        "type": "object"
       }
     }
   },
