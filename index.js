@@ -1,1 +1,1 @@
-module.exports = require('data');
+module.exports = require('./data');
