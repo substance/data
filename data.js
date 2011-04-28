@@ -452,11 +452,14 @@
     intersect: function(hash) {
       var that = this,
           result = new Data.Hash();
-          
-      this.each(function(value, key) {
-        hash.each(function(value2, key2) {
-          if (key === key2) result.set(key, value);
-        });
+      
+      // Ensure that is the smaller one
+      if (hash.length < that.length) {
+        that = hash;
+        hash = this;
+      }
+      that.each(function(value,key) {
+        if (hash.get(key)) result.set(key, value);
       });
       return result;
     },
@@ -479,11 +482,10 @@
     
     // Computes the difference between the current *hash* and a given *hash*
     difference: function(hash) {
-      var that = this,
-          result = this.clone();
-          
-      hash.each(function(value, key) {
-        if (result.get(key)) result.del(key);
+      var that = this;
+          result = new Data.Hash();
+      this.each(function(value, key) {
+        if (!hash.get(key)) result.set(key, value);
       });
       return result;
     }
@@ -579,7 +581,7 @@
           groups = {},
           count = 0;
       
-      gspec[type._id] = {"type": "/type/type", "properties": {}};
+      gspec[type._id] = {"type": "/type/type", "properties": {}, indexes: type.indexes};
 
       // Include group keys to the output graph
       _.each(keys, function(key) {
@@ -1447,8 +1449,10 @@
   
   Data.Collection = function(spec) {
     var that = this,
-        gspec = { "/type/item": {"type": "/type/type", "properties": {}}};
+        gspec = { "/type/item": { "type": "/type/type", "properties": {}} };
         
+    if (spec) gspec["/type/item"]["indexes"] = spec.indexes || {};
+    
     // Convert to Data.Graph serialization format
     if (spec) {
       _.each(spec.properties, function(property, key) {
@@ -1503,6 +1507,11 @@
     // Convenience function for accessing items
     items: function() {
       return this.g.objects();
+    },
+    
+    // Convenience function for accessing indexes defined on the collection
+    indexes: function() {
+      return this.g.get('/type/item').indexes;
     },
     
     // Serialize
