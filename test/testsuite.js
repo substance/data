@@ -423,7 +423,7 @@ test("valid construction", function() {
 
 test("Type inspection", function() {
   documentType = graph.get('objects', '/type/document');
-  ok(documentType.all('properties').length === 4);
+  ok(documentType.all('properties').length === 5);
   ok(documentType.key === '/type/document');
   ok(documentType.name === 'Document');
 });
