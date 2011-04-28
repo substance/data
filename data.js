@@ -606,6 +606,8 @@
           members = index === 0 ? members.union(objects) : members.intersect(objects);
         });
         
+        if (members.length === 0) return null;
+        
         var res = {type: type._id};
         _.each(gspec[type._id].properties, function(p, pk) {
           if (_.include(keys, pk)) {
@@ -623,7 +625,10 @@
 
       function extractGroups(keyIndex, key) {
         if (keyIndex === keys.length-1) {
-          groupedGraph.set(key.join('::'), aggregate(key));
+          var aggregatedItem = aggregate(key);
+          if (aggregatedItem) {
+            groupedGraph.set(key.join('::'), aggregatedItem);
+          }
         } else {
           keyIndex += 1;
           groups[keys[keyIndex]].each(function(grp, grpkey) {
