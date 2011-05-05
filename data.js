@@ -331,7 +331,7 @@
     
     // Get value at given *key*
     get: function (key) {
-      return this.data[key];
+      return this.data.hasOwnProperty(key) ? this.data[key] : undefined;
     },
     
     // Get value at given *index*
