@@ -254,6 +254,17 @@ test("Data.Hash#union", function() {
 });
 
 
+test("Only consider own properties", function() {
+  var hsh = new Data.Hash();
+  
+  ok(hsh.get('toString') === undefined);
+  ok(hsh.get('toLocaleString') === undefined);
+  ok(hsh.get('watch') === undefined);
+  ok(hsh.get('hasOwnProperty') === undefined);
+});
+
+
+
 test("Data.Hash Events", function() {
   persons = new Data.Hash();
   persons.bind('set', function(key) { ok(key); });
