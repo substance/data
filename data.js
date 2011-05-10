@@ -470,12 +470,10 @@
           result = new Data.Hash();
           
       this.each(function(value, key) {
-        if (!result.get(key))
-          result.set(key, value);
+        result.set(key, value);
       });
       hash.each(function(value, key) {
-        if (!result.get(key))
-          result.set(key, value);
+        if (!result.get(key)) result.set(key, value);
       });
       return result;
     },
