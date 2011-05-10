@@ -590,24 +590,27 @@
       
       // Include additional properties
       _.each(properties, function(options, key) {
-        var p = type.properties().get(key).toJSON();
+        var p = type.properties().get(options.property || key).toJSON();
         if (options.name) p.name = options.name;
         gspec[type._id].properties[key] = p;
       });
       
       var groupedGraph = new Data.Graph(gspec);
-      // Compute group memberships
+      
       _.each(keys, function(key) {
         groups[key] = type.properties().get(key).all('values');
       });
 
       function aggregate(key) {
         var members = new Data.Hash();
+
         _.each(keys, function(k, index) {
           var objects = groups[keys[index]].get(key[index]).referencedObjects;
           members = index === 0 ? members.union(objects) : members.intersect(objects);
         });
         
+        // Empty group key
+        if (key.length === 0) members = g.objects();
         if (members.length === 0) return null;
         
         var res = {type: type._id};
@@ -616,9 +619,9 @@
             res[pk] = key[_.indexOf(keys, pk)];
           } else {
             var numbers = members.map(function(obj) {
-              return obj.get(pk);
+              return obj.get(properties[pk].property || pk);
             });
-            var aggregator = properties[pk].aggregator || Data.Aggregators.SUM
+            var aggregator = properties[pk].aggregator || Data.Aggregators.SUM;
             res[pk] = aggregator(numbers);
           }
         });
@@ -628,9 +631,7 @@
       function extractGroups(keyIndex, key) {
         if (keyIndex === keys.length-1) {
           var aggregatedItem = aggregate(key);
-          if (aggregatedItem) {
-            groupedGraph.set(key.join('::'), aggregatedItem);
-          }
+          if (aggregatedItem) groupedGraph.set(key.join('::'), aggregatedItem);
         } else {
           keyIndex += 1;
           groups[keys[keyIndex]].each(function(grp, grpkey) {
@@ -638,7 +639,6 @@
           });
         }
       }
-
       extractGroups(-1, []);
       return groupedGraph;
     }

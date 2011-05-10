@@ -551,7 +551,6 @@ test("Set new nodes on the graph", function() {
 });
 
 
-
 test("Set value properties of existing nodes", function() {
   // Value properties
   protovis.set({
@@ -665,15 +664,24 @@ test("get values of a property", function() {
   ok(population.all('values').length === 6);
 });
 
-
 test("grouping", function() {
   var languages = c.group(["official_language"], {
-    'area': { aggregator: Data.Aggregators.SUM, name: "Total Area" },
+    'area_total': { aggregator: Data.Aggregators.SUM, name: "Total Area", property: "area" },
+    'area_avg': {aggregator: Data.Aggregators.AVG, name: "Average Area", property: "area" },
     'population': { aggregator: Data.Aggregators.AVG, name: "Average Population" }
   });
-    
+  
   ok(languages.items().get('German Language').get('population') === 45209450);
-  ok(languages.items().get('English Language').get('area') === 10071495);
+  ok(languages.items().get('English Language').get('area_total') === 10071495);
+  
+  // Deal with empty group key
+  var onegroup = c.group([], {
+    'area_total': { aggregator: Data.Aggregators.SUM, name: "Total Area", property: "area" },
+    'area_avg': {aggregator: Data.Aggregators.AVG, name: "Average Area", property: "area" },
+    'population': { aggregator: Data.Aggregators.MIN, name: "Smallest Population" }
+  });
+  
+  ok(onegroup.items().first().get('population') === 8356700)
 });
 
 test("Collection#find", function() {
