@@ -568,7 +568,6 @@
     return Math.floor(attribute.getMonth() / 3) + 1;
   };
   
-  
   // Data.Transformers
   // --------------
   
@@ -891,6 +890,7 @@
       this.meta = type.meta || {};
       this.indexes = type.indexes;
       
+      that.replace('properties', new Data.Hash);
       // Extract properties
       _.each(type.properties, function(property, key) {
         that.set('properties', key, new Data.Property(that, key, property));
@@ -1001,7 +1001,7 @@
       
       // Initialize primary type (backward compatibility)
       this.type = this.g.get('objects', _.last(types));
-      
+            
       // Initialize types
       _.each(types, function(type) {
         that._types.set(type, that.g.get('objects', type));
@@ -1450,7 +1450,7 @@
         gspec = { "/type/item": { "type": "/type/type", "properties": {}} };
         
     if (spec) gspec["/type/item"]["indexes"] = spec.indexes || {};
-    
+
     // Convert to Data.Graph serialization format
     if (spec) {
       _.each(spec.properties, function(property, key) {
