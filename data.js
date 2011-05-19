@@ -1249,13 +1249,16 @@
             that.get('objects', type).set('objects', key, res);
           });
           that.get(key).dirty = dirty;
+          if (!node._id) node._id = key;
           return true;
         }
         return false;
       });
-      // Now that all objects are registered we can build them
-      this.objects().each(function(r, key, index) {
-        if (r.data) r.build();
+      
+      // Now that all new objects are registered we can build them
+      _.each(objects, function(o) {
+        var obj = that.get(o._id);
+        if (obj.data) obj.build();
       });
       return this;
     },
