@@ -151,6 +151,17 @@ test("Data.Hash#rest", function() {
   ok(rest.length === 2);
 });
 
+
+test("Data.Hash#range", function() {
+  items.set("ch", "Switzerland");
+  items.set("uk", "United Kingdom");
+  
+  var range = items.range(0,1);
+  ok(range.length == 2);
+  ok(range.at(0) === "Austria");
+  ok(range.at(1) === "Germany");
+});
+
 test("Data.Hash#sort", function() {
   items.set("ch", "Switzerland");
 

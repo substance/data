@@ -345,12 +345,19 @@
       return this.at(0);
     },
     
+    // Returns a sub-range of the current *hash*
+    range: function(start, end) {
+      var result = new Data.Hash();
+      for(var i=start; i<=end; i++) {
+        result.set(this.key(i), this.at(i));
+      }
+      return result;
+    },
+    
     // Returns the rest of the elements. 
     // Pass an index to return the items from that index onward.
     rest: function(index) {
-      return this.select(function(value, key, i) {
-        return i >= index;
-      });
+      return this.range(index, this.length-1);
     },
     
     // Get last item
