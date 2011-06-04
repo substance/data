@@ -3,6 +3,10 @@ var Data = require('../data');
 var _ = require('underscore');
 var async = require('async');
 
+
+// Apply Filter Stack
+// --------
+
 var applyFilters = function(filters, nodes, mode, ctx, callback) {
   var that = this;
   var filteredNodes = {};
@@ -145,7 +149,7 @@ var CouchAdapter = function(graph, config, callback) {
   // Takes a query object and reads all matching nodes
   
   self.read = function(queries, options, callback, ctx) {
-    // Collects the subgraph that will be returned as a result
+    // Collects a subgraph that will be returned as a result
     var result = {};
     queries = _.isArray(queries) ? queries : [queries];
     
@@ -155,14 +159,54 @@ var CouchAdapter = function(graph, config, callback) {
     function performQuery(qry, callback) {
       console.log('Performing query:');
       console.log(qry);
-      
       if (!qry.type) return callback('ERROR: No type attribute specified with query.');
       
       var typeName = qry.type.split('/')[2];
       delete qry.type;
+      var includes = qry.include;
+      delete qry.include;
       var properties = _.keys(qry);
       
-      // Lookup view
+      
+      // Resolve references based on specified query paths
+      // --------
+      
+      function resolveReferences(rows, callback) {
+        if (includes.length === 0) return callback();
+        async.forEach(rows, function(row, callback) {
+          async.forEach(includes, function(property, callback) {
+            fetchAssociated(row.value, property.replace('*', ''), property.indexOf('*') >= 0, callback);
+          }, callback);
+        }, callback);
+      }
+      
+      
+      // Fetch associated nodes for a certain property
+      // --------
+      
+      function fetchAssociated(node, property, recursive, callback) {
+        if (!node[property]) return callback(); // Done if null/undefined
+        
+        var references = _.isArray(node[property]) ? node[property] : [node[property]];
+        
+        async.forEach(references, function(nodeId, callback) {
+          if (result[nodeId]) callback(); // Skip if already in the result
+          db.get(nodeId, function(err, node) {
+            if (err) return callback(err);
+            result[node._id] = node;
+            if (!recursive) return callback();
+            fetchAssociated(node, property, true, function(err) {
+              callback(err);
+            });
+          });
+        }, function(err) {
+          callback(err);
+        });
+      }
+      
+      // Query Views
+      // --------
+      
       db.get('_design/'+typeName, function(err, node) {
         // Pick the right index based on query parameters
         var viewName = null;
@@ -171,7 +215,7 @@ var CouchAdapter = function(graph, config, callback) {
         });
         
         if (viewName) {
-          // Use view to lookup for matching objects efficiently
+          // Use view to lookup matching objects efficiently
           var key = [];
           _.each(node.views[viewName].properties, function(p) {
             key.push(qry[p]);
@@ -182,7 +226,7 @@ var CouchAdapter = function(graph, config, callback) {
             _.each(res.rows, function(row) {
               result[row.value._id] = row.value;
             });
-            callback();
+            resolveReferences(res.rows, callback);
           });
         } else { // Fetch all objects of this type and check manually
           console.log('WARNING: No index could be found for this query:');
@@ -193,7 +237,7 @@ var CouchAdapter = function(graph, config, callback) {
             _.each(res.rows, function(row) {
               if (Data.matches(row.value, qry)) result[row.value._id] = row.value;
             });
-            callback();
+            resolveReferences(res.rows, callback);
           });
         }
       });
