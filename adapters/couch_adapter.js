@@ -44,7 +44,7 @@ var CouchAdapter = function(graph, config, callback) {
   // Setup index views for type nodes
   // --------
   
-  function setupIndexes(node, callback) {
+  function setupIndexes(node, callback) {
     // Extract local typename
     var typename = node._id.split('/')[2];
     views = {
@@ -163,7 +163,7 @@ var CouchAdapter = function(graph, config, callback) {
       
       var typeName = qry.type.split('/')[2];
       delete qry.type;
-      var includes = qry.include;
+      var includes = qry._include;
       delete qry.include;
       var properties = _.keys(qry);
       
@@ -172,7 +172,7 @@ var CouchAdapter = function(graph, config, callback) {
       // --------
       
       function resolveReferences(rows, callback) {
-        if (includes.length === 0) return callback();
+        if (!includes || includes.length === 0) return callback();
         async.forEach(rows, function(row, callback) {
           async.forEach(includes, function(property, callback) {
             fetchAssociated(row.value, property.replace('*', ''), property.indexOf('*') >= 0, callback);
