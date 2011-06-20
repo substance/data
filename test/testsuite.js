@@ -422,7 +422,6 @@ stanford = graph.get('/location/stanford');
 newYork = graph.get('/location/new_york');
 
 
-
 module("Data.Graph", {
   setup: function() {
     // graph = new Data.Graph(documents_fixture);
@@ -548,8 +547,8 @@ test("Value identity", function() {
 
 // Set new nodes on the graph
 test("Set new nodes on the graph", function() {
-  
-  var substance = graph.set('/document/substance', {
+  var substance = graph.set({
+    "_id": "/document/substance",
     "type": "/type/document",
     "title": "Substance Introduction",
     "authors": ["Michael Aufreiter"],

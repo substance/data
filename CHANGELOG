@@ -1,0 +1,33 @@
+0.4.0
+=============
+  * Data.Graph#set now takes just one parameter, the id is specified as _id and optional
+
+0.3.1
+=============
+  * Added Data.Hash#range
+  * Fixed an issue with Data.Graph#merge
+  
+0.3.0
+=============
+  * Listen for node updates in realtime
+  * Data.Graph#find now accepts an array of queries
+  * Index queries against CouchDB
+  * Completely rewritten CouchAdapter
+  
+0.2.2
+=============
+
+  * Updated Data.Graph#fetch
+    - options are now optional
+    - returns a Data.Hash of fetched objects
+  * Added Data.Hash#difference
+  * Added Data.Hash#rest
+  * Data.Graph#merge is now chainable
+  
+0.2.1
+=============
+
+  * Added Data.Collection#find
+  * Added Data.Collection#filter
+  * Added ALL-OF operator &=
+  * ANY-OF operator now also works with unique properties
