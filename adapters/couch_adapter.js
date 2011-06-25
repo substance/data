@@ -45,7 +45,9 @@ var CouchAdapter = function(graph, config, callback) {
   // --------
   
   function setupIndexes(node, callback) {
+    
     // Extract local typename
+    
     var typename = node._id.split('/')[2];
     views = {
       "all": {
@@ -53,6 +55,7 @@ var CouchAdapter = function(graph, config, callback) {
         "map": "function(doc) { if (doc.type.indexOf('"+node._id+"')>=0) { emit([doc._id], doc); } }"
       }
     };
+    
     if (node.indexes) {
       _.each(node.indexes, function(properties, indexName) {
         var keyExpr = "["+ _.map(properties, function(p) { return "doc."+p;}).join(',')+ "]";
@@ -62,6 +65,7 @@ var CouchAdapter = function(graph, config, callback) {
         };
       });
     }
+    
     db.save({
       _id: '_design/'+typename,
       views: views
@@ -74,6 +78,7 @@ var CouchAdapter = function(graph, config, callback) {
   // --------------
 
   // Flush the database
+  
   self.flush = function(callback) {
     db.request("DELETE", db.uri.pathname, function (err) {
       db.request("PUT", db.uri.pathname, function(err) {
@@ -159,88 +164,158 @@ var CouchAdapter = function(graph, config, callback) {
     function performQuery(qry, callback) {
       console.log('Performing query:');
       console.log(qry);
-      if (!qry.type) return callback('ERROR: No type attribute specified with query.');
       
-      var typeName = qry.type.split('/')[2];
+      if (!qry.type && !qry._id) return callback('ERROR: No type or _id attribute specified with query.');
+      
+      var typeName = qry.type ? qry.type.split('/')[2] : null;
       delete qry.type;
-      var includes = qry._include;
-      delete qry.include;
+      
+      // Pull off relationship definitions (in case of eager loading relationships)
+      var relationships = {};
+      _.each(qry, function(val, property) {
+        if (typeof val === 'object' && !_.isArray(val)) {
+          relationships[property] = val;
+          delete qry[property];
+        }
+      });
+      
+      // Just the properties
       var properties = _.keys(qry);
+
+      // Holds the current traversal path in a nested query
+      var currentPath = [];
       
-      
-      // Resolve references based on specified query paths
-      // --------
-      
-      function resolveReferences(rows, callback) {
-        if (!includes || includes.length === 0) return callback();
-        async.forEach(rows, function(row, callback) {
-          async.forEach(includes, function(property, callback) {
-            fetchAssociated(row.value, property.replace('*', ''), property.indexOf('*') >= 0, callback);
-          }, callback);
-        }, callback);
+      // Depending on the current working path, reveal relationships to be
+      // traversed for the node currently processed
+      function currentRelationships(currentPath) {
+        if (currentPath.length === 0) return relationships;
+        var path = _.clone(currentPath);
+        var res = relationships;
+        var key;
+        while (key = path.splice(0,1)[0]) {
+          res = res[key];
+        }
+        delete res._recursive; // Ignore directives
+        return res;
       }
-      
       
       // Fetch associated nodes for a certain property
       // --------
       
-      function fetchAssociated(node, property, recursive, callback) {
+      function fetchAssociatedProperty(node, property, recursive, callback) {
         if (!node[property]) return callback(); // Done if null/undefined
+        
+        // Update currentPath to be the current property traversed
+        currentPath.push(property);
         
         var references = _.isArray(node[property]) ? node[property] : [node[property]];
         
+        var nodes = {};
         async.forEach(references, function(nodeId, callback) {
           if (result[nodeId]) callback(); // Skip if already in the result
           db.get(nodeId, function(err, node) {
             if (err) return callback(err);
+            if (!node) return callback(); // Ignore deleted nodes
             result[node._id] = node;
-            if (!recursive) return callback();
-            fetchAssociated(node, property, true, function(err) {
-              callback(err);
+            nodes[node._id] = node;
+            fetchAssociated(node, callback);
+          });
+        }, function(err) {
+          // Once ready remove that property from the currentPath
+          currentPath.pop();
+          // And dig deeper in a recursive scenario
+          if (recursive) {
+            async.forEachSeries(Object.keys(nodes), function(nodeId, callback) {
+              fetchAssociatedProperty(result[nodeId], property, true, callback);
+            }, callback);
+          } else {
+            callback(err);
+          }
+        });
+      }
+      
+      function fetchAssociated(node, callback) {
+        var properties = currentRelationships(currentPath);
+        // Based on the current relationships fetch associated properties
+        async.forEachSeries(Object.keys(properties), function(property, callback) {
+          fetchAssociatedProperty(node, property, properties[property]._recursive, callback);
+        }, callback);
+      }
+      
+      // Resolve references based on specified query paths
+      // --------
+      
+      function resolveReferences(nodes, callback) {
+        // TODO: Can we do this in parallel?
+        async.forEachSeries(Object.keys(nodes), function(node, callback) {
+          fetchAssociated(nodes[node], callback);
+        }, callback);
+      }
+      
+      
+      // Typed Query based on CouchDB Views
+      // --------
+      
+      function executeTypedQuery(callback) {
+
+        db.get('_design/'+typeName, function(err, node) {
+          // Pick the right index based on query parameters
+          var viewName = null;
+          _.each(node.views, function(view, key) {
+            if (view.properties.length == properties.length && _.intersect(view.properties, properties).length === view.properties.length) viewName = key;
+          });
+
+          if (viewName) {
+            // Use view to lookup matching objects efficiently
+            var key = [];
+            _.each(node.views[viewName].properties, function(p) {
+              key.push(qry[p]);
             });
+
+            db.view(typeName+'/'+viewName, {key: key}, function(err, res) {
+              if (err) callback(err);
+              _.each(res.rows, function(row) {
+                result[row.value._id] = row.value;
+              });
+              callback();
+            });
+          } else { // Fetch all objects of this type and check manually
+            console.log('WARNING: No index could be found for this query:');
+            console.log(qry);
+            qry["type|="] = "/type/"+typeName;
+            db.view(typeName+'/all', function(err, res) {
+              if (err) return callback(err);
+              _.each(res.rows, function(row) {
+                if (Data.matches(row.value, qry)) result[row.value._id] = row.value;
+              });
+              callback();
+            });
+          }
+        });
+      }
+      
+      // Untyped Query based on ids
+      // --------
+      
+      function executeUntypedQuery(callback) {
+        var references = _.isArray(qry._id) ? qry._id : [qry._id];
+        async.forEach(references, function(nodeId, callback) {
+          if (result[nodeId]) callback(); // Skip if already included in the result
+          db.get(nodeId, function(err, node) {
+            if (err) return callback(err);
+            if (!node) return callback(); // Ignore deleted nodes
+            result[node._id] = node;
+            callback();
           });
         }, function(err) {
           callback(err);
         });
       }
       
-      // Query Views
-      // --------
+      // Execute query either typed (by id) or untyped (using a CouchDB View)
+      qry._id ? executeUntypedQuery(function() { resolveReferences(result, callback); })
+              : executeTypedQuery(function() { resolveReferences(result, callback); });
       
-      db.get('_design/'+typeName, function(err, node) {
-        // Pick the right index based on query parameters
-        var viewName = null;
-        _.each(node.views, function(view, key) {
-          if (view.properties.length == properties.length && _.intersect(view.properties, properties).length == view.properties.length) viewName = key;
-        });
-        
-        if (viewName) {
-          // Use view to lookup matching objects efficiently
-          var key = [];
-          _.each(node.views[viewName].properties, function(p) {
-            key.push(qry[p]);
-          });
-          
-          db.view(typeName+'/'+viewName, {key: key}, function(err, res) {
-            if (err) callback(err);
-            _.each(res.rows, function(row) {
-              result[row.value._id] = row.value;
-            });
-            resolveReferences(res.rows, callback);
-          });
-        } else { // Fetch all objects of this type and check manually
-          console.log('WARNING: No index could be found for this query:');
-          console.log(qry);
-          qry["type|="] = "/type/"+typeName;
-          db.view(typeName+'/all', function(err, res) {
-            if (err) return callback(err);
-            _.each(res.rows, function(row) {
-              if (Data.matches(row.value, qry)) result[row.value._id] = row.value;
-            });
-            resolveReferences(res.rows, callback);
-          });
-        }
-      });
     }
     
     // Perform queries
@@ -251,6 +326,7 @@ var CouchAdapter = function(graph, config, callback) {
       });
     });
   };
+  
   
   self.db = db;
   
