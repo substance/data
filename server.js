@@ -22,7 +22,8 @@ exports.initialize = function(server, graph, config) {
   server.get('/graph/read', function(req, res) {
     var callback = req.query.callback,
         query = JSON.parse(req.query.qry),
-        options = JSON.parse(req.query.options)
+        options = JSON.parse(req.query.options);
+        
     graph.adapter.read(JSON.parse(req.query.qry), JSON.parse(req.query.options), function(err, g) {
       err ? res.send(callback+"({\"error\": "+JSON.stringify(err)+"});")
           : res.send(callback+"("+JSON.stringify(g)+");");
