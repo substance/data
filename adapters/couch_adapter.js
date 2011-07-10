@@ -211,7 +211,7 @@ var CouchAdapter = function(graph, config, callback) {
         var references = _.isArray(node[property]) ? node[property] : [node[property]];
         
         var nodes = {};
-        async.forEach(references, function(nodeId, callback) {
+        async.forEachSeries(references, function(nodeId, callback) {
           if (result[nodeId]) callback(); // Skip if already in the result
           db.get(nodeId, function(err, node) {
             if (err) return callback(err);
