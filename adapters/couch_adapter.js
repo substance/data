@@ -212,7 +212,7 @@ var CouchAdapter = function(graph, config, callback) {
         
         var nodes = {};
         async.forEachSeries(references, function(nodeId, callback) {
-          if (result[nodeId]) callback(); // Skip if already in the result
+          if (result[nodeId]) return callback(); // Skip if already in the result
           db.get(nodeId, function(err, node) {
             if (err) return callback(err);
             if (!node) return callback(); // Ignore deleted nodes
