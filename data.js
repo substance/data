@@ -1352,36 +1352,35 @@
           nodes = that.dirtyNodes();
       
       var validNodes = new Data.Hash();
-      var invalidNodes = nodes.select(function(node, key) {
+      nodes.select(function(node, key) {
         if (!node.validate || (node.validate && node.validate())) {
           validNodes.set(key, node);
-          return false;
-        } else {
-          return true;
         }
       });
       
       this.adapter.write(validNodes.toJSON(), function(err, g) {
-        if (err) {
-          callback(err);
-        } else {
-          that.merge(g, false);
-          
-          // Check for rejectedNodes
-          validNodes.each(function(n, key) {
-            if (g[key]) {
-              n.dirty = false;
-              n._rejected = false;
-            } else {
-              n._rejected = true;
-            }
-          });
-          
-          if (that.conflictedNodes().length > 0) that.trigger('conflicted');
-          if (that.rejectedNodes().length > 0) that.trigger('rejected');
-          
-          callback(invalidNodes.length > 0 ? 'Some invalid nodes' : null, invalidNodes);
-        }
+        if (err) return callback(err);
+
+        that.merge(g, false);
+        
+        // Check for rejectedNodes / conflictedNodes
+        validNodes.each(function(n, key) {
+          if (g[key]) {
+            n.dirty = false;
+            n._rejected = false;
+          } else {
+            n._rejected = true;
+          }
+        });
+        
+        if (that.invalidNodes().length > 0) that.trigger('invalid');
+        if (that.conflictedNodes().length > 0) that.trigger('conflicted');
+        if (that.rejectedNodes().length > 0) that.trigger('rejected');
+        
+        var unsavedNodes = that.invalidNodes().union(that.conflictedNodes())
+                           .union(that.rejectedNodes()).length;
+        
+        callback(unsavedNodes > 0 ? unsavedNodes+' unsaved nodes' : null);
       });
     },
     
