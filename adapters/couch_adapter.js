@@ -44,10 +44,9 @@ var CouchAdapter = function(graph, config, callback) {
   // Setup index views for type nodes
   // --------
   
-  function setupIndexes(node, callback) {
+  function setupType(node, callback) {
     
     // Extract local typename
-    
     var typename = node._id.split('/')[2];
     views = {
       "all": {
@@ -55,6 +54,15 @@ var CouchAdapter = function(graph, config, callback) {
         "map": "function(doc) { if (doc.type.indexOf('"+node._id+"')>=0) { emit([doc._id], doc); } }"
       }
     };
+    
+    // Setup validation function
+    validatorFn = "function(newDoc, oldDoc, userCtx) {\n";
+    validatorFn += "if (newDoc.type.indexOf('"+node._id+"')>=0) {\n";
+    _.each(node.properties, function(property, key) {
+      if (property.required) validatorFn += "if (!newDoc['"+key+"']) throw({forbidden : '"+key+" is missing'});\n";
+      if (property.validator) validatorFn += "if (!new RegExp('"+property.validator+"').test(newDoc."+key+")) throw({forbidden: '"+key+" is invalid'});"
+    });
+    validatorFn += "}}";
     
     if (node.indexes) {
       _.each(node.indexes, function(properties, indexName) {
@@ -68,7 +76,8 @@ var CouchAdapter = function(graph, config, callback) {
     
     db.save({
       _id: '_design/'+typename,
-      views: views
+      views: views,
+      validate_doc_update: validatorFn
     }, {force: true}, function (err, doc) {
       err ? callback(err) : callback();
     });
@@ -126,7 +135,7 @@ var CouchAdapter = function(graph, config, callback) {
         } else {
           // If we've got a type node, setup index views
           if (newDoc.type == "/type/type") {
-            setupIndexes(newDoc, function(err) {
+            setupType(newDoc, function(err) {
               if (err) { console.log('Error during index creation:'); console.log(err); };
               result[nodeId] = newDoc;
               callback();            
@@ -146,7 +155,6 @@ var CouchAdapter = function(graph, config, callback) {
       });
     });
   };
-  
   
   // read
   // --------------
