@@ -1,0 +1,19 @@
+{
+  "/type/artist": {
+    "type": "/type/type",
+    "properties": {
+      "name": {
+        "name": "Artist Name",
+        "unique": true,
+        "type": "string",
+        "required": true,
+        "validator": "^[a-zA-Z_0-9]{1}[a-zA-Z_0-9- ]{2,40}$"
+      },
+      "influencees": {
+        "name": "Influencees",
+        "unique": false,
+        "type": "/type/artist"
+      }
+    }
+  }
+}
