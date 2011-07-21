@@ -1228,7 +1228,7 @@
         if (node.type === '/type/type' || node.type === 'type') {
           if (!that.get('nodes', key)) {
             that.set('nodes', key, new Data.Type(that, key, node));
-            that.get(key)._dirty = dirty;
+            that.get(key)._dirty = node._dirty ? node._dirty : dirty;
           }
           return true;
         }
@@ -1254,7 +1254,8 @@
             }
             that.get('nodes', type).set('nodes', key, res);
           });
-          that.get(key)._dirty = dirty;
+          that.get(key)._dirty = node._dirty ? node._dirty : dirty;
+          
           if (!node._id) node._id = key;
           return true;
         }
@@ -1320,6 +1321,23 @@
       });
     },
     
+    // Memoize a snapshot of the current graph
+    snapshot: function() {
+      localStorage.setItem("graph", JSON.stringify(this.toJSON(true)));
+    },
+    
+    enableLocalStorage: function() {
+      this.localStorage = true;
+      return this;
+    },
+    
+    // Restore latest snapshot from localStorage
+    restore: function() {
+      var snapshot = JSON.parse(localStorage.getItem("graph"));
+      // console.log(localStorage.getItem("graph"));
+      if (snapshot) this.merge(snapshot);
+    },
+    
     // Fetches a new subgraph from the adapter and either merges the new nodes
     // into the current set of nodes
     fetch: function(query, options, callback) {
@@ -1358,9 +1376,8 @@
       
       this.adapter.write(validNodes.toJSON(), function(err, g) {
         if (err) return callback(err);
-
         that.merge(g, false);
-        
+
         // Check for rejectedNodes / conflictedNodes
         validNodes.each(function(n, key) {
           if (g[key]) {
@@ -1370,6 +1387,9 @@
             n._rejected = true;
           }
         });
+        
+        // Update localStorage
+        if (this.localStorage) that.snapshot();
         
         if (that.invalidNodes().length > 0) that.trigger('invalid');
         if (that.conflictedNodes().length > 0) that.trigger('conflicted');
@@ -1433,7 +1453,7 @@
     },
     
     // Serializes the graph to the JSON-based exchange format
-    toJSON: function() {
+    toJSON: function(extended) {
       var result = {};
       
       // Serialize object nodes
@@ -1441,6 +1461,12 @@
         // Only serialize fetched nodes
         if (obj.data || obj instanceof Data.Type) {
           result[key] = obj.toJSON();
+          if (extended) {
+            // include special properties
+            if (obj._dirty) result[key]._dirty = true;
+            if (obj._conflicted) result[key]._conclicted = true;
+            if (obj._rejected) result[key].rejected = true;
+          }
         }
       });
       
@@ -1450,7 +1476,7 @@
   
   _.extend(Data.Graph.prototype, _.Events);
   
-  
+
   // Data.Collection
   // --------------
   
