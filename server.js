@@ -97,10 +97,8 @@ exports.initialize = function(server, graph, config) {
   everyone.now.write = function(nodes, callback) {
     graph.adapter.write(nodes, function(err, g) {
       callback(err, g);
-      
       // Notify channel users
       dispatchUpdates(g);
     }, this.user);
-    callback();
   };
 };
