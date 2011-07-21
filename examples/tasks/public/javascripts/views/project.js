@@ -11,7 +11,9 @@ var Project = Backbone.View.extend({
   },
   
   loadProject: function(e) {
-    this.load($(e.currentTarget).attr('project'))
+    this.load($(e.currentTarget).attr('project'));
+    
+    
     return false;
   },
   
