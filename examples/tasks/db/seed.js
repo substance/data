@@ -7,7 +7,7 @@ var _ = require('underscore');
 var config = JSON.parse(fs.readFileSync(__dirname+ '/../config.json', 'utf-8'));
 var seed = JSON.parse(fs.readFileSync(__dirname+ '/schema.json', 'utf-8'));
 
-var graph = new Data.Graph(seed, true).connect('couch', { url: config.couchdb_url });
+var graph = new Data.Graph(seed, {dirty: true}).connect('couch', { url: config.couchdb_url });
 
 if (process.argv[2] == "--flush") {
   graph.adapter.flush(function(err) {

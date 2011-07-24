@@ -1,23 +1,24 @@
-{
-  "/type/user": {
-    "_id": "/type/user",
+{ 
+  "/type/project": {
+    "_id": "/type/project",
     "type": "/type/type",
-    "name": "User",
+    "name": "Project",
     "properties": {
-      "username": {
-        "name": "Username",
+      "name": {
+        "name": "Name",
         "unique": true,
         "type": "string",
-        "required": true,
-        "validator": "^[a-zA-Z_]{1}[a-zA-Z_0-9-]{2,20}$"
+        "required": true
       },
-      "email": {
-        "name": "Email",
-        "unique": true,
-        "type": "string",
-        "required": true,
-        "validator": "^(([^<>()[\\]\\\\.,;:\\s@\\\"]+(\\.[^<>()[\\]\\\\.,;:\\s@\\\"]+)*)|(\\\".+\\\"))@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$"
+      "tasks": {
+        "name": "Tasks",
+        "unique": false,
+        "type": ["/type/task"]
       }
+    },
+    "indexes": {
+      "key": ["creator", "name"],
+      "creator": ["creator"]
     }
   },
   
@@ -40,63 +41,5 @@
     "indexes": {
       "project": ["project"]
     }
-  },
-  
-  "/type/project": {
-    "_id": "/type/project",
-    "type": "/type/type",
-    "name": "Project",
-    "properties": {
-      "creator": {
-        "name": "Creator",
-        "unique": true,
-        "required": true,
-        "type": "/type/user"
-      },
-      "name": {
-        "name": "Name",
-        "unique": true,
-        "type": "string",
-        "required": true,
-        "validator": "^[a-zA-Z_0-9]{1}[a-zA-Z_0-9-]{2,40}$"
-      },
-      "descr": {
-        "name": "Description",
-        "unique": true,
-        "type": "string",
-        "default": ""
-      },
-      "tasks": {
-        "name": "Tasks",
-        "unique": false,
-        "type": ["/type/task"]
-      }
-    },
-    "indexes": {
-      "key": ["creator", "name"],
-      "creator": ["creator"]
-    }
-  },
-  
-  "/user/demo": {
-    "type": ["/type/user"],
-    "username": "demo",
-    "email": "demo@demo.com"
-  },
-  
-  "/project/test": {
-    "type": ["/type/project"],
-    "creator": "/user/demo",
-    "name": "realtime_tasks_1",
-    "descr": "A project description",
-    "tasks": []
-  },
-  
-  "/project/test2": {
-    "type": ["/type/project"],
-    "creator": "/user/demo",
-    "name": "realtime_tasks_2",
-    "descr": "A project description",
-    "tasks": []
   }
 }
