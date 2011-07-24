@@ -1,7 +1,7 @@
-Todos — A Data.js Demo App
+Tasks — A Data.js Demo App
 ==================
 
-Todos is meant to be used as a starting point for building applications on top of Data.js. 
+Tasks is meant to be used as a starting point for building applications on top of Data.js. 
 
 It covers the following functionality:
 
