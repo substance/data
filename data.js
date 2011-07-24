@@ -1025,7 +1025,7 @@
           }
         });
       });
-      if (this._dirty) this.g.trigger('dirty');
+      if (this._dirty) this.g.trigger('dirty', this);
     },
     
     // Validates an object against its type (=schema)
@@ -1122,7 +1122,8 @@
           that.replace(p.key, p.registerValues(_.isArray(value) ? value : [value], that));
           
           that._dirty = true;
-          that.g.trigger('dirty');
+          that.g.trigger('dirty', that);
+          that.g.snapshot();
         });
       } else {
         return Data.Node.prototype.set.call(this, arguments[0], arguments[1], arguments[2]);
@@ -1163,14 +1164,19 @@
   // Set a new Data.Adapter and enable Persistence API
 
   Data.Graph = _.inherits(Data.Node, {
-    constructor: function(g, dirty) {
+    constructor: function(g, options) {
       var that = this;
       Data.Node.call(this);
       
       this.watchers = {};
       this.replace('nodes', new Data.Hash());
       if (!g) return;
-      this.merge(g, dirty);
+      this.merge(g, options.dirty);
+      
+      if (options.persistent) {
+        this.persistent = options.persistent;
+        this.restore(); // Restore data
+      }
     },
     
     connect: function(name, config) {
@@ -1267,6 +1273,9 @@
         var obj = that.get(o._id);
         if (obj.data) obj.build();
       });
+      
+      // Create a new snapshot
+      this.snapshot();
       return this;
     },
 
@@ -1285,6 +1294,7 @@
         res._dirty = true;
         res.build();
         this.set('nodes', node._id, res);
+        this.snapshot();
         return res;
       } else { // Delegate to Data.Node#set
         return Data.Node.prototype.set.call(this, arguments[0], arguments[1], arguments[2]);
@@ -1311,7 +1321,8 @@
         var values = node.all(key);
         if (values) p.unregisterValues(values, node);
       });
-      this.trigger('dirty');
+      this.trigger('dirty', node);
+      this.snapshot();
     },
     
     // Find objects that match a particular query
@@ -1323,18 +1334,13 @@
     
     // Memoize a snapshot of the current graph
     snapshot: function() {
+      if (!this.persistent) return;
       localStorage.setItem("graph", JSON.stringify(this.toJSON(true)));
-    },
-    
-    enableLocalStorage: function() {
-      this.localStorage = true;
-      return this;
     },
     
     // Restore latest snapshot from localStorage
     restore: function() {
       var snapshot = JSON.parse(localStorage.getItem("graph"));
-      // console.log(localStorage.getItem("graph"));
       if (snapshot) this.merge(snapshot);
     },
     
@@ -1389,7 +1395,7 @@
         });
         
         // Update localStorage
-        if (this.localStorage) that.snapshot();
+        if (this.persistent) that.snapshot();
         
         if (that.invalidNodes().length > 0) that.trigger('invalid');
         if (that.conflictedNodes().length > 0) that.trigger('conflicted');
