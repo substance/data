@@ -32,6 +32,11 @@
         "unique": true,
         "type": "string"
       },
+      "complete": {
+        "name": "Complete",
+        "unique": true,
+        "type": "boolean"
+      },
       "project": {
         "name": "Project Membership",
         "unique": true,

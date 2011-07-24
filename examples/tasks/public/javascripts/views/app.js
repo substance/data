@@ -12,7 +12,10 @@ _.tpl = function(tpl, ctx) {
 var Project = Backbone.View.extend({
   events: {
     'submit #new_task_form': 'createTask',
-    'click .load-project': 'loadProject'
+    'click .load-project': 'loadProject',
+    'click .task .checkbox': 'toggleComplete',
+    'change .task input': 'updateTask',
+    'click .task .remove': 'removeTask'
   },
   
   el: '#project',
@@ -26,6 +29,34 @@ var Project = Backbone.View.extend({
       this.createProject();
     }
     this.render();
+  },
+  
+  removeTask: function(e) {
+    var taskId = $(e.currentTarget).parent().attr('task');
+    graph.get(taskId).set({
+      "tasks": this.model.get('tasks').del(taskId).keys()
+    });
+    this.render();
+    return false;
+  },
+  
+  toggleComplete: function(e) {
+    var taskId = $(e.currentTarget).parent().attr('task');
+    graph.get(taskId).set({
+      "complete": !graph.get(taskId).get('complete')
+    });
+    this.render();
+    return false;
+  },
+  
+  updateTask: function(e) {
+    var taskId = $(e.currentTarget).parent().parent().attr('task');
+    $(e.currentTarget)
+    graph.get(taskId).set({
+      "name": $(e.currentTarget).val()
+    });
+    this.render();
+    return false;
   },
   
   // Create a new project

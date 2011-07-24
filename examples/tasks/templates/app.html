@@ -30,10 +30,11 @@
         
         <div id="tasks-container">
           <% project.get('tasks').each(function(task, key) { %>
-            <div class="task">
+            <div class="task<%= task.get('complete') ? " complete" : ""%>" task="<%= key %>">
               <div class="checkbox"></div>
-              <div class="title"><%= task.get('name') %></div>
-              <div class="revision"><%= task._rev ? task._rev : "pending" %></div>
+              <a href="#" class="remove" title="Remove Task"></a>
+              <div class="title"><input type="text" value="<%= task.get('name') %>"/> </div>
+              <div class="revision">_rev: <%= task._rev ? task._rev : "" %> <%= task._dirty ? '<span class="tag">pending</span>' : '' %></div>
             </div>
           <% }); %>
         </div>
@@ -56,7 +57,7 @@
     </style>
   </head>
   <body>
-    <div id="sync_state" style="position: absolute; top: 20px; left: 800px"></div>
+    <div id="sync_state" style="position: absolute; top: 20px; left: 600px"></div>
     <div id="container">
       <div id="actions">
         <a href="#" class="start-sync">Sync</a>

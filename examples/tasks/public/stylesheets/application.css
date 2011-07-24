@@ -21,7 +21,7 @@ h1 {
   padding: 20px 0;
   font-size: 30px;
 }
-/* 
+ 
 *::-moz-selection{
   color:#fff;
   text-shadow: rgba(0,0,0,0.75) 0px 1px 1px;
@@ -33,10 +33,9 @@ h1 {
   text-shadow: rgba(0,0,0,0.75) 0px 1px 1px;
   background:rgba(180,223,63,1);
 }
-*/
+
 
 #projects {
-/*  background: #ccc;*/
   height: 50px;
 }
 
@@ -58,34 +57,32 @@ h1 {
 
 
 
-*::-moz-selection{
+/**::-moz-selection{
   background:transparent;
 }
 
 *::selection {
   background:transparent;
-}
+}*/
 
 #container {
   position:relative;
   padding:20px;
+  width: 800px;
+  margin: auto;
 }
 
 #actions {
   position: absolute;
   top: 20px;
-  right: 340px;
+  right: 20px;
 }
 
-#project {
-  margin:0 320px;
-}
+#project {}
 
 #tasks-container {
   position:relative;
-
 }
-
 
 .dirty {
   background: #ccc;
@@ -94,8 +91,6 @@ h1 {
 #new_task {
     position:relative;
     background:#fff;
-  /*  min-width:240px;
-    max-width:480px;*/
     min-height:20px;
     margin:0 auto 10px auto;
     padding:10px;
@@ -108,8 +103,6 @@ h1 {
 .task {
   position:relative;
   background:#fff;
-/*  min-width:240px;
-  max-width:480px;*/
   min-height:20px;
   margin:0 auto 10px auto;
   padding:10px;
@@ -119,9 +112,34 @@ h1 {
   -moz-border-radius: 9px;
 }
 
+input {
+  font-family: "HelveticaNeue", "Helvetica Neue", Helvetica, sans-serif;
+  font-size: 16px;
+  padding: 5px;
+  border: 1px solid #ccc;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  
+}
+
+input[type=submit] {
+  background: #555;
+  color: #eee;
+  border-color: transparent;
+}
+
+.task input {
+  border: 1px solid transparent;
+}
+
+.task input:hover, .task input:focus {
+  
+  border: 1px solid #ccc;
+}
+
 .task .revision {
   position: absolute;
-  top: 10px;
+  top: 30px;
   right: 10px;
   font-family: Monaco;
   font-size: 10px;
@@ -132,7 +150,7 @@ h1 {
   float:left;
   width:30px;
   height:28px;
-  margin:0 4px 0 0;
+  margin: 6px 4px 0 0;
   cursor:pointer;
   background: transparent url(assets/sprites.png) no-repeat -10px -10px;
 }
@@ -198,6 +216,17 @@ h1 {
 /*  border: 1px solid #7dac4c; */
 /*  border: 1px solid #68abda;  */
 /*  border: 1px solid #a99de6;  */
+
+.task .remove {
+  width: 15px;
+  height: 15px;
+  background: black;
+  position: absolute;
+  right: 10px;
+  top: 5px;
+  display: block;
+  background: transparent url(assets/sprites.png) no-repeat -70px -100px;
+}
 
 .task.complete .checkbox {
   background: transparent url(assets/sprites.png) no-repeat -10px -100px;
