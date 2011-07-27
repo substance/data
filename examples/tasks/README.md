@@ -18,7 +18,7 @@ Install
 
 1. Have a CouchDB instance running
 2. Install packages
-   `$ npm install now express`
+   `$ npm install now express async`
 3. Update `config.json` appropriately
 4. Seed the DB
    `$ node db/seed.js --flush`
