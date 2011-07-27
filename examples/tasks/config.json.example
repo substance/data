@@ -1,0 +1,5 @@
+{
+  "couchdb_url": "http://localhost:5984/tasks",
+  "server_host": null,
+  "server_port": 3003
+}
