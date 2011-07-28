@@ -1171,9 +1171,9 @@
       this.watchers = {};
       this.replace('nodes', new Data.Hash());
       if (!g) return;
-      this.merge(g, options.dirty);
+      this.merge(g, options && options.dirty);
       
-      if (options.persistent) {
+      if (options && options.persistent) {
         this.persistent = options.persistent;
         this.restore(); // Restore data
       }
