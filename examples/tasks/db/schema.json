@@ -13,6 +13,7 @@
       "tasks": {
         "name": "Tasks",
         "unique": false,
+        "sync": true,
         "type": ["/type/task"]
       }
     },
