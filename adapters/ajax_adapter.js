@@ -23,6 +23,27 @@ Data.Adapters["ajax"] = function(graph, config) {
     });
   };
   
+  // pull
+  // --------------
+
+  // Takes a query object and reads all matching nodes
+  
+  self.pull = function(nodes, callback) {    
+    $.ajax({
+      type: "POST",
+      url: config.url+"pull",
+      data: JSON.stringify(nodes),
+      contentType: "application/json",
+      dataType: "json",
+      success: function(res) {
+        res.error ? callback(res.error) : callback(null, res.graph);
+      },
+      error: function(err) {
+        callback(err);
+      }
+    });
+  };
+  
   // read
   // --------------
 
