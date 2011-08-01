@@ -36,6 +36,12 @@ exports.initialize = function(server, graph, config) {
     }, req.session);
   });
   
+  server.post('/graph/pull', function(req, res) {
+    graph.adapter.pull(req.body, function(err, g) {
+      err ? res.send(JSON.stringify({error: err})) : res.send(JSON.stringify({"status": "ok", "graph": g}));
+    });
+  });
+  
   // NowJS interface
   // --------------
   
