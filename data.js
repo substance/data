@@ -20,12 +20,11 @@
   }
   
   // Current version of the library. Keep in sync with `package.json`.
-  Data.VERSION = '0.4.1';
+  Data.VERSION = '0.5.0';
 
   // Require Underscore, if we're on the server, and it's not already present.
   var _ = this._;
   if (!_ && (typeof require !== 'undefined')) _ = require("underscore");
-  
   
   // Top Level API
   // -------
@@ -767,6 +766,7 @@
       this.name = options.name;
       this.meta = options.meta || {};
       this.validator = options.validator;
+      this.sync = options.sync;
       this.required = options["required"];
       this["default"] = options["default"];
       
@@ -830,7 +830,6 @@
           }
           val.referencedObjects.set(obj._id, obj);
         }
-        
         res.set(v, val);
       });
       
@@ -866,6 +865,7 @@
         type: this.expectedTypes,
         unique: this.unique,
         meta: this.meta,
+        sync: this.sync,
         validator: this.validator,
         required: this.required,
         "default": this["default"]
@@ -1249,9 +1249,14 @@
           if (!res) {
             res = new Data.Object(that, key, node);
             that.set('nodes', key, res);
-          } else {
-            // Populate existing node with data in order to be rebuilt
-            res.data = node;
+          } else {            
+            // If dirty, we've got a conflict
+            if (res._dirty) {
+              res._conflicted = true;
+              res._conflicted_rev = node;
+            } else {
+              res.data = node;
+            }
           }
           // Check for type existence
           _.each(types, function(type) {
@@ -1271,8 +1276,10 @@
       // Now that all new objects are registered we can build them
       _.each(objects, function(o) {
         var obj = that.get(o._id);
-        if (obj.data) obj.build();
+        if (obj.data && !obj._conflicted) obj.build();
       });
+      
+      if (this.conflictedNodes().length > 0) this.trigger('conflicted');
       
       // Create a new snapshot
       this.snapshot();
@@ -1367,11 +1374,27 @@
       });
     },
     
-    // Synchronize dirty nodes with the backend
-    sync: function(callback) {
+    // Pull in remote updates and push local changes to the server
+    sync: function(callback, resolveConflicts) {
       callback = callback || function() {};
+      var that = this;
+
+      // Pull in new nodes
+      this.pull(function() {
+        if (that.conflictedNodes().length > 0) {
+          resolveConflicts(function() {
+            that.push(callback);
+          });
+        } else {
+          that.push(callback);
+        }
+      });
+    },
+    
+    // Push local updates to the server
+    push: function(callback) {
       var that = this,
-          nodes = that.dirtyNodes();
+          nodes = this.dirtyNodes();
       
       var validNodes = new Data.Hash();
       nodes.select(function(node, key) {
@@ -1382,8 +1405,7 @@
       
       this.adapter.write(validNodes.toJSON(), function(err, g) {
         if (err) return callback(err);
-        that.merge(g, false);
-
+        
         // Check for rejectedNodes / conflictedNodes
         validNodes.each(function(n, key) {
           if (g[key]) {
@@ -1393,6 +1415,9 @@
             n._rejected = true;
           }
         });
+        
+        // Update local nodes with new revision
+        that.merge(g, false);
         
         // Update localStorage
         if (this.persistent) that.snapshot();
@@ -1405,6 +1430,19 @@
                            .union(that.rejectedNodes()).length;
         
         callback(unsavedNodes > 0 ? unsavedNodes+' unsaved nodes' : null);
+      });
+    },
+    
+    pull: function(callback) {
+      var that = this;
+      var nodes = {};
+      this.objects().each(function(o) {
+        nodes[o._id] = o._rev || null;
+      });
+      
+      this.adapter.pull(nodes, function(err, g) {
+        that.merge(g, false);
+        callback();
       });
     },
     
@@ -1470,12 +1508,12 @@
           if (extended) {
             // include special properties
             if (obj._dirty) result[key]._dirty = true;
-            if (obj._conflicted) result[key]._conclicted = true;
+            if (obj._deleted) result[key]._deleted = true;
+            if (obj._conflicted) result[key]._conflicted = true;
             if (obj._rejected) result[key].rejected = true;
           }
         }
       });
-      
       return result;
     }
   });
