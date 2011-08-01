@@ -12,7 +12,6 @@ _.tpl = function(tpl, ctx) {
 var Project = Backbone.View.extend({
   events: {
     'submit #new_task_form': 'createTask',
-    'click .load-project': 'loadProject',
     'click .task .checkbox': 'toggleComplete',
     'change .task input': 'updateTask',
     'click .task .remove': 'removeTask'
@@ -21,21 +20,15 @@ var Project = Backbone.View.extend({
   el: '#project',
   
   initialize: function() {
-    var lru = localStorage.getItem('project');
-    // Use LRU project or create a new one
-    if (lru) {
-      this.model = graph.get(lru);
-    } else {
-      this.createProject();
-    }
-    this.render();
   },
   
   removeTask: function(e) {
     var taskId = $(e.currentTarget).parent().attr('task');
-    graph.get(taskId).set({
+    
+    this.model.set({
       "tasks": this.model.get('tasks').del(taskId).keys()
     });
+    graph.del(taskId);
     this.render();
     return false;
   },
@@ -66,13 +59,34 @@ var Project = Backbone.View.extend({
       "name": "Project "+(graph.find({"type": "/type/project"}).length+1),
       "tasks": []
     });
-    localStorage.setItem('project', this.model._id);
+    controller.saveLocation(this.model._id.split('/')[2]);
   },
   
-  loadProject: function(e) {
-    this.model = graph.get($(e.currentTarget).attr('project'));
-    localStorage.setItem('project', this.model._id);
-    this.render();
+  loadProject: function(projectId) {
+    var that = this;
+    this.model = graph.get(projectId);
+    if (this.model) {
+      controller.saveLocation(this.model._id.split('/')[2]);
+      this.render();
+    } else {
+      if (!projectId) {
+        that.model = graph.find({"type": "/type/project"}).first();
+        if (!that.model) {
+          that.createProject();
+        } else {
+          controller.saveLocation(this.model._id.split('/')[2]);
+        }
+        return this.render();
+      }
+      
+      // Fetch it from the server
+      graph.fetch({"_id": projectId, "tasks": {}}, function(err, nodes) {
+        if (err) return alert('not found');
+        that.model = graph.get(projectId);
+        that.render();
+      });
+    }
+    
     return false;
   },
   
@@ -104,6 +118,17 @@ var Project = Backbone.View.extend({
   }
 });
 
+
+var ApplicationController = Backbone.Controller.extend({
+  routes: {
+    ':project': 'loadProject',
+  },
+  
+  loadProject: function(projectId) {    
+    app.project.loadProject(projectId ? "/project/"+projectId : null);
+  }
+});
+
 // Application
 // --------------
 
@@ -111,7 +136,13 @@ var Application = Backbone.View.extend({
   events: {
     'click a.start-sync': 'sync',
     'click a.reset': 'reset',
-    'click a.create-project': 'createProject',
+    'click .load-project': 'loadProject',
+    'click a.create-project': 'createProject'
+  },
+  
+  loadProject: function(e) {
+    this.project.loadProject($(e.currentTarget).attr('project'));
+    return false;
   },
   
   createProject: function(e) {
@@ -122,8 +153,7 @@ var Application = Backbone.View.extend({
   
   reset: function() {
     localStorage.removeItem('graph');
-    localStorage.removeItem('project');
-    window.location.reload(true);
+    window.location.href = "/";
     return false;
   },
   
@@ -131,7 +161,8 @@ var Application = Backbone.View.extend({
     var that = this;
     // Sync with server
     $('#sync_state').html('Synchronizing...');
-    graph.sync(function(err) {
+    
+    var syncCompleted = function(err) {
       if (!err) {
         $('#sync_state').html('Successfully synced.');
         setTimeout(function() {
@@ -140,10 +171,53 @@ var Application = Backbone.View.extend({
         that.project.render();
       } else {
         console.log(err);
-        confirm('There was an error during synchronization. The workspace will be reset for your own safety');
-        window.location.reload(true);
+        alert('Unresolved conflicts remaining. Check your resolve strategy.');
       }
-    });
+    };
+    
+    var resolveConflicts = function(callback) {
+      graph.conflictedNodes().each(function(n) {
+        function merge(local, server) {
+          var merged = {};
+          _.each(server, function(value, key) {
+            if (_.isEqual(value, local[key])) {
+              merged[key] = value;
+            } else if (_.isArray(value)) {
+              merged[key] = _.union(value, local[key]);
+            } else if (typeof value === "string") {
+              // super awesome string merge algorithm.
+            }
+
+            // Use the server _rev
+            merged._rev = server._rev;
+          });
+          
+          return Object.keys(merged).length === Object.keys(server).length ? merged : null;
+        }
+        var merged = merge(n.toJSON(), n._conflicted_rev);
+        
+        if (merged) {
+          n.set(merged); // Apply the merged version
+          n._rev = merged._rev;
+          n._conflicted = false;
+        } else {
+          // Can't merge. Let the user decide which version to use.
+          if (confirm("Overwrite server version with your local version? Click Cancel to drop your local version in favor of the server one.")) {
+            n._rev = n._conflicted_rev._rev;
+            n._conflicted = false;
+          } else {
+            n.set(n._conflicted_rev);
+            n._rev = n._conflicted_rev._rev;
+            n._conflicted = false;
+          }
+        }
+      });
+
+      // Ready with resolving conflicts
+      callback();
+    };
+    
+    graph.sync(syncCompleted, resolveConflicts);
     return false;
   },
   
@@ -158,7 +232,7 @@ var Application = Backbone.View.extend({
   }
 });
 
-var app;
+var app, controller;
 var graph = new Data.Graph(seed, {dirty: false, persistent: true}).connect('ajax');
 
 (function() {
@@ -169,7 +243,16 @@ var graph = new Data.Graph(seed, {dirty: false, persistent: true}).connect('ajax
 
     // Once the graph is ready
     graph.connected(function() {
+      
+      // Initialize controller
+      controller = new ApplicationController({app: this});
+      
+      // Init the app
       app = new Application({el: '#container', session: session});
+
+      // Start responding to routes
+      Backbone.history.start();
+      
       app.render();
     });
   });
