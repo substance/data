@@ -316,7 +316,7 @@
     
     // Delete entry at given *key*
     del: function (key) {
-      if (this.data[key]) {
+      if (this.data.hasOwnProperty(key)) {
         var l = this.length;
         var index = this.index(key);
         delete this.data[key];
@@ -459,13 +459,20 @@
       var that = this,
           result = new Data.Hash();
       
-      // Ensure that is the smaller one
+      // Find out which hash is smaller
+      var smaller, other;
       if (hash.length < that.length) {
-        that = hash;
-        hash = this;
+        smaller = hash;
+        other = that;
+      } else {
+        smaller = that;
+        other = hash;
       }
-      that.each(function(value,key) {
-        if (hash.get(key)) result.set(key, value);
+      _.each(smaller.keyOrder, function (key) {
+        // TODO: Test for existence of a key with Object.prototype.hasOwnProperty
+        if (other.get(key)) {
+          result.set(key, hash.get(key));
+        }
       });
       return result;
     },
