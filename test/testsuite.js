@@ -239,6 +239,21 @@ test("Data.Hash#intersect", function() {
 });
 
 
+test("Values are taken from the hash that is passed as an argument", function() {
+  var x = new Data.Hash();
+  x.set('a', 1);
+  x.set('b', 1);
+  var y = new Data.Hash();
+  y.set('b', 2);
+  
+  intersectedXY = x.intersect(y);
+  ok(intersectedXY.get('b') === 2);
+  
+  intersectedYX = y.intersect(x);
+  ok(intersectedYX.get('b') === 1);
+});
+
+
 test("Data.Hash#union", function() {
   var items2 = new Data.Hash(),
       unitedItems;
