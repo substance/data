@@ -275,6 +275,14 @@ test("Only consider own properties", function() {
 });
 
 
+test("Delete falsy values", function() {
+  var person = new Data.Hash();
+  person.set('female', false);
+  person.del('female');
+  ok(person.get('female') === undefined);
+});
+
+
 
 test("Data.Hash Events", function() {
   persons = new Data.Hash();

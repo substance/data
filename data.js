@@ -317,7 +317,7 @@
     
     // Delete entry at given *key*
     del: function (key) {
-      if (this.data[key]) {
+      if (this.data.hasOwnProperty(key)) {
         var l = this.length;
         var index = this.index(key);
         delete this.data[key];
