@@ -13,21 +13,21 @@ if (process.argv[2] == "--flush") {
   graph.adapter.flush(function(err) {
     console.log('DB Flushed.');
     err ? console.log(err)
-        : graph.sync(function(err, invalidNodes) {
+        : graph.sync(function(err) {
           console.log('invalidNodes:');
-          if (invalidNodes) console.log(invalidNodes.keys());
+          console.log(graph.invalidNodes().keys());
           
           err ? console.log(err)
               : console.log('Couch seeded successfully.\nStart the server: $ node server.js');
         });
   });
 } else {
-  graph.sync(function(err, invalidNodes) {
+  graph.sync(function(err) {
     console.log('invalidNodes:');
-    if (invalidNodes) console.log(invalidNodes.keys());
+    console.log(graph.invalidNodes().keys());
     
-    console.log('conflictingNodes:');
-    console.log(graph.conflictingNodes().keys());
+    console.log('conflictedNodes:');
+    console.log(graph.conflictedNodes().keys());
     
     err ? console.log(err)
         : console.log('Couch seeded successfully.\nStart the server: $ node server.js');
