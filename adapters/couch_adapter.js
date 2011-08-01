@@ -97,6 +97,9 @@ var CouchAdapter = function(graph, config, callback) {
                 views: {
                   "all": {
                     "map": "function(doc) { if (doc.type === \"/type/type\") emit(doc._id, doc); }"
+                  },
+                  "revisions": {
+                    "map": "function(doc) { emit(doc._id, doc._rev); }"
                   }
                 }
               }, function (err, doc) {
@@ -152,6 +155,54 @@ var CouchAdapter = function(graph, config, callback) {
       graph = filteredNodes;
       async.forEach(_.keys(graph), writeNode, function(err) {
         err ? callback(err) : callback(null, result);
+      });
+    });
+  };
+  
+  
+  // pull
+  // --------------
+  
+  // Given a set of id's and rev's changed nodes are returned
+  
+  self.pull = function(nodes, callback, ctx) {
+    var result = {};
+    var nodesCopy = _.clone(nodes);
+    db.view('type/revisions', {keys: Object.keys(nodes)}, function(err, res) {
+      _.each(res.rows, function(row) {
+        if (nodes[row.id] === row.value) {
+          delete nodes[row.id];
+        }
+      });
+      
+      // Fetch updated nodes
+      async.forEachSeries(Object.keys(nodes), function(nodeId, callback) {
+        db.get(nodeId, function(err, node) {
+          if (err) return callback(err);
+          if (!node) return callback(); // Ignore deleted nodes
+          result[node._id] = node;
+          
+          var refs = [];
+          _.each(node.type, function(n) {
+            graph.types().get(n).properties().each(function(p) {
+              if (p.sync) refs = _.isArray(node[p.key]) ? refs.concat(node[p.key]) : refs.concat([node[p.key]]);
+            });
+          });
+          
+          async.forEach(refs, function(nodeId, callback) {
+            if (result[nodeId] || nodesCopy[nodeId]) return callback(); // Skip if already included in the result
+            db.get(nodeId, function(err, n) {
+              if (err) return callback(err);
+              if (!n) return callback(); // Ignore deleted nodes
+              result[n._id] = n;
+              callback();
+            });
+          }, function(err) {
+            callback(err);
+          });
+        });
+      }, function(err) {
+        callback(null, result);
       });
     });
   };
