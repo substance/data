@@ -10,6 +10,13 @@ var _ = require('underscore');
 global.config = JSON.parse(fs.readFileSync(__dirname+ '/config.json', 'utf-8'));
 global.seed = JSON.parse(fs.readFileSync(__dirname+ '/db/schema.json', 'utf-8'));
 
+
+function serveStartpage(req, res) {
+  html = fs.readFileSync(__dirname+ '/templates/app.html', 'utf-8');
+  res.send(html.replace('{{{{seed}}}}', JSON.stringify(seed))
+               .replace('{{{{session}}}}', JSON.stringify(req.session)));  
+}
+
 // Express.js Configuration
 // -----------
 
@@ -22,6 +29,10 @@ app.configure(function() {
   app.use(express.static(__dirname+"/public", { maxAge: 41 }));
   app.use(express.static(__dirname+"/../../", { maxAge: 41 }));
   app.use(express.logger({ format: ':method :url' }));
+  
+  app.use(function(req, res) {
+    serveStartpage(req, res);
+  });
 });
 
 var graph = new Data.Graph(seed, false);
@@ -42,7 +53,6 @@ Filters.makeCrazy = function() {
   };
 };
 
-
 // Connect to a data-store
 graph.connect('couch', { 
   url: config.couchdb_url,
@@ -53,16 +63,6 @@ graph.connect('couch', {
 
 // Serve Data.js backend along with an express server
 graph.serve(app);
-
-
-// Routes
-// -----------
-
-app.get('/', function(req, res) {
-  html = fs.readFileSync(__dirname+ '/templates/app.html', 'utf-8');
-  res.send(html.replace('{{{{seed}}}}', JSON.stringify(seed))
-               .replace('{{{{session}}}}', JSON.stringify(req.session)));
-});
 
 console.log('READY: Server is listening http://'+config['server_host']+':'+config['server_port']);
 app.listen(config['server_port'], config['server_host']);

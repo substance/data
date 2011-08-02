@@ -59,14 +59,14 @@ var Project = Backbone.View.extend({
       "name": "Project "+(graph.find({"type": "/type/project"}).length+1),
       "tasks": []
     });
-    controller.saveLocation(this.model._id.split('/')[2]);
+    router.navigate(this.model._id.split('/')[2]);
   },
   
   loadProject: function(projectId) {
     var that = this;
     this.model = graph.get(projectId);
     if (this.model) {
-      controller.saveLocation(this.model._id.split('/')[2]);
+      router.navigate(this.model._id.split('/')[2]);
       this.render();
     } else {
       if (!projectId) {
@@ -74,7 +74,7 @@ var Project = Backbone.View.extend({
         if (!that.model) {
           that.createProject();
         } else {
-          controller.saveLocation(this.model._id.split('/')[2]);
+          router.navigate(this.model._id.split('/')[2]);
         }
         return this.render();
       }
@@ -119,7 +119,7 @@ var Project = Backbone.View.extend({
 });
 
 
-var ApplicationController = Backbone.Controller.extend({
+var Router = Backbone.Router.extend({
   routes: {
     ':project': 'loadProject',
   },
@@ -232,7 +232,7 @@ var Application = Backbone.View.extend({
   }
 });
 
-var app, controller;
+var app, router;
 var graph = new Data.Graph(seed, {dirty: false, persistent: true}).connect('ajax');
 
 (function() {
@@ -244,14 +244,14 @@ var graph = new Data.Graph(seed, {dirty: false, persistent: true}).connect('ajax
     // Once the graph is ready
     graph.connected(function() {
       
-      // Initialize controller
-      controller = new ApplicationController({app: this});
+      // Initialize router
+      router = new Router({app: this});
       
       // Init the app
       app = new Application({el: '#container', session: session});
-
+    
       // Start responding to routes
-      Backbone.history.start();
+      Backbone.history.start({pushState: true});
       
       app.render();
     });
