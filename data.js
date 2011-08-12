@@ -1444,7 +1444,7 @@
       var that = this;
       var nodes = {};
       this.objects().each(function(o) {
-        nodes[o._id] = o._rev || null;
+        nodes[o._id] = o._rev || null;
       });
       
       this.adapter.pull(nodes, function(err, g) {
