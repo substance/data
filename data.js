@@ -1517,7 +1517,7 @@
             if (obj._dirty) result[key]._dirty = true;
             if (obj._deleted) result[key]._deleted = true;
             if (obj._conflicted) result[key]._conflicted = true;
-            if (obj._rejected) result[key].rejected = true;
+            if (obj._rejected) result[key]._rejected = true;
           }
         }
       });
