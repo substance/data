@@ -56,11 +56,11 @@ var CouchAdapter = function(graph, config, callback) {
     };
     
     // Setup validation function
-    validatorFn = "function(newDoc, oldDoc, userCtx) {\n";
+    var validatorFn = "function(newDoc, oldDoc, userCtx) {\n";
     validatorFn += "if (newDoc.type.indexOf('"+node._id+"')>=0) {\n";
     _.each(node.properties, function(property, key) {
       if (property.required) validatorFn += "if (!newDoc['"+key+"']) throw({forbidden : '"+key+" is missing'});\n";
-      if (property.validator) validatorFn += "if (!new RegExp('"+property.validator+"').test(newDoc."+key+")) throw({forbidden: '"+key+" is invalid'});"
+      if (property.validator) validatorFn += "if (!new RegExp("+JSON.stringify(property.validator)+").test(newDoc."+key+")) throw({forbidden: '"+key+" is invalid'});"
     });
     validatorFn += "}}";
     
@@ -117,13 +117,12 @@ var CouchAdapter = function(graph, config, callback) {
   
   self.write = function(graph, callback, ctx) {
     var result = {}; // updated graph with new revisions and merged changes
-    
     function writeNode(nodeId, callback) {
       var target = _.extend(graph[nodeId], {
         _id: nodeId
       });
+
       var options = {};
-      
       if (config.force_updates) options["force"] = true;
       
       db.save(target, options, function (err, newDoc) {
