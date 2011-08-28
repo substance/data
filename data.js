@@ -824,7 +824,7 @@
               if (typeof v === 'object') v = that.type.g.set(null, v)._id;
               val = that.type.g.get('nodes', v);
               if (!val) {
-                // Register the object (even if not yet loaded)
+                // Register the object even if not yet loaded
                 val = new Data.Object(that.type.g, v);
                 that.type.g.set('nodes', v, val);
               }
@@ -961,13 +961,10 @@
       var that = this;
       Data.Node.call(this);
       
-      this.g = g;
-      
-      // TODO: remove in favor of _id
-      this.key = id;
+      this.g = g;      
+      this.key = id; // TODO: remove in favor of _id
       this._id = id;
       this.html_id = id.replace(/\//g, '_');
-      this._dirty = true; // Every constructed node is dirty by default
       
       this.errors = []; // Stores validation errors
       this._types = new Data.Hash();
@@ -1233,7 +1230,7 @@
     },
     
     // Merges in another Graph
-    merge: function(g, dirty) {
+    merge: function(g, dirty) {      
       var that = this;
       
       // Process schema nodes
@@ -1273,7 +1270,6 @@
             that.get('nodes', type).set('nodes', key, res);
           });
           that.get(key)._dirty = node._dirty ? node._dirty : dirty;
-          
           if (!node._id) node._id = key;
           return true;
         }
@@ -1384,6 +1380,7 @@
     // Pull in remote updates and push local changes to the server
     sync: function(callback, resolveConflicts) {
       callback = callback || function() {};
+      resolveConflicts = resolveConflicts || function() {};
       var that = this;
 
       // Pull in new nodes
