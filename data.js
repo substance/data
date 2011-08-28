@@ -1176,6 +1176,7 @@
       this.replace('nodes', new Data.Hash());
       if (!g) return;
       this.merge(g, options && options.dirty);
+      this.syncMode = options && options.syncMode ? options.syncMode : 'push';
       
       if (options && options.persistent) {
         this.persistent = options.persistent;
@@ -1380,19 +1381,26 @@
     // Pull in remote updates and push local changes to the server
     sync: function(callback, resolveConflicts) {
       callback = callback || function() {};
-      resolveConflicts = resolveConflicts || function() {};
+      resolveConflicts = resolveConflicts || function(cb) { cb(); };
       var that = this;
-
-      // Pull in new nodes
-      this.pull(function() {
-        if (that.conflictedNodes().length > 0) {
-          resolveConflicts(function() {
+      
+      if (this.syncMode === 'full') {
+        this.pull(function() {
+          if (that.conflictedNodes().length > 0) {
+            resolveConflicts(function() { that.push(callback); });
+          } else {
             that.push(callback);
-          });
-        } else {
-          that.push(callback);
-        }
-      });
+          }
+        });
+      } else if (this.syncMode === 'pull') {
+        this.pull(function() {
+          if (that.conflictedNodes().length > 0) {
+            resolveConflicts(function() {});
+          }
+        });
+      } else { // Push sync -> default
+        this.push(callback);
+      }
     },
     
     // Push local updates to the server
