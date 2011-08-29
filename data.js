@@ -1017,6 +1017,7 @@
         // Register properties for all types
         that._types.get(type).all('properties').each(function(property, key) {        
           function applyValue(value) {
+            if (!value) return; // Skip null values
             var values = _.isArray(value) ? value : [value];
             // Apply property values
             that.replace(property.key, property.registerValues(values, that));
@@ -1176,7 +1177,7 @@
       this.replace('nodes', new Data.Hash());
       if (!g) return;
       this.merge(g, options && options.dirty);
-      this.syncMode = options && options.syncMode ? options.syncMode : 'push';
+      this.syncMode = options && options.syncMode ? options.syncMode : 'push';
       
       if (options && options.persistent) {
         this.persistent = options.persistent;
@@ -1381,7 +1382,7 @@
     // Pull in remote updates and push local changes to the server
     sync: function(callback, resolveConflicts) {
       callback = callback || function() {};
-      resolveConflicts = resolveConflicts || function(cb) { cb(); };
+      resolveConflicts = resolveConflicts || function(cb) { cb(); };
       var that = this;
       
       if (this.syncMode === 'full') {
