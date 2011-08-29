@@ -436,11 +436,11 @@ var graph,
 graph = new Data.Graph(documents_fixture);
 
 
-protovis = graph.get('objects', '/doc/protovis_introduction');
-unveil = graph.get('objects', '/doc/unveil_introduction');
-processingjs = graph.get('objects', '/doc/processing_js_introduction');
-mention = graph.get('objects', 'M0000003');
-anotherMention = graph.get('objects', 'M0000003');
+protovis = graph.get('nodes', '/doc/protovis_introduction');
+unveil = graph.get('nodes', '/doc/unveil_introduction');
+processingjs = graph.get('nodes', '/doc/processing_js_introduction');
+mention = graph.get('nodes', 'M0000003');
+anotherMention = graph.get('nodes', 'M0000003');
 stanford = graph.get('/location/stanford');
 newYork = graph.get('/location/new_york');
 
@@ -466,13 +466,14 @@ test("valid construction", function() {
 
 
 test("Type inspection", function() {
-  documentType = graph.get('objects', '/type/document');
+  documentType = graph.get('nodes', '/type/document');
   ok(documentType.all('properties').length === 5);
   ok(documentType.key === '/type/document');
   ok(documentType.name === 'Document');
 });
 
 test("Property inspection", function() {
+  documentType = graph.get('nodes', '/type/document');
   entitiesProperty = documentType.get('properties', 'entities');
   ok(entitiesProperty.name === 'Associated Entities');
   ok(_.include(entitiesProperty.expectedTypes, '/type/entity'));
@@ -541,7 +542,7 @@ test("Graph traversal (navigation)", function() {
 
 
 test("Querying information", function() {
-  var cities = graph.all('objects').select(function(res, key) {
+  var cities = graph.all('nodes').select(function(res, key) {
     return /or/.test(res.get('name'))
   });
   
@@ -581,6 +582,15 @@ test("Set new nodes on the graph", function() {
   
   ok(substance.get('title') === 'Substance Introduction');
   ok(substance.get('page_count') === 12);
+  
+  // Allow null being passed explicitly for an object type property
+  var mention = graph.set({
+    "type": "/type/mention",
+    "document": null,
+    "entity": "/location/stanford",
+    "page": 5
+  });
+  ok(mention.get('document') === null);
 });
 
 
