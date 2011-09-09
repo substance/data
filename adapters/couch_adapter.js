@@ -57,7 +57,7 @@ var CouchAdapter = function(graph, config, callback) {
     
     // Setup validation function
     var validatorFn = "function(newDoc, oldDoc, userCtx) {\n";
-    validatorFn += "if (newDoc.type.indexOf('"+node._id+"')>=0) {\n";
+    validatorFn += "if (newDoc.type && newDoc.type.indexOf('"+node._id+"')>=0) {\n";
     _.each(node.properties, function(property, key) {
       if (property.required) validatorFn += "if (!newDoc['"+key+"']) throw({forbidden : '"+key+" is missing'});\n";
       if (property.validator) validatorFn += "if (!new RegExp("+JSON.stringify(property.validator)+").test(newDoc."+key+")) throw({forbidden: '"+key+" is invalid'});"
@@ -69,7 +69,7 @@ var CouchAdapter = function(graph, config, callback) {
         var keyExpr = "["+ _.map(properties, function(p) { return "doc."+p;}).join(',')+ "]";
         views[indexName] = {
           "properties": properties,
-          "map": "function(doc) { if (doc.type.indexOf('"+node._id+"')>=0) { emit("+keyExpr+", doc); } }"
+          "map": "function(doc) { if (doc.type && doc.type.indexOf('"+node._id+"')>=0) { emit("+keyExpr+", doc); } }"
         };
       });
     }
