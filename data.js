@@ -1017,7 +1017,6 @@
         // Register properties for all types
         that._types.get(type).all('properties').each(function(property, key) {        
           function applyValue(value) {
-            if (!value) return; // Skip null values
             var values = _.isArray(value) ? value : [value];
             // Apply property values
             that.replace(property.key, property.registerValues(values, that));
