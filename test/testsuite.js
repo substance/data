@@ -590,7 +590,7 @@ test("Set new nodes on the graph", function() {
     "entity": "/location/stanford",
     "page": 5
   });
-  ok(mention.get('document') === null);
+  ok(!mention.get('document'));
 });
 
 
