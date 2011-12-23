@@ -2,7 +2,7 @@
 # ==============================================================================
 
 fs            = require 'fs'
-sys           = require 'sys'
+util          = require 'util'
 CoffeeScript  = require 'coffee-script'
 {spawn, exec} = require 'child_process'
 
