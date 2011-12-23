@@ -965,6 +965,7 @@
       this.key = id; // TODO: remove in favor of _id
       this._id = id;
       this.html_id = id.replace(/\//g, '_');
+      this.meta = data ? data.meta || {} : {};
       
       this.errors = []; // Stores validation errors
       this._types = new Data.Hash();
