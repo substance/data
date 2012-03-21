@@ -769,7 +769,7 @@
       this.key = id;
       this._id = id;
       this.type = type;
-      this.unique = options.unique;
+      this.unique = options.unique !== undefined ? options.unique : true;
       this.name = options.name;
       this.meta = options.meta || {};
       this.validator = options.validator;
