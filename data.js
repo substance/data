@@ -1,9 +1,9 @@
-//     (c) 2011 Michael Aufreiter
+//     (c) 2012 Michael Aufreiter
 //     Data.js is freely distributable under the MIT license.
 //     Portions of Data.js are inspired or borrowed from Underscore.js,
 //     Backbone.js and Google's Visualization API.
 //     For all details and documentation:
-//     http://substance.io/#michael/data-js
+//     http://substance.io/michael/data-js
 
 (function(){
 
@@ -20,7 +20,7 @@
   }
   
   // Current version of the library. Keep in sync with `package.json`.
-  Data.VERSION = '0.5.0';
+  Data.VERSION = '0.6.0';
 
   // Require Underscore, if we're on the server, and it's not already present.
   var _ = this._;
@@ -308,7 +308,6 @@
         index = this.index(key);
       }
       this.data[key] = value;
-      this[index] = this.data[key];
       
       this.trigger('set', key);
       return this;
@@ -444,7 +443,7 @@
     
     // Performs a sort
     sort: function (comparator) {
-      var result = this.clone();
+      var result = this.clone(),
           sortedKeys = result.toArray().sort(comparator);
     
       // update keyOrder
@@ -655,94 +654,6 @@
   };
   
   
-  // Data.Node
-  // --------------
-  
-  // JavaScript Node implementation that hides graph complexity from
-  // the interface. It introduces properties, which group types of edges
-  // together. Therefore multi-partite graphs are possible without any hassle.
-  // Every Node simply contains properties which conform to outgoing edges.
-  // It makes heavy use of hashing through JavaScript object properties to
-  // allow random access whenever possible. If I've got it right, it should 
-  // perform sufficiently fast, allowing speedy graph traversals.
-  
-  Data.Node = function(options) {
-    this.nodeId = Data.Node.generateId();
-    if (options) {
-      this.val = options.value;
-    }
-    this._properties = {};
-    
-    if (this.initialize) this.initialize(options);
-  };
-  
-  Data.Node.nodeCount = 0;
-  
-  // Generates a unique id for each node
-  Data.Node.generateId = function () {
-    return Data.Node.nodeCount += 1;
-  };
-  
-  _.extend(Data.Node.prototype, _.Events, {
-    // Node identity, which is simply the node's id
-    identity: function() {
-      return this.nodeId;
-    },
-    
-    // Replace a property with a complete `Hash`
-    replace: function(property, hash) {
-      this._properties[property] = hash;
-    },
-
-    // Set a Node's property
-    // 
-    // Takes a property key, a value key and value. Values that aren't
-    // instances of `Data.Node` wrapped are automatically.
-    set: function (property, key, value) {
-      if (!this._properties[property]) {
-        this._properties[property] = new Data.Hash();
-      }
-      this._properties[property].set(key, value instanceof Data.Node ? value : new Data.Node({value: value}));
-      return this;
-    },
-
-    // Get node for given *property* at given *key*
-    get: function (property, key) {
-      if (key !== undefined && this._properties[property] !== undefined) {
-        return this._properties[property].get(key);
-      }
-    },
-
-    // Get all connected nodes at given *property*
-    all: function(property) {
-      return this._properties[property];
-    },
-    
-    // Get first connected node at given *property*
-    // 
-    // Useful if you want to mimic the behavior of unique properties.
-    // That is, if you know that there's always just one associated node
-    // at a given property.
-    first: function(property) {
-      var p = this._properties[property];
-      return p ? p.first() : null;  
-    },
-
-    // Value of first connected target node at given *property*
-    value: function(property) {
-      return this.values(property).first();
-    },
-    
-    // Values of associated target nodes for non-unique properties
-    values: function(property) {
-      if (!this.all(property)) return new Data.Hash();
-      return this.all(property).map(function(n) {
-        return n.val;
-      });
-    }
-  });
-  
-  
   // Data.Adapter
   // --------------
   
@@ -762,30 +673,22 @@
   // Meta-data (data about data) is represented as a set of properties that
   // belongs to a certain `Data.Type`. A `Data.Property` holds a key, a name
   // and an expected type, telling whether the data is numeric or textual, etc.
-  
-  Data.Property = _.inherits(Data.Node, {
-    constructor: function(type, id, options) {
-      Data.Node.call(this);
-      this.key = id;
-      this._id = id;
-      this.type = type;
-      this.unique = options.unique !== undefined ? options.unique : true;
-      this.name = options.name;
-      this.meta = options.meta || {};
-      this.validator = options.validator;
-      this.sync = options.sync;
-      this.required = options["required"];
-      this["default"] = options["default"];
-      
-      // TODO: ensure that object and value types are not mixed
-      this.expectedTypes = _.isArray(options['type']) ? options['type'] : [options['type']];
-      this.replace('values', new Data.Hash());
-    },
+
+  Data.Property = function(type, key, options) {
+    this.key = key;
+    this.type = type;
+    this.unique = options.unique !== undefined ? options.unique : true;
+    this.name = options.name;
+    this.meta = options.meta || {};
+    this.validator = options.validator;
+    this.required = options["required"];
+    this["default"] = options["default"];
     
-    // TODO: this desctroys Data.Node#values
-    // values: function() {
-    //   return this.all('values');
-    // },
+    // TODO: ensure that object and value types are not mixed
+    this.expectedTypes = _.isArray(options['type']) ? options['type'] : [ options['type'] ];
+  };
+
+  _.extend(Data.Property.prototype, _.Events, {
     
     isValueType: function() {
       return Data.isValueType(this.expectedTypes[0]);
@@ -793,76 +696,6 @@
     
     isObjectType: function() {
       return !this.isValueType();
-    },
-    
-    // Register values of a certain object
-    registerValues: function(values, obj) {
-      var that = this;
-      var res = new Data.Hash();
-            
-      _.each(values, function(v, index) {
-        if (v === undefined) return; // skip
-        var val;
-        
-        // Skip registration for object type values
-        // TODO: check edge cases!
-        if (that.isValueType() && that.expectedTypes[0] === 'object') {
-          val = new Data.Node({value: v});
-          res.set(index, val);
-          return;
-        }
-        // Skip registration of null values
-        if (v === null) {
-          res.set(index, null);
-          return res;
-        }
-        
-        // Check if we can recycle an old value of that object
-        if (obj.all(that.key)) val = obj.all(that.key).get(v);
-        
-        if (!val) { // Can't recycle
-          val = that.get('values', v);
-          if (!val) {
-            // Well, a new value needs to be created
-            if (that.isObjectType()) {
-              // Create on the fly if an object is passed as a value
-              if (typeof v === 'object') v = that.type.g.set(v)._id;
-              val = that.type.g.get('nodes', v);
-              if (!val) {
-                // Register the object even if not yet loaded
-                val = new Data.Object(that.type.g, v);
-                that.type.g.set('nodes', v, val);
-              }
-            } else {
-              val = new Data.Node({value: v});
-              val.referencedObjects = new Data.Hash();
-            }
-            // Register value on the property
-            that.set('values', v, val);
-          }
-          val.referencedObjects.set(obj._id, obj);
-        }
-        res.set(v, val);
-      });
-      
-      // Unregister values that are no longer used on the object
-      if (obj.all(that.key)) {
-        this.unregisterValues(obj.all(that.key).difference(res), obj);
-      }
-      return res;
-    },
-    
-    // Unregister values from a certain object
-    unregisterValues: function(values, obj) {
-      var that = this;
-
-      values.each(function(val, key) {
-        if (val.referencedObjects && val.referencedObjects.length>1) {
-          val.referencedObjects.del(obj._id);
-        } else {
-          that.all('values').del(key);
-        }
-      });
     },
         
     // Aggregates the property's values
@@ -894,27 +727,25 @@
   // you are saying that Shakespeare IS A person. Types are also used to hold
   // collections of properties that belong to a certain group of objects.
   
-  Data.Type = _.inherits(Data.Node, {
-    constructor: function(g, id, type) {
-      var that = this;
-      Data.Node.call(this);
-  
-      this.g = g; // Belongs to the DataGraph
-      this.key = id;
+
+  Data.Type = function(g, id, type) {
+      this.g = g; 
       this._id = id;
-      this._rev = type._rev;
-      this._conflicted = type._conflicted;
+      if (type._rev) this._rev = type._rev;
+      if (type._conflicted) this._conflicted = type._conflicted;
       this.type = type.type;
       this.name = type.name;
       this.meta = type.meta || {};
-      this.indexes = type.indexes;
-      
-      that.replace('properties', new Data.Hash);
-      // Extract properties
-      _.each(type.properties, function(property, key) {
-        that.set('properties', key, new Data.Property(that, key, property));
-      });
-    },
+      if (type.indexes) this.indexes = type.indexes;
+
+      this.properties = new Data.Hash();
+
+      _.each(type.properties, _.bind(function(property, key) {
+        this.properties.set(key, new Data.Property(this, key, property));
+      }, this));
+  };
+
+  _.extend(Data.Type.prototype, _.Events, {
     
     // Convenience function for accessing properties
     properties: function() {
@@ -961,30 +792,50 @@
   // Represents a typed data object within a `Data.Graph`.
   // Provides access to properties, defined on the corresponding `Data.Type`.
   
-  Data.Object = _.inherits(Data.Node, {
-    constructor: function(g, id, data) {
-      var that = this;
-      Data.Node.call(this);
-      
-      this.g = g;      
-      this.key = id; // TODO: remove in favor of _id
-      this._id = id;
-      this.html_id = id.replace(/\//g, '_');
-      this.meta = data ? data.meta || {} : {};
-      
-      this.errors = []; // Stores validation errors
-      this._types = new Data.Hash();
-      
-      // Associated Data.Objects
-      this.referencedObjects = new Data.Hash();
-      
-      // Memoize raw data for the build process
-      if (data) this.data = data;
-    },
+  Data.wrapInHash = function(graph, values) {
+    var hash = new Data.Hash();
+    _.each(values, function(v) {
+      if (!graph.get(v)) {
+        console.log(graph);
+        console.log('not found: '+v);
+      }
+      hash.set(v, graph.get(v));
+    });
+    return hash;
+  };
+
+  Data.resolve = function(graph, values) {
+    var hash = new Data.Hash();
+    _.each(values, function(v) {
+      if (!graph.get(v)) {
+        console.log(graph);
+        console.log('not found: '+v);
+      }
+      hash.set(v, graph.get(v));
+    });
+    return hash;
+  };
+
+  Data.Object = function(g, id, data) {
+    this.g = g;
+    this._id = id; delete data._id;    
+    this.data = data;
+
+    this._types = _.isArray(data.type) ? data.type : [data.type];
+    if (this.data._dirty) this._dirty = true;
+    if (this.data.meta) this.meta = this.data.meta;
+    // delete this.data.type; Why this isn't working?
+  };
+
+  _.extend(Data.Object.prototype, _.Events, {
     
     // Convenience function for accessing all related types
     types: function() {
-      return this._types;
+      return Data.wrapInHash(this.g, this._types);
+    },
+
+    type: function() {
+      return this.g.get(_.last(this._types));
     },
     
     toString: function() {
@@ -995,57 +846,18 @@
     properties: function() {
       var properties = new Data.Hash();
       // Prototypal inheritance in action: overriden properties belong to the last type specified
-      this._types.each(function(type) {
-        type.all('properties').each(function(property) {
+      this.types().each(function(type) {
+        type.properties.each(function(property) {
           properties.set(property.key, property);
         });
       });
       return properties;
     },
     
-    // After all nodes are recognized the object can be built
-    build: function() {
-      var that = this;
-      var types = _.isArray(this.data.type) ? this.data.type : [this.data.type];
-      
-      if (!this.data) throw new Error('Object has no data, and cannot be built');
-      
-      this._rev = this.data._rev;
-      this._conflicted = this.data._conflicted;
-      this._deleted = this.data._deleted;
-      
-      // Initialize primary type (backward compatibility)
-      this.type = this.g.get('nodes', _.last(types));
-            
-      // Initialize types
-      _.each(types, function(type) {
-        that._types.set(type, that.g.get('nodes', type));
-        // Register properties for all types
-        that._types.get(type).all('properties').each(function(property, key) {        
-          function applyValue(value) {
-            // if (!value) return; // Skip undefined values
-            if (value) {
-              var values = _.isArray(value) ? value : [value];
-              // Apply property values
-              that.replace(property.key, property.registerValues(values, that));              
-            } else {
-              that.replace(property.key, new Data.Hash());
-            }
-          }
-          
-          if (that.data[key] !== undefined) {
-            applyValue(that.data[key]);
-          } else if (property["default"]) {
-            applyValue(property["default"]);
-          }
-        });
-      });
-      if (this._dirty) this.g.trigger('dirty', this);
-    },
-    
+
     // Validates an object against its type (=schema)
     validate: function() {
-      if (this.type.key === '/type/type') return true; // Skip type nodes
+      if (this.type._id === '/type/type') return true; // Skip type nodes
       
       var that = this;
       this.errors = [];
@@ -1108,18 +920,38 @@
     // two arguments are provided `get` delegates to `Data.Node#get`.
     
     get: function(property, key) {
-      if (!this.data) return null;
+      // TODO: optimize and skip that check?
       var p = this.properties().get(property);
+      var value = this.data[property];
       if (!p) return null;
-    
-      if (arguments.length === 1) {
-        if (p.isObjectType()) {
-          return p.unique ? this.first(property) : this.all(property);
-        } else {
-          return p.unique ? this.value(property) : this.values(property);
-        }
+      if (p.isObjectType()) {
+        return p.unique ? this.g.get(value) : Data.wrapInHash(this.g, value);
       } else {
-        return Data.Node.prototype.get.call(this, property, key);
+        if (p.unique) return value;
+        var res = new Data.Hash();
+        _.each(value, function(v) {
+          res.set(v, v);
+        });
+        return res;
+      }
+    },
+
+    // New API, returns arrays instead of Data.Hashes
+    attr: function(property, key) {
+      var p = this.properties().get(property);
+      var value = this.data[property];
+      if (!p) return null;
+      if (p.isObjectType()) {
+        return p.unique ? this.g.get(value) : resolve(this.g, value);
+      } else {
+        // if (p.unique) return value;
+        return value;
+
+        // var res = new Data.Hash();
+        // _.each(value, function(v) {
+        //   res.set(v, v);
+        // });
+        return res;
       }
     },
     
@@ -1128,27 +960,22 @@
     set: function(properties) {
       var that = this;
       
-      if (arguments.length === 1) {
-        _.each(properties, function(value, key) {
-          var p = that.properties().get(key);
-          if (!p) return; // Property not found on type
+      _.each(properties, function(value, key) {
+        var p = that.properties().get(key);
+        if (!p) return; // Property not found on type
 
-          // Setup values
-          that.replace(p.key, p.registerValues(_.isArray(value) ? value : [value], that));
-          
-          that._dirty = true;
-          that.g.trigger('dirty', that);
-          that.g.snapshot();
-        });
-      } else {
-        return Data.Node.prototype.set.call(this, arguments[0], arguments[1], arguments[2]);
-      }
+        // Setup values
+        // that.replace(p.key, p.registerValues(_.isArray(value) ? value : [value], that));
+        
+        that._dirty = true;
+        that.g.trigger('dirty', that);
+      });
     },
     
     // Serialize an `Data.Object`'s properties
     toJSON: function() {
-      var that = this;
-      result = {};
+      var that = this,
+          result = {};
       _.each(this._properties, function(value, key) {
         var p = that.properties().get(key);
         if (p.isObjectType()) {
@@ -1164,9 +991,7 @@
       return result;
     }
   });
-  
-  _.extend(Data.Object.prototype, _.Events);
-  
+    
   
   // Data.Graph
   // --------------
@@ -1176,24 +1001,15 @@
   // point to referred objects. Data.Graphs can be traversed in various ways.
   // See the testsuite for usage.
   
-  // Set a new Data.Adapter and enable Persistence API
+  Data.Graph = function(g, options) {
+    this.nodes = new Data.Hash();
+    if (!g) return;
 
-  Data.Graph = _.inherits(Data.Node, {
-    constructor: function(g, options) {
-      var that = this;
-      Data.Node.call(this);
-      
-      this.watchers = {};
-      this.replace('nodes', new Data.Hash());
-      if (!g) return;
-      this.merge(g, options && options.dirty);
-      this.syncMode = options && options.syncMode ? options.syncMode : 'push';
-      
-      if (options && options.persistent) {
-        this.persistent = options.persistent;
-        this.restore(); // Restore data
-      }
-    },
+    this.merge(g, options && options.dirty);
+    this.syncMode = options && options.syncMode ? options.syncMode : 'push';
+  };
+
+ _.extend(Data.Graph.prototype, _.Events, {
     
     connect: function(name, config) {
       if (typeof exports !== 'undefined') {
@@ -1246,90 +1062,53 @@
       var that = this;
       
       // Process schema nodes
-      var types = _.select(g, function(node, key) {
+      _.each(g, function(node, key) {
         if (node.type === '/type/type' || node.type === 'type') {
-          if (!that.get('nodes', key)) {
-            that.set('nodes', key, new Data.Type(that, key, node));
-            that.get(key)._dirty = node._dirty ? node._dirty : dirty;
+          if (!that.get(key)) {
+            var obj = new Data.Type(that, key, node);
+            if (node._dirty || dirty) obj._dirty = true;
+            that.nodes.set(key, obj);
           }
-          return true;
-        }
-        return false;
-      });
-      
-      // Process object nodes
-      var objects = _.select(g, function(node, key) {
-        if (node.type !== '/type/type' && node.type !== 'type') {
-          var res = that.get('nodes', key);
-          var types = _.isArray(node.type) ? node.type : [node.type];
-          if (!res) {
-            res = new Data.Object(that, key, node);
-            that.set('nodes', key, res);
-          } else {            
-            // If dirty, we've got a conflict
-            if (res._dirty) {
-              res._conflicted = true;
-              res._conflicted_rev = node;
-            } else {
-              res.data = node;
-            }
+        } else {
+          var obj = that.get(key);
+          // var types = _.isArray(node.type) ? node.type : [node.type];
+          if (!obj) {
+            obj = new Data.Object(that, key, node);
+            that.nodes.set(key, obj);
+          } else if (obj.data._dirty) {
+            res._conflicted = true;
+            res._conflicted_rev = node;
+          } else {
+            res.data = node;
           }
-          // Check for type existence
-          _.each(types, function(type) {
-            if (!that.get('nodes', type)) {
-              throw new Error("Type '"+type+"' not found for "+key+"...");
-            }
-            that.get('nodes', type).set('nodes', key, res);
-          });
-          that.get(key)._dirty = node._dirty ? node._dirty : dirty;
+
+          if (node._dirty || dirty) obj._dirty = true;
           if (!node._id) node._id = key;
-          return true;
         }
-        return false;
-      });
-      
-      // Now that all new objects are registered we can build them
-      _.each(objects, function(o) {
-        var obj = that.get(o._id);
-        if (obj.data && !obj._conflicted) obj.build();
       });
       
       if (this.conflictedNodes().length > 0) this.trigger('conflicted');
       
-      // Create a new snapshot
-      this.snapshot();
       return this;
     },
 
     set: function(node) {
       var id, that = this;
-      
-      // Backward compatibility
-      if (arguments.length === 2) node = _.extend(arguments[1], {_id: arguments[0]});
 
       var types = _.isArray(node.type) ? node.type : [node.type];
-      if (arguments.length <= 2) {
-        node._id = node._id ? node._id : Data.uuid('/' + _.last(_.last(types).split('/')) + '/');
-        // Recycle existing object if there is one
-        var res = that.get(node._id) ? that.get(node._id) : new Data.Object(that, node._id, _.clone(node), true);
-        res.data = node;
-        res._dirty = true;
-        res.build();
-        this.set('nodes', node._id, res);
-        this.snapshot();
-        return res;
-      } else { // Delegate to Data.Node#set
-        return Data.Node.prototype.set.call(this, arguments[0], arguments[1], arguments[2]);
-      }
+      node._id = node._id ? node._id : Data.uuid('/' + _.last(_.last(types).split('/')) + '/');
+
+      // Recycle existing object if there is one
+      var res = that.get(node._id) ? that.get(node._id) : new Data.Object(that, node._id, _.clone(node), true);
+      res.data = node;
+      res._dirty = true;
+      this.nodes.set(node._id, res);
+      return res;
     },
     
     // API method for accessing objects in the graph space
     get: function(id) {
-      if (arguments.length === 1) {
-        return this.get('nodes', id);
-      } else {
-        return Data.Node.prototype.get.call(this, arguments[0], arguments[1]);
-      }
+      return this.nodes.get(id);
     },
     
     // Delete node by id, referenced nodes remain untouched
@@ -1338,32 +1117,14 @@
       if (!node) return;
       node._deleted = true;
       node._dirty = true;
-      // Remove registered values
-      node.properties().each(function(p, key) {
-        var values = node.all(key);
-        if (values) p.unregisterValues(values, node);
-      });
       this.trigger('dirty', node);
-      this.snapshot();
     },
     
     // Find objects that match a particular query
     find: function(query) {
       return this.objects().select(function(o) {
-        return Data.matches(o.toJSON(), query);
+        return Data.matches(o.data, query);
       });
-    },
-    
-    // Memoize a snapshot of the current graph
-    snapshot: function() {
-      if (!this.persistent) return;
-      localStorage.setItem("graph", JSON.stringify(this.toJSON(true)));
-    },
-    
-    // Restore latest snapshot from localStorage
-    restore: function() {
-      var snapshot = JSON.parse(localStorage.getItem("graph"));
-      if (snapshot) this.merge(snapshot);
     },
     
     // Fetches a new subgraph from the adapter and either merges the new nodes
@@ -1478,14 +1239,16 @@
     
     // Type nodes
     types: function() {
-      return this.all('nodes').select(function(node, key) {
+      // TODO: not efficient
+      return this.nodes.select(function(node, key) {
         return node.type === '/type/type' || node.type === 'type';
       });
     },
     
     // Object nodes
     objects: function() {
-      return this.all('nodes').select(function(node, key) {
+      // TODO: not efficient
+      return this.nodes.select(function(node, key) {
         return node.type !== '/type/type' && node.type !== 'type' && node.data && !node._deleted;
       });
     },
@@ -1493,28 +1256,32 @@
     // Get dirty nodes
     // Used by Data.Graph#sync
     dirtyNodes: function() {
-      return this.all('nodes').select(function(obj, key) {
+      // TODO: not efficient, keep track of dirty nodes seperately
+      return this.nodes.select(function(obj, key) {
         return (obj._dirty && (obj.data || obj instanceof Data.Type));
       });
     },
     
     // Get invalid nodes
     invalidNodes: function() {
-      return this.all('nodes').select(function(obj, key) {
+      // TODO: not efficient, keep track of invalid nodes seperately
+      return this.nodes.select(function(obj, key) {
         return (obj.errors && obj.errors.length > 0);
       });
     },
     
     // Get conflicting nodes
     conflictedNodes: function() {
-      return this.all('nodes').select(function(obj, key) {
+      // TODO: not efficient, keep track of conflicted nodes seperately
+      return this.nodes.select(function(obj, key) {
         return obj._conflicted;
       });
     },
     
     // Nodes that got rejected during sync
     rejectedNodes: function() {
-      return this.all('nodes').select(function(obj, key) {
+      // TODO: not efficient, keep track of rejected nodes seperately
+      return this.nodes.select(function(obj, key) {
         return obj._rejected;
       });
     },
@@ -1540,8 +1307,6 @@
       return result;
     }
   });
-  
-  _.extend(Data.Graph.prototype, _.Events);
   
 
   // Data.Collection
