@@ -67,14 +67,6 @@ Data.Adapters["ajax"] = function(graph, config) {
     });
   };
   
-  self.watch = function() {
-    // no-op
-  };
-  
-  self.unwatch = function() {
-    // no-op
-  };
-  
   // Expose Public API
   return self;
 };

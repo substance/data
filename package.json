@@ -1,12 +1,12 @@
 {
   "name"          : "data",
-  "description"   : "A Javascript data manipulation library.",
+  "description"   : "A Javascript data representation library.",
   "url"           : "http://github.com/michael/data/",
-  "keywords"      : ["util", "functional", "linked-data", "server", "client", "browser"],
+  "keywords"      : ["util", "linked-data", "server", "client", "browser"],
   "author"        : "Michael Aufreiter",
   "contributors"  : [],
-  "dependencies"  : ["underscore", "now"],
+  "dependencies"  : ["underscore"],
   "lib"           : ".",
   "main"          : "index",
-  "version"       : "0.4.1"
+  "version"       : "0.6.0"
 }

@@ -373,7 +373,6 @@ var CouchAdapter = function(graph, config, callback) {
       // Execute query either typed (by id) or untyped (using a CouchDB View)
       qry._id ? executeUntypedQuery(function() { resolveReferences(result, callback); })
               : executeTypedQuery(function() { resolveReferences(result, callback); });
-      
     }
     
     // Perform queries
