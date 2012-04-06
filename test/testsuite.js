@@ -41,11 +41,11 @@ var items;
 
       test("valid construction", function() {
         assert.ok(graph != undefined);
-        assert.ok(graph.types().length == 3);
+        assert.ok(graph.types.length == 3);
 
-        assert.ok(graph.types()[0] instanceof Data.Type);
-        assert.ok(graph.types()[1] instanceof Data.Type);
-        assert.ok(graph.types()[2] instanceof Data.Type);
+        assert.ok(graph.types[0] instanceof Data.Type);
+        assert.ok(graph.types[1] instanceof Data.Type);
+        assert.ok(graph.types[2] instanceof Data.Type);
       });
 
 
@@ -176,117 +176,20 @@ var items;
         assert.ok(_.first(protovis.get('entities')) === graph.get('/location/toronto'));
       });
 
+      test("Find objects", function() {
+        // By type
+        var documents = graph.find({"type": "/type/document"});
+        
+        assert.ok(documents.length === 3);
+
+        // By authors
+        documents = graph.find({
+          "type": "/type/document",
+          "authors": "Michael Aufreiter"
+        });
+
+        assert.ok(documents.length === 2);
+      });
     });
   });
 }).call(this);
-
-
-// // Data.Collection
-// // -------------
-
-// module("Data.Collection");
-
-// var c = new Data.Collection(countries_fixture);
-
-// test("has some properties", function() {
-//   ok(c.properties().get('area') instanceof Data.Node);
-//   ok(c.properties().get('currency_used') instanceof Data.Node);
-//   ok(c.properties().get('doesnotexit') === undefined);
-// });
-
-// test("property is connected to values", function() {
-//   var governmentForms = c.properties().get('form_of_government');
-//   ok(governmentForms.all('values').length === 10);
-// });
-
-// test("read item property values", function() {
-//   var item = c.get('austria');
-//   // Unique properties
-//   ok(item.get('name') === 'Austria');
-//   ok(item.get('area') === 83872);
-//   // Non-unique properties
-//   ok(item.get('form_of_government').length === 2);
-// });
-
-// test("get values of a property", function() {
-//   var population = c.properties().get('population');
-//   ok(population.all('values').length === 6);
-// });
-
-// test("grouping", function() {
-//   var languages = c.group(["official_language"], {
-//     'area_total': { aggregator: Data.Aggregators.SUM, name: "Total Area", property: "area" },
-//     'area_avg': {aggregator: Data.Aggregators.AVG, name: "Average Area", property: "area" },
-//     'population': { aggregator: Data.Aggregators.AVG, name: "Average Population" }
-//   });
-  
-//   ok(languages.items().get('German Language').get('population') === 45209450);
-//   ok(languages.items().get('English Language').get('area_total') === 10071495);
-  
-//   // Deal with empty group key
-//   var onegroup = c.group([], {
-//     'area_total': { aggregator: Data.Aggregators.SUM, name: "Total Area", property: "area" },
-//     'area_avg': {aggregator: Data.Aggregators.AVG, name: "Average Area", property: "area" },
-//     'population': { aggregator: Data.Aggregators.MIN, name: "Smallest Population" }
-//   });
-  
-//   ok(onegroup.items().first().get('population') === 8356700)
-// });
-
-// test("Collection#find", function() {
-//   // Test ANY-OF operator
-//   var englishAndGermanCountries = c.find({
-//     "official_language|=": ["English Language", "German Language"]
-//   });
-  
-//   ok(englishAndGermanCountries.get('austria'));
-//   ok(englishAndGermanCountries.get('ger'));
-//   ok(englishAndGermanCountries.get('uk'));
-//   ok(englishAndGermanCountries.get('usa'));
-  
-//   // Test ALL-OF operator
-//   var republicsAndDemocracies = c.find({
-//     "official_language": "English Language",
-//     "form_of_government&=": ["Constitution", "Democracy"]
-//   });
-  
-//   // Test >= operator
-//   var bigCountries = c.find({
-//     "area>=": 700000
-//   });
-  
-//   ok(bigCountries.length === 1);
-// });
-
-// test("Collection#filter", function() {
-//   var filteredCollection = c.filter({
-//     "official_language|=": ["German Language"]
-//   });
-//   ok(filteredCollection.items().length === 2);
-// });
-
-
-// module("Data.Aggregators");
-
-// // Data.Aggregators
-// // -------------
-
-// test("Aggregators", function() {
-//   var values = new Data.Hash();
-//   values.set('0', 4);
-//   values.set('1', 5);
-//   values.set('2', -3);
-//   values.set('3', 1);
-  
-//   ok(Data.Aggregators.SUM(values) === 7);
-//   ok(Data.Aggregators.MIN(values) === -3);
-//   ok(Data.Aggregators.MAX(values) === 5);
-//   ok(Data.Aggregators.COUNT(values) === 4);
-// });
-
-
-// test("allow aggregation of property values", function() {
-//   var population = c.properties().get("population");
-//   ok(population.aggregate(Data.Aggregators.MIN) === 8356700);
-//   ok(population.aggregate(Data.Aggregators.MAX) === 306108000);
-// });
