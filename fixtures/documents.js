@@ -28,6 +28,9 @@ var documents_fixture = {
         "unique": true,
         "type": "object"
       }
+    },
+    "indexes": {
+      "by_authors": ["authors"]
     }
   },
   "/type/entity": {

@@ -24,6 +24,9 @@ var policies_fixture = {
         "name": "State Code",
         "type": "string"
       }
+    },
+    "indexes": {
+      "by_name_and_code": ["name", "code"]
     }
   },
   "/type/grade_level": {
@@ -108,6 +111,9 @@ var policies_fixture = {
         "name": "Value mappings",
         "type": "object"
       }
+    },
+    "indexes": {
+      "by_group": ["groups"]
     }
   },
   "/type/record": {

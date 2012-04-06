@@ -41,8 +41,22 @@
   Data.isValueType = function (type) {
     return _.include(Data.VALUE_TYPES, _.last(type));
   };
-  
-  
+
+  Data.permute = function(arr) {
+    if (arr.length == 1) {
+      return arr[0];
+    } else {
+      var result = [];
+      var rest = Data.permute(arr.slice(1));  // recur with the rest of array
+      for (var i = 0; i < rest.length; i++) {
+        for (var j = 0; j < arr[0].length; j++) {
+          result.push(arr[0][j] + rest[i]);
+        }
+      }
+      return result;
+    }
+  };
+
   /*!
   Math.uuid.js (v1.4)
   http://www.broofa.com
@@ -152,47 +166,6 @@
     }
   };
 
-  // Shared empty constructor function to aid in prototype-chain creation.
-  var ctor = function(){};
-
-  // Helper function to correctly set up the prototype chain, for subclasses.
-  // Similar to `goog.inherits`, but uses a hash of prototype properties and
-  // class properties to be extended.
-  // Taken from Underscore.js (c) Jeremy Ashkenas
-  _.inherits = function(parent, protoProps, staticProps) {
-    var child;
-
-    // The constructor function for the new subclass is either defined by you
-    // (the "constructor" property in your `extend` definition), or defaulted
-    // by us to simply call `super()`.
-    if (protoProps && protoProps.hasOwnProperty('constructor')) {
-      child = protoProps.constructor;
-    } else {
-      child = function(){ return parent.apply(this, arguments); };
-    }
-
-    // Set the prototype chain to inherit from `parent`, without calling
-    // `parent`'s constructor function.
-    ctor.prototype = parent.prototype;
-    child.prototype = new ctor();
-
-    // Add prototype properties (instance properties) to the subclass,
-    // if supplied.
-    if (protoProps) _.extend(child.prototype, protoProps);
-
-    // Add static properties to the constructor function, if supplied.
-    if (staticProps) _.extend(child, staticProps);
-
-    // Correctly set child's `prototype.constructor`, for `instanceof`.
-    child.prototype.constructor = child;
-
-    // Set a convenience property in case the parent's prototype is needed later.
-    child.__super__ = parent.prototype;
-
-    return child;
-  };
-  
-  
   
   // Data.Adapter
   // --------------
@@ -207,7 +180,6 @@
   // Namespace where Data.Adapters can register
   Data.Adapters = {};
   
-   
   // Data.Type
   // --------------
   
@@ -220,11 +192,12 @@
   Data.Type = function(g, id, type) {
       this.g = g; 
       this._id = id;
-      if (type._rev) this._rev = type._rev;
       this.type = type.type;
       this.name = type.name;
+      this.objects = [];
       this.meta = type.meta || {};
-      if (type.indexes) this.indexes = type.indexes;
+      this.built = false;
+      if (type.indexes) this.setupIndexes(type.indexes);
 
       this.properties = type.properties;
 
@@ -235,31 +208,69 @@
 
   _.extend(Data.Type.prototype, _.Events, {
     
+    setupIndexes: function(indexes) {
+      var that = this;
+      this.indexes = {};
+
+      _.each(indexes, function(properties, key) {
+        var index = that.indexes[key] = {
+          properties: properties,
+          objects: {}
+        };
+      });
+    },
+
+    buildIndexes: function() {
+      var that = this;
+
+      function build(o, index) {
+        function createOrUpdateEntry(key) {
+          var entry = index.objects[key];
+          if (!entry) entry = index.objects[key] = [];
+          entry.push(o);
+        }
+        var vals = [];
+        _.each(index.properties, function(p) {
+          var v = o.data[p];
+          vals.push(_.isArray(v) ? v : [v]);
+        });
+        _.each(Data.permute(vals), function(p) {
+          createOrUpdateEntry(p);
+        });
+      }
+
+      _.each(this.objects, function(o) {
+        _.each(that.indexes, function(index) {
+          build(o, index);
+        });
+      });
+      this.built = true;
+    },
+
+    find: function(qry) {
+      if (!this.built) this.buildIndexes();
+      // Pick the right index
+      var index = _.select(this.indexes, function(i) {
+        return _.intersect(Object.keys(qry), i.properties).length === i.properties.length
+      })[0];
+
+      if (!index) return console.log("No index found.");
+      var val = "";
+      _.each(index.properties, function(p) {
+        val += qry[p];
+      });
+      return index.objects[val] || [];
+    },
+
     // Serialize a single type node
     toJSON: function() {
-      var result = {
+      return {
         _id: this._id,
         type: '/type/type',
-        name: this.name,
-        properties: {}
-      };
-      
-      if (this._rev) result._rev = this._rev;
-      if (this.meta && _.keys(this.meta).length > 0) result.meta = this.meta;
-      if (this.indexes && _.keys(this.indexes).length > 0) result.indexes = this.indexes;
-      
-      this.all('properties').each(function(property) {
-        var p = result.properties[property.key] = {
-          name: property.name,
-          unique: property.unique,
-          type: property.expectedTypes,
-          required: property.required ? true : false
-        };
-        if (property["default"]) p["default"] = property["default"];
-        if (property.validator) p.validator = property.validator;
-        if (property.meta && _.keys(property.meta).length > 0) p.meta = property.meta;
-      });
-      return result;
+        properties: this.properties,
+        meta: this.meta,
+        indexes: _.map(this.indexes, function(i) { return i.properties })
+      }
     }
   });
   
@@ -285,6 +296,8 @@
       this.types = _.isArray(data.type) ? data.type : [data.type];
       if (this.data._dirty) this._dirty = true;
       if (this.data.meta) this.meta = this.data.meta;
+
+      // TODO: update type registrations, if there are changes to the object
       // delete this.data.type; // Why this isn't working?
     },
 
@@ -305,55 +318,6 @@
       return properties;
     },
 
-    // Validates an object against its type (=schema)
-    validate: function() {
-      if (this.type._id === '/type/type') return true; // Skip type nodes
-      
-      var that = this;
-      this.errors = [];
-      this.properties().each(function(property, key) {
-        // Required property?
-        if ((that.get(key) === undefined || that.get(key) === null) || that.get(key) === "") {
-          if (property.required) {
-            that.errors.push({property: key, message: "Property \"" + property.name + "\" is required"});
-          }
-        } else {
-          // Correct type?
-          var types = property.expectedTypes;
-
-          function validType(value, types) {
-            if (_.include(types, typeof value)) return true;
-            // FIXME: assumes that unloaded objects are valid properties
-            if (!value.data) return true;
-            if (value instanceof Data.Object && _.intersect(types, value.types().keys()).length>0) return true;
-            if (typeof value === 'object' && _.include(types, value.constructor.name.toLowerCase())) return true;
-            return false;
-          }
-          
-          // Unique properties
-          if (property.unique && !validType(that.get(key), types)) {
-            that.errors.push({property: key, message: "Invalid type for property \"" + property.name + "\""});
-          }
-          
-          // Non unique properties
-          if (!property.unique && !_.all(that.get(key).values(), function(v) { return validType(v, types); })) {
-            that.errors.push({property: key, message: "Invalid value type for property \"" + property.name + "\""});
-          }
-        }
-        
-        // Validator satisfied?
-        function validValue() {
-          return new RegExp(property.validator).test(that.get(key));
-        }
-        
-        if (property.validator) {
-          if (!validValue()) {
-            that.errors.push({property: key, message: "Invalid value for property \"" + property.name + "\""});
-          }
-        }
-      });
-      return this.errors.length === 0;
-    },
     
     // There are four different access scenarios for getting a certain property
     // 
@@ -380,18 +344,6 @@
       } else {
         return p.unique ? this.g.get(value)
                         : _.map(value, _.bind(function(v) { return this.g.get(v); }, this));   
-      }
-    },
-
-    // New API, returns arrays instead of Data.Hashes
-    attr: function(property, key) {
-      var p = this.properties().get(property);
-      var value = this.data[property];
-      if (!p) return null;
-      if (p.isObjectType()) {
-        return p.unique ? this.g.get(value) : resolve(this.g, value);
-      } else {
-        return value;
       }
     },
 
@@ -425,6 +377,8 @@
   
   Data.Graph = function(g, options) {
     this.nodes = [];
+    this.objects = [];
+    this.types = [];
     // Lookup objects by key
     this.keys = {};
     if (!g) return;
@@ -459,23 +413,20 @@
       require(__dirname + '/server').initialize(server, this);
     },
     
-    // Empty graph
-    empty: function() {
-      var that = this;
-      _.each(this.objects().keys(), function(id) {
-        that.del(id);
-        that.all('nodes').del(id);
-      });
-      return this;
-    },
-    
     // Merges in another Graph
     merge: function(nodes, dirty) {      
       _.each(nodes, _.bind(function(n, key) { this.set(_.extend(n, {_id: key})); }, this));
       return this;
     },
 
+    find: function(qry) {
+      var type = this.get(qry.type);
+      delete qry.type;
+      return Object.keys(qry).length === 0 ? type.objects : type.find(qry);
+    },
+
     set: function(node, dirty) {
+      var that = this;
       if (dirty === undefined) dirty = true;
       var types = _.isArray(node.type) ? node.type : [node.type];
       node._id = node._id ? node._id : Data.uuid('/' + _.last(_.last(types).split('/')) + '/');
@@ -489,6 +440,17 @@
         n = createNode.apply(this);
         this.keys[node._id] = this.nodes.length;
         this.nodes.push(n);
+        
+        // Register
+        if (_.last(types) === "/type/type") {
+          this.types.push(n);
+        } else {
+          this.objects.push(n);
+          // Register on types
+          _.each(n.types, function(t) {
+            that.get(t).objects.push(n);
+          });
+        }
       } else {
         n.update(node);
       }
@@ -507,53 +469,6 @@
       node._deleted = true;
       node._dirty = true;
       this.trigger('dirty', node);
-    },
-    
-    // Fetches a new subgraph from the adapter and either merges the new nodes
-    // into the current set of nodes
-    fetch: function(query, options, callback) {
-      var that = this,
-          nodes = new Data.Hash(); // collects arrived nodes
-      
-      // Options are optional
-      if (typeof options === 'function' && typeof callback === 'undefined') {
-        callback = options;
-        options = {};
-      }
-      
-      this.adapter.read(query, options, function(err, graph) {
-        if (graph) {          
-          that.merge(graph, false);
-          _.each(graph, function(node, key) {
-            nodes.set(key, that.get(key));
-          });
-        }
-        err ? callback(err) : callback(null, nodes);
-      });
-    },
-    
-    // Type nodes
-    types: function() {
-      // TODO: not efficient
-      return _.select(this.nodes, function(node, index) {
-        return node instanceof Data.Type;
-      });
-    },
-    
-    // Object nodes
-    objects: function() {
-      // TODO: not efficient
-      return _.select(this.nodes, function(node, index) {
-        return node instanceof Data.Type;
-      });
-    },
-    
-    // Get invalid nodes
-    invalidNodes: function() {
-      // TODO: not efficient, keep track of invalid nodes seperately
-      return _.select(this.nodes, function(node, index) {
-        return (node.errors && node.errors.length > 0);
-      });
     },
 
     // Serializes the graph to the JSON-based exchange format
