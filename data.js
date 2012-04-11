@@ -57,16 +57,6 @@
     }
   };
 
-  // Turn into a collection
-  Data.wrap = function(type, objects) {
-    var c = new Data.Collection({type: type, objects: []});
-    c.objects = objects;
-    // Register keys
-    _.each(objects, function(o, i) {
-      c.keys[o._id] = i;
-    });
-  };
-
   /*!
   Math.uuid.js (v1.4)
   http://www.broofa.com
@@ -175,6 +165,72 @@
       return this;
     }
   };
+
+
+  // Data.Indexable
+  // --------------
+
+  // Module to be mixed into Data.Graph and Data.Collection data structures
+
+  Data.Indexable = {
+
+    indexes: {},
+
+    // Build indexes of a particular type
+    buildIndexes: function(type) {
+      var that = this;
+
+      function build(o, index) {
+        function createOrUpdateEntry(key) {
+          if (!key) return;
+          var entry = that.indexes[type._id][index][key];
+          if (!entry) entry = that.indexes[type._id][index][key] = [];
+          entry.push(o);
+        }
+
+        var vals = [];
+        _.each(type.indexes[index], function(p) {
+          var v = p === "type" ? o.types : o.properties[p];
+          if (!v) return; // Skip
+          vals.push(_.isArray(v) ? v : [v]);
+        });
+
+        _.each(Data.permute(vals), function(p) {
+          createOrUpdateEntry(p);
+        });
+      }
+
+      // Setup
+      this.indexes[type._id] = {};
+      _.each(type.indexes, function(i, key) {
+        that.indexes[type._id][key] = {};
+      });
+
+      // Build
+      _.each(this.objects, function(o) {
+        if (!_.include(o.types, type._id)) return;
+        _.each(type.indexes, function(index, key) {
+          build(o, key);
+        });
+      });
+    },
+
+    queryIndex: function(qry) {
+      var type = this.get(qry.type);
+      if (!this.indexes[type._id]) this.buildIndexes(type);
+      
+      // Pick the right index
+      var index;
+      _.find(type.indexes, function(i, key) {
+        return _.intersect(Object.keys(qry), i).length === i.length ? index = key : false;
+      });
+
+      if (!index) return console.log("No index found.");
+      var val =_.map(type.indexes[index], function(p) { return qry[p]; }).join("");
+      return Data.Collection.create(type, this.indexes[type._id][index][val] || []);
+    }
+  };
+
   
   // Data.Type
   // --------------
@@ -189,11 +245,10 @@
       this._id = type._id;
       this.type = "/type/type";
       this.name = type.name;
-      this.objects = [];
       this.meta = type.meta || {};
-      this.built = false;
 
-      if (type.indexes) this.setupIndexes(type.indexes);
+      this.indexes = type.indexes || {};
+      this.indexes["by_type"] = ["type"];
 
       this.properties = type.properties;
       _.each(this.properties, _.bind(function(property, key) {
@@ -203,68 +258,6 @@
   };
 
   _.extend(Data.Type.prototype, _.Events, {
-    
-    // Setup indexes but don't build them
-    setupIndexes: function(indexes) {
-      var that = this;
-      this.indexes = {};
-
-      _.each(indexes, function(properties, key) {
-        var index = that.indexes[key] = {
-          properties: properties,
-          objects: {}
-        };
-      });
-    },
-
-    // Build indexes on that type
-    buildIndexes: function() {
-      var that = this;
-
-      function build(o, index) {
-        function createOrUpdateEntry(key) {
-          var entry = index.objects[key];
-          if (!entry) entry = index.objects[key] = [];
-          entry.push(o);
-        }
-        var vals = [];
-
-        _.each(index.properties, function(p) {
-          var v = o.properties[p];
-          vals.push(_.isArray(v) ? v : [v]);
-        });
-
-        _.each(Data.permute(vals), function(p) {
-          createOrUpdateEntry(p);
-        });
-      }
-
-      _.each(this.objects, function(o) {
-        _.each(that.indexes, function(index) {
-          build(o, index);
-        });
-      });
-
-      this.built = true;
-    },
-
-    find: function(qry) {
-      if (!this.built) this.buildIndexes();
-      
-      // Pick the right index
-      var index = _.select(this.indexes, function(i) {
-        return _.intersect(Object.keys(qry), i.properties).length === i.properties.length
-      })[0];
-      
-      if (!index) return console.log("No index found.");
-      var val = "";
-      _.each(index.properties, function(p) {
-        val += qry[p];
-      });
-
-
-      return index.objects[val] || [];
-    },
 
     // Serialize a single type node
     toJSON: function() {
@@ -352,7 +345,6 @@
       _.each(object, _.bind(function(value, key) {
         if (!that.property(key) || key === "type") return;
         that.properties[key] = value;
-        that._dirty = true;
       }, this));
     },
 
@@ -377,25 +369,23 @@
     this.types = [];
     this.keys = {}; // Lookup objects by key
     if (!graph) return;
-    this.merge(graph, options && options.dirty);
+    this.merge(graph);
   };
 
- _.extend(Data.Graph.prototype, _.Events, {
+ _.extend(Data.Graph.prototype, Data.Indexable, _.Events, {
     
     // Merges in another Graph
-    merge: function(nodes, dirty) {      
-      _.each(nodes, _.bind(function(n, key) { this.set(_.extend(n, {_id: key})); }, this));
+    merge: function(nodes) {      
+      _.each(nodes, _.bind(function(n, key) { this.set(_.extend(n, { _id: key })); }, this));
       return this;
     },
 
-    find: function(qry) {
-      var type = this.get(qry.type);
-      delete qry.type;
-      return Object.keys(qry).length === 0 ? type.objects : type.find(qry);
+    // API method for accessing objects in the graph space
+    get: function(id) {
+      return this.nodes[this.keys[id]];
     },
 
-    set: function(node, dirty) {
-      if (dirty === undefined) dirty = true;
+    set: function(node) {
       var types = _.isArray(node.type) ? node.type : [node.type];
       node._id = node._id ? node._id : Data.uuid('/' + _.last(_.last(types).split('/')) + '/');
 
@@ -415,20 +405,15 @@
           this.types.push(n);
         } else {
           this.objects.push(n);
-          // Register on types
-          _.each(n.types, function(t) {
-            this.get(t).objects.push(n);
-          }, this);
         }
       } else {
         n.set(node);
       }
       return n;
     },
-    
-    // API method for accessing objects in the graph space
-    get: function(id) {
-      return this.nodes[this.keys[id]];
+
+    find: function(qry) {
+      return this.queryIndex(qry);
     },
     
     // Delete node by id, referenced nodes remain untouched
@@ -436,7 +421,6 @@
       var node = this.get(id);
       if (!node) return;
       node._deleted = true;
-      node._dirty = true;
     },
 
     // Serializes the graph to the JSON-based exchange format
@@ -461,22 +445,52 @@
   
   Data.Collection = function(spec) {
     this.type = new Data.Type(spec.type, this);
-    this.objects = this.type.objects;
+    this.objects = [];
+    this.length = 0;
     this.keys = {};
 
     _.each(spec.objects, _.bind(function(obj) {
       this.add(obj);
     }, this));
   };
+
+  // Creates a Data.Collection using a Data.Type, and an array of Data.Objects
+  Data.Collection.create = function(type, objects) {
+    var c = new Data.Collection({type: type, objects: []});
+    c.objects = objects;
+    c.length = objects.length;
+
+    // Register keys for fast lookup
+    _.each(objects, function(o, i) {
+      c.keys[o._id] = i;
+    });
+    return c;
+  };
   
-  _.extend(Data.Collection.prototype, {
+  _.extend(Data.Collection.prototype, _.Events, Data.Indexable, {
 
     // Get an object (item) from the collection
     get: function(id) {
       if (id.match('^/type/')) return this.type;
       return this.objects[this.keys[id]];
     },
+
+    // Return object at a given index
+    at: function(index) {
+      return this.objects[index];
+    },
+
+    // Return index for a given key
+    index: function(key) {
+      return this.keys[key];
+    },
+
+    // Return key for a given index
+    key: function(index) {
+      return this.objects[index]._id;
+    },
     
+    // Add a new object to the collection
     add: function(node) {
       node._id = node._id ? node._id : Data.uuid('/' + _.last(this.type._id.split('/')) + '/');
       node.type = this.type._id;
@@ -486,8 +500,8 @@
       if (!n) {
         n = new Data.Object(node, this);
         this.keys[n._id] = this.objects.length;
-        this.type.objects.push(n); // Register
         this.objects.push(n);
+        this.length = this.objects.length;
       } else {
         n.set(node);
       }
@@ -495,8 +509,16 @@
     },
     
     // Find objects that match a particular query
-    find: function(query) {
-      return this.type.find(query);
+    find: function(qry) {
+      qry["type"] = this.type._id;
+      return this.queryIndex(qry);
+    },
+
+    each: function (fn) {
+      _.each(this.objects, function(object, i) {
+        fn.call(this, object, object._id, i);
+      }, this);
+      return this;
     },
     
     // Serialize
