@@ -1,6 +1,7 @@
 // Data.js — A uniform interface to domain data
 // -------------
 
+
 (function() {
 
   // Helpers
@@ -182,6 +183,7 @@
       test("Find objects", function() {
         // By type
         var documents = graph.find({"type": "/type/document"});
+
         assert.ok(documents.length === 3);
 
         // By authors
@@ -189,9 +191,55 @@
           "type": "/type/document",
           "authors": "Michael Aufreiter"
         });
-
         assert.ok(documents.length === 2);
       });
     });
+
+    suite('Data.Collection', function() {
+      var c;
+
+      setup(function() {
+        c = new Data.Collection(countries_fixture);
+      });
+
+      test("valid construction", function() {
+        assert.ok(c != undefined);
+        assert.ok(c.type instanceof Data.Type);
+      });
+
+      test("each", function() {
+        var count = 0;
+        c.each(function(obj, key, index) {
+          assert.ok(count === index);
+          count ++;
+        });
+        assert.ok(count === c.length);
+      });
+
+      test("at", function() {
+        assert.ok(c.at(6)._id === 'ca');
+      });
+
+      test("get", function() {
+        assert.ok(c.get('at')._id === 'at');
+      });
+
+      test("index", function() {
+        assert.ok(c.index('at') === 0);
+      });
+
+      test("key", function() {
+        assert.ok(c.key(0) === "at");
+      });
+
+      test("find objects", function() {
+        assert.ok(c != undefined);
+        assert.ok(c.type instanceof Data.Type);
+
+        var countries = c.find({"name": "Austria"});
+        assert.ok(countries.length === 1);
+      });
+    });
+
   });
 }).call(this);
