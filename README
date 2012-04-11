@@ -1,7 +1,7 @@
 Data.js
 ==================
 
-Data.js is a data manipulation and persistence framework for Javascript. It's being developed in the context of Substance, a data-driven document authoring engine.
+Data.js is a data manipulation and persistence framework for Javascript. It's being developed in the context of Substance, an open publishing platform.
 
 For documentation, usage, and examples, see:
   http://substance.io/michael/data-js
@@ -9,10 +9,8 @@ For documentation, usage, and examples, see:
 Features
 ------------------
 
-* Data.Hash (A sortable Hash data-structure)
 * Data.Graph (A data abstraction for all kinds of linked data)
-* Data.Collection (A simplified interface for tabular data that uses a Data.Graph internally)
-* Persistence Layer for Data.Graphs
+* Data.Collection (A simplified interface for tabular data)
 
 
 In The Wild
