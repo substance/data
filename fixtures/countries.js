@@ -1,128 +1,66 @@
 var countries_fixture = {
-  "items": {
-    "austria": {
-      "name": "Austria",
-      "official_language": "German Language",
-      "form_of_government": [
-        "Federal republic",
-        "Parliamentary republic"
-      ],
-      "currency_used": "Euro",
-      "population": 8356700,
-      "gdp_nominal": 432400000000.0,
-      "area": 83872.0,
-      "date_founded": "1955-07-27"
+  "type": {
+    "_id": "/type/country",
+    "name": "Countries",
+    "properties": {
+      "name": {"name": "Country Name", "type": "string" },
+      "languages": {"name": "Languages spoken", "type": "string" },
+      "population": { "name": "Population", "type": "number" },
+      "gdp": { "name": "GDP per capita", "type": "number" }
     },
-    "uk": {
-      "name": "United Kingdom",
-      "official_language": "English Language",
-      "form_of_government": [
-        "Parliamentary system",
-        "Constitutional monarchy"
-      ],
-      "currency_used": "UK \u00a3",
-      "population": 61612300,
-      "gdp_nominal": 2787000000000.0,
-      "area": 244820.0,
-      "date_founded": "1707-05-01"
-    },
-    "usa": {
-      "name": "United States of America",
-      "official_language": "English Language",
-      "form_of_government": [
-        "Federal republic",
-        "Constitution",
-        "Democracy",
-        "Republic",
-        "Presidential system",
-        "Constitutional republic"
-      ],
-      "currency_used": "US$",
-      "population": 306108000,
-      "gdp_nominal": 14330000000000.0,
-      "area": 9826675.0,
-      "date_founded": "1776-07-04"
-    },
-    "ger": {
-      "name": "Germany",
-      "official_language": "German Language",
-      "form_of_government": [
-        "Federal republic",
-        "Democracy",
-        "Parliamentary republic"
-      ],
-      "currency_used": "Euro",
-      "population": 82062200,
-      "gdp_nominal": 3818000000000.0,
-      "area": 357092.9,
-      "date_founded": "1949-05-23"
-    },
-    "fra": {
-      "name": "France",
-      "official_language": "French Language",
-      "form_of_government": [
-        "Republic",
-        "Semi-presidential system"
-      ],
-      "currency_used": "Euro",
-      "population": 65073482,
-      "gdp_nominal": 2987000000000.0,
-      "area": 674843.0,
-      "date_founded": "1792"
-    },
-    "ita": {
-      "name": "Italy",
-      "official_language": "Italian Language",
-      "form_of_government": [
-        "Parliamentary republic"
-      ],
-      "currency_used": "Euro",
-      "population": 60090400,
-      "gdp_nominal": 2399000000000.0,
-      "area": 301338.0,
-      "date_founded": "1861-03-17"
+    "indexes": {
+      "by_name": ["name"]
     }
   },
-  "properties": {
-    "name": {
-      "name": "Country Name",
-      "type": "string",
-      "unique": true
+  "objects": [
+    {
+      "_id": "at",
+      "name": "Austria",
+      "languages": ["German", "Austrian"],
+      "population": 8.3,
+      "gdp": 41.805
     },
-    "official_language": {
-      "name": "Official language",
-      "type": "string",
-      "unique": true
+    {
+      "_id": "de",
+      "name": "Germany",
+      "languages": ["German"],
+      "population": 82,
+      "gdp": 46.860
     },
-    "form_of_government": {
-      "name": "Form of governmennt",
-      "type": "string",
-      "unique": false
+    {
+      "_id": "us",
+      "name": "United States of America",
+      "languages": ["German", "English", "Spanish", "Chinese", "French"],
+      "population": 311,
+      "gdp": 36.081
     },
-    "currency_used": {
-      "name": "Currency used",
-      "type": "string",
-      "unique": true
+    {
+      "_id": "uk",
+      "name": "United Kingdom",
+      "languages": ["English", "Irish", "Scottish Gaelic"],
+      "population": 62.3,
+      "gdp": 36.081
     },
-    "population": {
-      "name": "Population",
-      "type": "number",
-      "unique": true
+    {
+      "_id": "es",
+      "name": "Spain",
+      "languages": ["Spanish"],
+      "population": 30.6,
+      "gdp": 36.081
     },
-    "gdp_nominal": {
-      "name": "GDP nominal",
-      "type": "number",
-      "unique": true
+    {
+      "_id": "gr",
+      "name": "Greece",
+      "languages": ["Greek"],
+      "population": 11.0,
+      "gdp": 36.081
     },
-    "area": {
-      "name": "Area",
-      "type": "number",
-      "unique": true
-    },
-    "date_founded": {
-      "name": "Date founded",
-      "type": "date",
-      "unqiue": true
+    {
+      "_id": "ca",
+      "name": "Canada",
+      "languages": ["English", "French", "Spanish"],
+      "population": 40.1,
+      "gdp": 40.457
     }
-  }
-}
+  ]
+};

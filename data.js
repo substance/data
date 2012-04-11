@@ -57,6 +57,16 @@
     }
   };
 
+  // Turn into a collection
+  Data.wrap = function(type, objects) {
+    var c = new Data.Collection({type: type, objects: []});
+    c.objects = objects;
+    // Register keys
+    _.each(objects, function(o, i) {
+      c.keys[o._id] = i;
+    });
+  };
+
   /*!
   Math.uuid.js (v1.4)
   http://www.broofa.com
@@ -165,20 +175,6 @@
       return this;
     }
   };
-
-  
-  // Data.Adapter
-  // --------------
-  
-  // An abstract interface for writing and reading Data.Graphs.
-  
-  Data.Adapter = function(config) {
-    // The config object is used to describe database credentials
-    this.config = config;
-  };
-  
-  // Namespace where Data.Adapters can register
-  Data.Adapters = {};
   
   // Data.Type
   // --------------
@@ -189,25 +185,26 @@
   // collections of properties that belong to a certain group of objects.
   
 
-  Data.Type = function(g, id, type) {
-      this.g = g; 
-      this._id = id;
-      this.type = type.type;
+  Data.Type = function(type) {
+      this._id = type._id;
+      this.type = "/type/type";
       this.name = type.name;
       this.objects = [];
       this.meta = type.meta || {};
       this.built = false;
+
       if (type.indexes) this.setupIndexes(type.indexes);
 
       this.properties = type.properties;
-
       _.each(this.properties, _.bind(function(property, key) {
         property.type = _.isArray(property.type) ? property.type : [ property.type ];
+        property.unique = _.isBoolean(property.unique) ? property.unique : true;
       }, this));
   };
 
   _.extend(Data.Type.prototype, _.Events, {
     
+    // Setup indexes but don't build them
     setupIndexes: function(indexes) {
       var that = this;
       this.indexes = {};
@@ -220,6 +217,7 @@
       });
     },
 
+    // Build indexes on that type
     buildIndexes: function() {
       var that = this;
 
@@ -230,10 +228,12 @@
           entry.push(o);
         }
         var vals = [];
+
         _.each(index.properties, function(p) {
-          var v = o.data[p];
+          var v = o.properties[p];
           vals.push(_.isArray(v) ? v : [v]);
         });
+
         _.each(Data.permute(vals), function(p) {
           createOrUpdateEntry(p);
         });
@@ -244,21 +244,25 @@
           build(o, index);
         });
       });
+
       this.built = true;
     },
 
     find: function(qry) {
       if (!this.built) this.buildIndexes();
+      
       // Pick the right index
       var index = _.select(this.indexes, function(i) {
         return _.intersect(Object.keys(qry), i.properties).length === i.properties.length
       })[0];
-
+      
       if (!index) return console.log("No index found.");
       var val = "";
       _.each(index.properties, function(p) {
         val += qry[p];
       });
+
+
       return index.objects[val] || [];
     },
 
@@ -281,41 +285,31 @@
   // Represents a typed data object within a `Data.Graph`.
   // Provides access to properties, defined on the corresponding `Data.Type`.
 
-  Data.Object = function(g, id, data) {
-    this.g = g;
-    this._id = id; delete data._id;
-    this.update(data);
+  Data.Object = function(object, host) {
+    this._id = object._id;
+    this.host = host;
+    this.properties = {};
+    this.set(object);
   };
 
   _.extend(Data.Object.prototype, _.Events, {
 
-    // Update node based on the serialized data
-    update: function(data) {
-      this.data = data;
-
-      this.types = _.isArray(data.type) ? data.type : [data.type];
-      if (this.data._dirty) this._dirty = true;
-      if (this.data.meta) this.meta = this.data.meta;
-
-      // TODO: update type registrations, if there are changes to the object
-      // delete this.data.type; // Why this isn't working?
-    },
-
     type: function() {
-      return this.g.get(_.last(this.types));
+      return this.host.get(_.last(this.types));
     },
     
     toString: function() {
       return this.get('name') || this.val || this._id;
     },
-    
-    // Properties from all associated types
-    properties: function() {
-      var properties = {};
-      _.each(this.types, _.bind(function(type) {
-        _.extend(properties, this.g.get(type).properties);
+
+    // Property lookup according to the type chain
+    property: function(property) {
+      var p = null;
+
+      _.find(this.types.reverse(), _.bind(function(type) {
+        return p = this.host.get(type).properties[property];
       }, this));
-      return properties;
+      return p;
     },
 
     
@@ -334,35 +328,37 @@
     // two arguments are provided `get` delegates to `Data.Node#get`.
     
     get: function(property, key) {
-      var p = this.properties()[property];
-      var value = this.data[property];
+      var p = this.property(property),
+          value = this.properties[property];
 
       if (!p || !value) return null;
 
       if (Data.isValueType(p.type)) {
         return value;
       } else {
-        return p.unique ? this.g.get(value)
-                        : _.map(value, _.bind(function(v) { return this.g.get(v); }, this));   
+        return p.unique ? this.host.get(value)
+                        : _.map(value, _.bind(function(v) { return this.host.get(v); }, this));   
       }
     },
 
     // Sets properties on the object
     // Existing properties are overridden / replaced
-    set: function(properties) {
+    set: function(object) {
       var that = this;
       
-      _.each(properties, _.bind(function(value, key) {
-        if (!that.properties()[key]) return; // Property not found on type
-        that.data[key] = value;
+      if (object.type) this.types = _.isArray(object.type) ? object.type : [object.type];
+      if (object.meta) this.meta = this.object.meta;
+
+      _.each(object, _.bind(function(value, key) {
+        if (!that.property(key) || key === "type") return;
+        that.properties[key] = value;
         that._dirty = true;
-        that.g.trigger('dirty', that);
       }, this));
     },
-    
+
     // Serialize an `Data.Object`'s properties
     toJSON: function() {
-      return _.extend(this.data, {_id: this._id, type: this.types})
+      return _.extend(this.properties, {_id: this._id, type: this.types})
     }
   });
     
@@ -375,43 +371,16 @@
   // point to referred objects. Data.Graphs can be traversed in various ways.
   // See the testsuite for usage.
   
-  Data.Graph = function(g, options) {
+  Data.Graph = function(graph, options) {
     this.nodes = [];
     this.objects = [];
     this.types = [];
-    // Lookup objects by key
-    this.keys = {};
-    if (!g) return;
-    this.merge(g, options && options.dirty);
-    this.syncMode = options && options.syncMode ? options.syncMode : 'push';
+    this.keys = {}; // Lookup objects by key
+    if (!graph) return;
+    this.merge(graph, options && options.dirty);
   };
 
  _.extend(Data.Graph.prototype, _.Events, {
-    
-    connect: function(name, config) {
-      if (typeof exports !== 'undefined') {
-        var Adapter = require(__dirname + '/adapters/'+name+'_adapter');
-        this.adapter = new Adapter(this, config);
-      } else {
-        if (!Data.Adapters[name]) throw new Error('Adapter "'+name+'" not found');
-        this.adapter = new Data.Adapters[name](this, config);
-      }
-      return this;
-    },
-    
-    // Called when the Data.Adapter is ready
-    connected: function(callback) {
-      if (this.adapter.realtime) {
-        this.connectedCallback = callback;
-      } else {
-        callback();
-      }
-    },
-    
-    // Serve graph along with an httpServer instance
-    serve: function(server, options) {
-      require(__dirname + '/server').initialize(server, this);
-    },
     
     // Merges in another Graph
     merge: function(nodes, dirty) {      
@@ -426,15 +395,15 @@
     },
 
     set: function(node, dirty) {
-      var that = this;
       if (dirty === undefined) dirty = true;
       var types = _.isArray(node.type) ? node.type : [node.type];
       node._id = node._id ? node._id : Data.uuid('/' + _.last(_.last(types).split('/')) + '/');
 
       function createNode() {
-        return _.last(types) === "/type/type" ? new Data.Type(this, node._id, _.clone(node))
-                                              : new Data.Object(this, node._id, _.clone(node))
+        return _.last(types) === "/type/type" ? new Data.Type(node)
+                                              : new Data.Object(node, this);
       }
+
       var n = this.get(node._id);
       if (!n) {
         n = createNode.apply(this);
@@ -448,11 +417,11 @@
           this.objects.push(n);
           // Register on types
           _.each(n.types, function(t) {
-            that.get(t).objects.push(n);
-          });
+            this.get(t).objects.push(n);
+          }, this);
         }
       } else {
-        n.update(node);
+        n.set(node);
       }
       return n;
     },
@@ -468,7 +437,6 @@
       if (!node) return;
       node._deleted = true;
       node._dirty = true;
-      this.trigger('dirty', node);
     },
 
     // Serializes the graph to the JSON-based exchange format
@@ -480,5 +448,63 @@
       return result;
     }
   });
+
+
+  // Data.Collection
+  // --------------
   
+  // A Collection is a simple data abstraction format where a dataset under
+  // investigation conforms to a collection of data items that describes all
+  // facets of the underlying data in a simple and universal way. You can
+  // think of a Collection as a table of data, except it provides precise
+  // information about the data contained (meta-data).
+  
+  Data.Collection = function(spec) {
+    this.type = new Data.Type(spec.type, this);
+    this.objects = this.type.objects;
+    this.keys = {};
+
+    _.each(spec.objects, _.bind(function(obj) {
+      this.add(obj);
+    }, this));
+  };
+  
+  _.extend(Data.Collection.prototype, {
+
+    // Get an object (item) from the collection
+    get: function(id) {
+      if (id.match('^/type/')) return this.type;
+      return this.objects[this.keys[id]];
+    },
+    
+    add: function(node) {
+      node._id = node._id ? node._id : Data.uuid('/' + _.last(this.type._id.split('/')) + '/');
+      node.type = this.type._id;
+
+      var n = this.get(node._id);
+
+      if (!n) {
+        n = new Data.Object(node, this);
+        this.keys[n._id] = this.objects.length;
+        this.type.objects.push(n); // Register
+        this.objects.push(n);
+      } else {
+        n.set(node);
+      }
+      return n;
+    },
+    
+    // Find objects that match a particular query
+    find: function(query) {
+      return this.type.find(query);
+    },
+    
+    // Serialize
+    toJSON: function() {
+      return {
+        type: this.type.toJSON(),
+        objects: _.map(this.objects, function(n) { return n.toJSON(); })
+      };
+    }
+  });
 })();

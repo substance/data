@@ -1,11 +1,5 @@
-// Data.js — A utility belt for data manipulation
+// Data.js — A uniform interface to domain data
 // -------------
-
-var items;
-
-// Data.Hash
-// -------------
-
 
 (function() {
 
@@ -14,6 +8,9 @@ var items;
 
   suite('Data.js API', function() {
     var stopwatch, items;
+
+    // Data.Graph
+    // -------------
 
     suite('Data.Graph', function() {
       var graph,
@@ -83,15 +80,18 @@ var items;
         assert.ok(protovis.get('title') === 'Protovis');
       });
 
+
       test("2. Non-Unique value types", function() {
         assert.ok(protovis.get('authors').length === 2);
         assert.ok(protovis.get('authors')[0] === 'Michael Bostock');
         assert.ok(protovis.get('authors')[1] === 'Jeffrey Heer');
       });
 
+
       test("3. Unique object types (one resource)", function() {
         assert.ok(mention.get('entity')._id === '/location/new_york');
       });
+
 
       test("4. Non-unique object types (many resources)", function() {
         assert.ok(protovis.get('entities').length === 2);        
@@ -103,6 +103,7 @@ var items;
         assert.ok(mention.get('entity') === anotherMention.get('entity'));
       });
 
+
       test("Graph traversal (navigation)", function() {
         // Hop from a document to the second entity, picking the 2nd mention and go
         // to the associated document of this mention.
@@ -111,6 +112,7 @@ var items;
                 .get('document')       // => /doc/processing_js_introduction
                 ._id === '/doc/processing_js_introduction');
       });
+
 
       // Data.Object Manipulation
 
@@ -137,6 +139,7 @@ var items;
         });
         assert.ok(!mention.get('document'));
       });
+
 
       test("Set value properties of existing nodes", function() {
         // Value properties
@@ -179,7 +182,6 @@ var items;
       test("Find objects", function() {
         // By type
         var documents = graph.find({"type": "/type/document"});
-        
         assert.ok(documents.length === 3);
 
         // By authors
