@@ -1,3 +1,9 @@
+0.6.0
+=============
+  * Native data structures (Arrays and Objects instead of Data.Hash datastructures)
+  * Indexed queries
+  * Dropped backends (this will be reimplemented)
+
 0.4.0
 =============
   * Data.Graph#set now takes just one parameter, the id is specified as _id and optional
