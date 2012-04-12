@@ -81,77 +81,6 @@
     return (prefix ? prefix : "") + uuid.join('');
   };
 
-  // Helpers
-  // -------
-
-  // _.Events (borrowed from Backbone.js)
-  // -----------------
-  
-  // A module that can be mixed in to *any object* in order to provide it with
-  // custom events. You may `bind` or `unbind` a callback function to an event;
-  // `trigger`-ing an event fires all callbacks in succession.
-  //
-  //     var object = {};
-  //     _.extend(object, Backbone.Events);
-  //     object.bind('expand', function(){ alert('expanded'); });
-  //     object.trigger('expand');
-  //
-  
-  _.Events = {
-
-    // Bind an event, specified by a string name, `ev`, to a `callback` function.
-    // Passing `"all"` will bind the callback to all events fired.
-    bind : function(ev, callback) {
-      var calls = this._callbacks || (this._callbacks = {});
-      var list  = this._callbacks[ev] || (this._callbacks[ev] = []);
-      list.push(callback);
-      return this;
-    },
-
-    // Remove one or many callbacks. If `callback` is null, removes all
-    // callbacks for the event. If `ev` is null, removes all bound callbacks
-    // for all events.
-    unbind : function(ev, callback) {
-      var calls;
-      if (!ev) {
-        this._callbacks = {};
-      } else if (calls = this._callbacks) {
-        if (!callback) {
-          calls[ev] = [];
-        } else {
-          var list = calls[ev];
-          if (!list) return this;
-          for (var i = 0, l = list.length; i < l; i++) {
-            if (callback === list[i]) {
-              list.splice(i, 1);
-              break;
-            }
-          }
-        }
-      }
-      return this;
-    },
-
-    // Trigger an event, firing all bound callbacks. Callbacks are passed the
-    // same arguments as `trigger` is, apart from the event name.
-    // Listening for `"all"` passes the true event name as the first argument.
-    trigger : function(ev) {
-      var list, calls, i, l;
-      if (!(calls = this._callbacks)) return this;
-      if (list = calls[ev]) {
-        for (i = 0, l = list.length; i < l; i++) {
-          list[i].apply(this, Array.prototype.slice.call(arguments, 1));
-        }
-      }
-      if (list = calls['all']) {
-        for (i = 0, l = list.length; i < l; i++) {
-          list[i].apply(this, arguments);
-        }
-      }
-      return this;
-    }
-  };
-
 
   // Data.Query
   // --------------
@@ -161,6 +90,7 @@
 
   Data.Query = {
 
+    // Returns all objects matching a particular query object
     query: function(qry) {
 
       function toArray(v) {
@@ -172,7 +102,6 @@
 
         _.find(qry, function(value, property) {
           var val = property === "type" ? obj.types : obj.properties[property];
-
           var matchedValues = _.intersect(toArray(value), toArray(val));
           if (matchedValues.length === 0) {
             matched = false;
@@ -207,7 +136,6 @@
       this.meta = type.meta || {};
 
       this.indexes = type.indexes || {};
-      this.indexes["by_type"] = ["type"];
 
       this.properties = type.properties;
       _.each(this.properties, _.bind(function(property, key) {
@@ -246,12 +174,9 @@
 
   _.extend(Data.Object.prototype, _.Events, {
 
+    // Returns the most specific type
     type: function() {
       return this.host.get(_.last(this.types));
-    },
-    
-    toString: function() {
-      return this.get('name') || this.val || this._id;
     },
 
     // Property lookup according to the type chain
@@ -371,6 +296,7 @@
       return n;
     },
 
+    // Return all objects matching a query object
     find: function(qry) {
       return this.query(qry);
     },
@@ -450,21 +376,21 @@
     },
     
     // Add a new object to the collection
-    add: function(node) {
-      node._id = node._id ? node._id : Data.uuid('/' + _.last(this.type._id.split('/')) + '/');
-      node.type = this.type._id;
+    add: function(obj) {
+      obj._id = obj._id ? obj._id : Data.uuid('/' + _.last(this.type._id.split('/')) + '/');
+      obj.type = this.type._id;
 
-      var n = this.get(node._id);
+      var o = this.get(obj._id);
 
-      if (!n) {
-        n = new Data.Object(node, this);
-        this.keys[n._id] = this.objects.length;
-        this.objects.push(n);
+      if (!o) {
+        o = new Data.Object(obj, this);
+        this.keys[o._id] = this.objects.length;
+        this.objects.push(o);
         this.length = this.objects.length;
       } else {
-        n.set(node);
+        o.set(obj);
       }
-      return n;
+      return o;
     },
     
     // Find objects that match a particular query
