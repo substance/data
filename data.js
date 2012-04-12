@@ -42,20 +42,6 @@
     return _.include(Data.VALUE_TYPES, _.last(type));
   };
 
-  Data.permute = function(arr) {
-    if (arr.length == 1) {
-      return arr[0];
-    } else {
-      var result = [];
-      var rest = Data.permute(arr.slice(1));  // recur with the rest of array
-      for (var i = 0; i < rest.length; i++) {
-        for (var j = 0; j < arr[0].length; j++) {
-          result.push(arr[0][j] + rest[i]);
-        }
-      }
-      return result;
-    }
-  };
 
   /*!
   Math.uuid.js (v1.4)
@@ -167,67 +153,40 @@
   };
 
 
-  // Data.Indexable
+  // Data.Query
   // --------------
 
-  // Module to be mixed into Data.Graph and Data.Collection data structures
+  // Query module to be mixed into Data.Graph and Data.Collection data structures
+  // No indexing yet, this has been shifted to Data.js 0.7.0
 
-  Data.Indexable = {
+  Data.Query = {
 
-    indexes: {},
+    query: function(qry) {
 
-    // Build indexes of a particular type
-    buildIndexes: function(type) {
-      var that = this;
-
-      function build(o, index) {
-        function createOrUpdateEntry(key) {
-          if (!key) return;
-          var entry = that.indexes[type._id][index][key];
-          if (!entry) entry = that.indexes[type._id][index][key] = [];
-          entry.push(o);
-        }
-
-        var vals = [];
-        _.each(type.indexes[index], function(p) {
-          var v = p === "type" ? o.types : o.properties[p];
-          if (!v) return; // Skip
-          vals.push(_.isArray(v) ? v : [v]);
-        });
-
-        _.each(Data.permute(vals), function(p) {
-          createOrUpdateEntry(p);
-        });
+      function toArray(v) {
+        return _.isArray(v) ? v : [v];
       }
 
-      // Setup
-      this.indexes[type._id] = {};
-      _.each(type.indexes, function(i, key) {
-        that.indexes[type._id][key] = {};
-      });
+      function match(obj, qry) {
+        var matched = true;
 
-      // Build
-      _.each(this.objects, function(o) {
-        if (!_.include(o.types, type._id)) return;
-        _.each(type.indexes, function(index, key) {
-          build(o, key);
+        _.find(qry, function(value, property) {
+          var val = property === "type" ? obj.types : obj.properties[property];
+
+          var matchedValues = _.intersect(toArray(value), toArray(val));
+          if (matchedValues.length === 0) {
+            matched = false;
+            return true;
+          }
         });
-      });
-    },
+        return matched;
+      }
 
-    queryIndex: function(qry) {
       var type = this.get(qry.type);
-      if (!this.indexes[type._id]) this.buildIndexes(type);
-      
-      // Pick the right index
-      var index;
-      _.find(type.indexes, function(i, key) {
-        return _.intersect(Object.keys(qry), i).length === i.length ? index = key : false;
+      var objects = _.select(this.objects, function(o) {
+        return match(o, qry);
       });
-
-      if (!index) return console.log("No index found.");
-      var val =_.map(type.indexes[index], function(p) { return qry[p]; }).join("");
-      return Data.Collection.create(type, this.indexes[type._id][index][val] || []);
+      return Data.Collection.create(type, objects);
     }
   };
 
@@ -372,7 +331,7 @@
     this.merge(graph);
   };
 
- _.extend(Data.Graph.prototype, Data.Indexable, _.Events, {
+ _.extend(Data.Graph.prototype, Data.Query, _.Events, {
     
     // Merges in another Graph
     merge: function(nodes) {      
@@ -413,7 +372,7 @@
     },
 
     find: function(qry) {
-      return this.queryIndex(qry);
+      return this.query(qry);
     },
     
     // Delete node by id, referenced nodes remain untouched
@@ -467,7 +426,7 @@
     return c;
   };
   
-  _.extend(Data.Collection.prototype, _.Events, Data.Indexable, {
+  _.extend(Data.Collection.prototype, _.Events, Data.Query, {
 
     // Get an object (item) from the collection
     get: function(id) {
@@ -511,7 +470,7 @@
     // Find objects that match a particular query
     find: function(qry) {
       qry["type"] = this.type._id;
-      return this.queryIndex(qry);
+      return this.query(qry);
     },
 
     each: function (fn) {
