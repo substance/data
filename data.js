@@ -399,6 +399,7 @@
       return this.query(qry);
     },
 
+    // Iterate over all objects in the collection
     each: function (fn) {
       _.each(this.objects, function(object, i) {
         fn.call(this, object, object._id, i);
