@@ -1,7 +1,6 @@
 0.6.0
 =============
   * Native data structures (Arrays and Objects instead of Data.Hash datastructures)
-  * Lazy indexed queries
   * Dropped backends (this will be reimplemented)
 
 0.4.0
