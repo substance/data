@@ -91,7 +91,7 @@
   Data.Query = {
 
     // Returns all objects matching a particular query object
-    query: function(qry) {
+    query: function(qry) {
 
       function toArray(v) {
         return _.isArray(v) ? v : [v];
@@ -208,7 +208,7 @@
       var p = this.property(property),
           value = this.properties[property];
 
-      if (!p || !value) return null;
+      if (!p || !value) return null;
 
       if (Data.isValueType(p.type)) {
         return value;
@@ -366,7 +366,7 @@
     },
 
     // Return index for a given key
-    index: function(key) {
+    index: function(key) {
       return this.keys[key];
     },
 
@@ -377,18 +377,25 @@
     
     // Add a new object to the collection
     add: function(obj) {
-      obj._id = obj._id ? obj._id : Data.uuid('/' + _.last(this.type._id.split('/')) + '/');
-      obj.type = this.type._id;
-
-      var o = this.get(obj._id);
-
-      if (!o) {
-        o = new Data.Object(obj, this);
+      var o;
+      if (obj instanceof Data.Object) {
+        o = obj;
         this.keys[o._id] = this.objects.length;
         this.objects.push(o);
         this.length = this.objects.length;
       } else {
-        o.set(obj);
+        obj._id = obj._id ? obj._id : Data.uuid('/' + _.last(this.type._id.split('/')) + '/');
+        obj.type = this.type._id;
+
+        o = this.get(obj._id);  
+        if (!o) {
+          o = new Data.Object(obj, this);
+          this.keys[o._id] = this.objects.length;
+          this.objects.push(o);
+          this.length = this.objects.length;
+        } else {
+          o.set(obj);
+        }
       }
       return o;
     },
@@ -405,6 +412,61 @@
         fn.call(this, object, object._id, i);
       }, this);
       return this;
+    },
+
+    first: function() {
+      return this.length > 0 ? this.objects[0] : null;
+    },
+
+    last: function() {
+      return this.length > 0 ? this.objects[this.length-1] : null;
+    },
+
+    // Performs an intersection with the given *collection*
+    intersect: function(collection) {
+      var that = this,
+          result = new Data.Collection.create(this.type, []);
+      
+      // Find out which collection is smaller
+      var smaller, other;
+      if (collection.length < that.length) {
+        smaller = collection;
+        other = that;
+      } else {
+        smaller = that;
+        other = collection;
+      }
+
+      _.each(smaller.objects, function (object, index) {
+        if (other.get(object._id)) {
+          result.add(collection.get(object._id));
+        }
+      });
+      return result;
+    },
+    
+    // Performs an union with the given *hash*
+    union: function(collection) {
+      var that = this,
+          result = new Data.Collection.create(this.type, []);
+          
+      this.each(function(value, key) {
+        result.add(value);
+      });
+      collection.each(function(value, key) {
+        if (!result.get(key)) result.add(value);
+      });
+      return result;
+    },
+    
+    // Computes the difference between the current *collection* and a given *collection*
+    difference: function(collection) {
+      var that = this;
+          result = new Data.Collection.create(this.type, []);
+      this.each(function(value, key) {
+        if (!collection.get(key)) result.add(value);
+      });
+      return result;
     },
     
     // Serialize
