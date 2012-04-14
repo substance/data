@@ -182,8 +182,7 @@
     // Property lookup according to the type chain
     property: function(property) {
       var p = null;
-
-      _.find(this.types.reverse(), _.bind(function(type) {
+      _.find(_.clone(this.types).reverse(), _.bind(function(type) {
         return p = this.host.get(type).properties[property];
       }, this));
       return p;
