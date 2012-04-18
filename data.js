@@ -208,7 +208,6 @@
 
     // Returns all objects matching a particular query object
     query: function(qry) {
-
       function toArray(v) {
         return _.isArray(v) ? v : [v];
       }
@@ -218,6 +217,7 @@
 
         _.find(qry, function(value, property) {
           var val = property === "type" ? obj.types : obj.properties[property];
+          if (property === "_id") val = obj._id;
           var matchedValues = _.intersect(toArray(value), toArray(val));
           if (matchedValues.length === 0) {
             matched = false;
@@ -535,6 +535,14 @@
 
     last: function() {
       return this.length > 0 ? this.objects[this.length-1] : null;
+    },
+
+    range: function(start, end) {
+      var result = Data.Collection.create(this.type, []);
+      for(var i=start; i<=end && i<this.objects.length; i++) {
+        result.add(this.at(i));
+      }
+      return result;
     },
 
     // Performs an intersection with the given *collection*
