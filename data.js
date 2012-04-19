@@ -323,7 +323,7 @@
       var p = this.property(property),
           value = this.properties[property];
 
-      if (!p || !value) return null;
+      if (!p || value === undefined) return null;
 
       if (Data.isValueType(p.type)) {
         return value;
