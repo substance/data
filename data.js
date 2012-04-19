@@ -529,14 +529,17 @@
       return this;
     },
 
+    // Returns the first item
     first: function() {
       return this.length > 0 ? this.objects[0] : null;
     },
 
+    // Returns the last item
     last: function() {
       return this.length > 0 ? this.objects[this.length-1] : null;
     },
 
+    // Returns a sub-range of the collection
     range: function(start, end) {
       var result = Data.Collection.create(this.type, []);
       for(var i=start; i<=end && i<this.objects.length; i++) {
