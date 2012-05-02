@@ -457,7 +457,7 @@
   // Creates a Data.Collection using a Data.Type, and an array of Data.Objects
   Data.Collection.create = function(type, objects) {
     var c = new Data.Collection({type: type, objects: []});
-    c.objects = objects;
+    c.objects = _.clone(objects);
     c.length = objects.length;
 
     // Register keys for fast lookup
