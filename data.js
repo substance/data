@@ -460,14 +460,19 @@
     c.objects = _.clone(objects);
     c.length = objects.length;
 
-    // Register keys for fast lookup
-    _.each(objects, function(o, i) {
-      c.keys[o._id] = i;
-    });
+    c.buildKeys();
     return c;
   };
   
   _.extend(Data.Collection.prototype, _.Events, Data.Query, {
+
+    // Register keys for fast lookup
+    buildKeys: function() {
+      this.keys = {};
+      _.each(this.objects, function(o, i) {
+        this.keys[o._id] = i;
+      }, this);
+    },
 
     // Get an object (item) from the collection
     get: function(id) {
@@ -515,13 +520,13 @@
       return o;
     },
 
-    // Delete object at given *key*
+    // Delete object at given key
     del: function (key) {
       if (this.keys.hasOwnProperty(key)) {
         var l = this.length;
         var index = this.keys[key];
-        delete this.keys[key];
         this.objects.splice(index, 1);
+        this.buildKeys(); // costly
         this.length = l-1;
       }
       return this;
