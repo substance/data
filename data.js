@@ -541,17 +541,20 @@
       return this;
     },
 
+    // First object of the collection
     first: function() {
       return this.length > 0 ? this.objects[0] : null;
     },
 
+    // Last object of the collection
     last: function() {
       return this.length > 0 ? this.objects[this.length-1] : null;
     },
 
+    // Returns a sub-range of the current collection.
     range: function(start, end) {
       var result = Data.Collection.create(this.type, []);
-      for(var i=start; i<=end && i<this.objects.length; i++) {
+      for(var i = start; i <= end && i < this.objects.length; i++) {
         result.add(this.at(i));
       }
       return result;
