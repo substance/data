@@ -167,7 +167,7 @@
       if (!(calls = this._callbacks)) return this;
       all = calls.all;
       events = events.split(eventSplitter);
-      rest = slice.call(arguments, 1);
+      rest = Array.prototype.slice.call(arguments, 1);
 
       // For each event, walk through the linked list of callbacks twice,
       // first to trigger the event, then to trigger any `"all"` callbacks.
