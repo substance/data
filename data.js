@@ -514,6 +514,18 @@
       }
       return o;
     },
+
+    // Delete object at given *key*
+    del: function (key) {
+      if (this.keys.hasOwnProperty(key)) {
+        var l = this.length;
+        var index = this.keys[key];
+        delete this.keys[key];
+        this.objects.splice(index, 1);
+        this.length = l-1;
+      }
+      return this;
+    },
     
     // Find objects that match a particular query
     find: function(qry) {
@@ -529,17 +541,14 @@
       return this;
     },
 
-    // Returns the first item
     first: function() {
       return this.length > 0 ? this.objects[0] : null;
     },
 
-    // Returns the last item
     last: function() {
       return this.length > 0 ? this.objects[this.length-1] : null;
     },
 
-    // Returns a sub-range of the collection
     range: function(start, end) {
       var result = Data.Collection.create(this.type, []);
       for(var i=start; i<=end && i<this.objects.length; i++) {
