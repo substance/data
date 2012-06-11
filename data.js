@@ -604,7 +604,7 @@
     
     // Computes the difference between the current *collection* and a given *collection*
     difference: function(collection) {
-      var that = this;
+      var that = this,
           result = new Data.Collection.create(this.type, []);
       this.each(function(value, key) {
         if (!collection.get(key)) result.add(value);
