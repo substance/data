@@ -339,7 +339,7 @@
       var that = this;
       
       if (object.type) this.types = _.isArray(object.type) ? object.type : [object.type];
-      if (object.meta) this.meta = this.object.meta;
+      if (object.meta) this.meta = object.meta;
 
       _.each(object, _.bind(function(value, key) {
         if (!that.property(key) || key === "type") return;
