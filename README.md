@@ -92,5 +92,5 @@ In The Wild
 ------------------
 
 * [Substance](http://substance.io) - A web-based document authoring and publication platform that relies on Data.js for object persistence.
-* [Déjàvis](http://beta.dejavis.org) - A tool for analyzing and visualizing data. It uses Data.js for filtering and aggregating data
+* [Déjàvis](http://dejavis.org) - A tool for analyzing and visualizing data. It uses Data.js for filtering and aggregating data
 * [Dance.js](http://github.com/michael/dance) Dance.js - A data-driven visualization library.
