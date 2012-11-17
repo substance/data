@@ -3,14 +3,8 @@
 
 fs            = require 'fs'
 util          = require 'util'
-CoffeeScript  = require 'coffee-script'
 {spawn, exec} = require 'child_process'
 
-
-# ANSI terminal colors.
-red   = '\033[0;31m'
-green = '\033[0;32m'
-reset = '\033[0m'
 
 # Commands
 compressionCmd = ->
@@ -24,9 +18,9 @@ run = (args) ->
 
 # Log a message with a color.
 log = (message, color, explanation) ->
-  console.log "#{color or ''}#{message}#{reset} #{explanation or ''}"
+  console.log "#{color or ''}#{message} #{explanation or ''}"
 
 task 'build', 'Build a compressed version', ->
   exec compressionCmd(), (err, stdout, stderr) ->
     throw err if err
-    log 'Sucessfully built data.min.js', green
+    log 'Sucessfully built data.min.js'
