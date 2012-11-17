@@ -20,7 +20,7 @@
   }
   
   // Current version of the library. Keep in sync with `package.json`.
-  Data.VERSION = '0.6.1';
+  Data.VERSION = '0.6.2';
 
   // Require Underscore, if we're on the server, and it's not already present.
   var _ = this._;
@@ -218,7 +218,7 @@
         _.find(qry, function(value, property) {
           var val = property === "type" ? obj.types : obj.properties[property];
           if (property === "_id") val = obj._id;
-          var matchedValues = _.intersect(toArray(value), toArray(val));
+          var matchedValues = _.intersection(toArray(value), toArray(val));
           if (matchedValues.length === 0) {
             matched = false;
             return true;
