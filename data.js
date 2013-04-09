@@ -339,7 +339,7 @@
       var that = this;
       
       if (object.type) this.types = _.isArray(object.type) ? object.type : [object.type];
-      if (object.meta) this.meta = this.object.meta;
+      if (object.meta) this.meta = object.meta;
 
       _.each(object, _.bind(function(value, key) {
         if (!that.property(key) || key === "type") return;
@@ -388,14 +388,9 @@
       var types = _.isArray(node.type) ? node.type : [node.type];
       node._id = node._id ? node._id : Data.uuid('/' + _.last(_.last(types).split('/')) + '/');
 
-      function createNode() {
-        return _.last(types) === "/type/type" ? new Data.Type(node)
-                                              : new Data.Object(node, this);
-      }
-
       var n = this.get(node._id);
       if (!n) {
-        n = createNode.apply(this);
+        n = this.createNode(node, types);
         this.keys[node._id] = this.nodes.length;
         this.nodes.push(n);
         
@@ -410,6 +405,12 @@
       }
       return n;
     },
+
+	// createNode moved to an instance method so that extending graphs can override object types
+	createNode: function(node, types){
+		return _.last(types) === "/type/type" ? new Data.Type(node)
+                                              : new Data.Object(node, this);
+	},
 
     // Return all objects matching a query object
     find: function(qry) {
