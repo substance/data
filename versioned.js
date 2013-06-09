@@ -71,7 +71,7 @@ ChronicleAdapter.__prototype__ = function() {
   this.transform = function(a, b, options) {
 
     var path1 = (a.op === "create") ? a.path.concat([a.args.id]) : a.path;
-    var path2 = (b.op === "create") ? b.path.concat([a.args.id]) : b.path;
+    var path2 = (b.op === "create") ? b.path.concat([b.args.id]) : b.path;
 
     // operations on different elements do not need to be transformed
     if (!_.isEqual(path1, path2)) return [a, b];
@@ -99,8 +99,9 @@ ChronicleAdapter.__prototype__ = function() {
     }
 
     else if (a.op === "update" && b.op === "update") {
-      var a_t = a.copy();
-      var b_t = b.copy();
+      var a_t = {op: "update", path: a.path};
+      var b_t = {op: "update", path: b.path};
+
       var property = new Data.Graph.Property(this.graph, a.path);
       var op1, op2, transformed;
 
