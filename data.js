@@ -81,7 +81,7 @@ _.extend(Data.Graph.prototype, util.Events, {
   },
 
   create: function(node) {
-    this.nodes[node.id] = node;
+    this.nodes[node.id] = util.deepclone(node);
     return this;
   },
 
@@ -121,6 +121,10 @@ _.extend(Data.Graph.prototype, util.Events, {
     var properties = this.properties(this.schema.types[node.type]);
     return properties[key];
   },
+
+  reset: function() {
+    this.nodes = {};
+  }
 
 });
 
@@ -250,6 +254,9 @@ GraphCommand.prototype = new GraphCommand.__prototype__();
 var Property = function(graph, path) {
   this.key = _.last(path);
   this.node = graph.resolve(path.slice(0, -1));
+  if (this.node === undefined) {
+    throw new Error("Could not look up property for path " + path.join("."));
+  }
   this.type = graph.propertyType(this.node, this.key);
 };
 

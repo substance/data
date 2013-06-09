@@ -132,7 +132,6 @@ ChronicleAdapter.__prototype__ = function() {
   };
 
   this.reset = function() {
-    __super__.reset.call(this);
     this.graph.reset();
   };
 
@@ -157,7 +156,7 @@ var Converter = function() {
     return {
       op: "delete",
       path: [],
-      args: node.toJSON()
+      args: util.deepclone(node)
     };
   };
 
@@ -189,6 +188,7 @@ var VersionedGraph = function(schema) {
 
   this.chronicle = Chronicle.create();
   this.chronicle.manage(new ChronicleAdapter(this));
+
 };
 
 VersionedGraph.__prototype__ = function() {
@@ -214,12 +214,17 @@ VersionedGraph.__prototype__ = function() {
     // it might happen that the converter returns null as if the command was a NOP
     if (command && command.op !== "NOP") {
       this.__exec__(command);
-      this.chronicle.record(command);
+      this.chronicle.record(util.deepclone(command));
     }
   };
 
   this.__exec__ = function(command) {
     __super__.exec.call(this, command);
+  };
+
+  this.reset = function() {
+    __super__.reset.call(this);
+    this.chronicle.versioned.state = Chronicle.ROOT;
   };
 
 };
