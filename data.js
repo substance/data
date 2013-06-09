@@ -125,7 +125,7 @@ _.extend(Data.Graph.prototype, util.Events, {
 });
 
 
-Data.Graph.Command = function(options) {
+var GraphCommand = function(options) {
 
   if (!options) throw new Error("Illegal argument: expected command spec, was " + options);
 
@@ -149,9 +149,18 @@ Data.Graph.Command = function(options) {
   this.path = options.path;
   this.args = options.args;
 
+  // hacky conversion to allow convenient notation: ["delete", <id>]
+  // the internal representation is: {op: "delete", path: [], args: {id: <id>}}
+  if (this.op === "delete" && !this.args) {
+    this.args = {id: this.path.pop()};
+  }
+
 };
 
 var GraphMethods = function() {
+
+  this.NOP = function() {
+  };
 
   // Node manipulation
   // --------
@@ -187,48 +196,65 @@ var GraphMethods = function() {
 
   this.update = function(graph, path, args) {
 
-    var key = _.last(path);
-    var node = graph.resolve(path.slice(0, -1));
-    var value = node[key];
-    var type = graph.propertyType(node, key);
+    var property = new Data.Graph.Property(graph, path);
     var op;
 
-    if (type === 'string') {
+    if (property.type === 'string') {
       try {
         op = TextOperation.fromJSON(args);
       } catch (err) {
         throw new Error("Illegal argument: provided diff is not a valid TextOperation: " + args);
       }
-      node[key] = op.apply(value);
-    } else if (type === 'array') {
+      property.set(op.apply(property.get()));
+    } else if (property.type === 'array') {
       try {
         op = ArrayOperation.fromJSON(args);
       } catch (err) {
         throw new Error("Illegal argument: provided diff is not a valid ArrayOperation: " + args);
       }
-      op.apply(value);
+      // Note: the array operation works inplace
+      op.apply(property.get());
     } else {
-      throw new Error("Illegal type: incremental update not available for type " + type);
+      throw new Error("Illegal type: incremental update not available for type " + property.type);
     }
   };
 
 };
 
-Data.Graph.Command.__prototype__ = function() {
+GraphCommand.__prototype__ = function() {
 
   var methods = new GraphMethods();
 
   this.apply = function(graph) {
-    var method = methods[this.op];
-    if (!method) {
+    if (!methods[this.op]) {
       throw new Error("Unknown operation: " + this.op);
     }
-    method(graph, this.path, this.args);
+
+    methods[this.op](graph, this.path, this.args);
   };
 
 };
-Data.Graph.Command.prototype = new Data.Graph.Command.__prototype__();
+GraphCommand.prototype = new GraphCommand.__prototype__();
 
+var Property = function(graph, path) {
+  this.key = _.last(path);
+  this.node = graph.resolve(path.slice(0, -1));
+  this.type = graph.propertyType(this.node, this.key);
+};
+
+Property.prototype = {
+  get: function() {
+    return this.node[this.key];
+  },
+
+  set: function(value) {
+    this.node[this.key] = value;
+  }
+};
+
+
+Data.Graph.Command = GraphCommand;
+Data.Graph.Property = Property;
 
 if (typeof exports !== 'undefined') {
   exports = Data;

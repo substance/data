@@ -41,6 +41,7 @@ var VersionedGraph = function(schema) {
   this.chronicle = Chronicle.create();
   this.adapter = new VersionedGraph.ChronicleAdapter(this);
   this.chronicle.manage(this.adapter);
+
 };
 
 VersionedGraph.__prototype__ = function() {
@@ -49,17 +50,28 @@ VersionedGraph.__prototype__ = function() {
   var converter = new ChronicleAdapter.Converter();
 
   this.exec = function(command) {
+
+    if (!command || command.op === "NOP") return;
+
     // parse the command to have a normalized representation
     command = new Data.Graph.Command(command);
-    // converts the Data.Graph command into a Chronicle compatible version
-    var converted = (converter[command.op]) ? converter[command.op](command) : command;
+    // convert the command into a Chroniclible version
+    if (converter[command.op]) {
+      var item = this.resolve(command.path);
+      command = converter[command.op](command, item);
+    }
 
     // it might happen that the converter returns null as if the command was a NOP
-    if (converted) {
-      this.adapter.apply(converted);
+    if (command && command.op !== "NOP") {
+      this.__exec__(converted);
       this.chronicle.record(command);
     }
   };
+
+  this.__exec__ = function(command) {
+    __super__.exec(command);
+  }
+
 };
 
 VersionedGraph.__prototype__.prototype = Data.Graph.prototype;
@@ -77,6 +89,7 @@ ChronicleAdapter.__prototype__ = function() {
 
   // Note: there are only "create", "delete", and "update" after conversion
   this.apply = function(change) {
+    this.graph.__exec__(change);
   };
 
   this.invert = function(change) {
@@ -84,14 +97,17 @@ ChronicleAdapter.__prototype__ = function() {
 
     if (change.op === "create") {
       inverted.op = "delete";
-      inverted.path.push(inverted.args.id);
     }
     else if (change.op === "delete") {
       inverted.op = "create";
-      inverted.args.id = inverted.path.pop();
     }
     else if (change.op === "update") {
-      inverted.args.diff = inverted.args.diff.invert();
+      var property = new Data.Graph.Property(this.graph, change.path);
+      if (property.type === "string") {
+        inverted.args = TextOperation.fromJSON(change.args).invert().toJSON();
+      } else if (property.type === "array") {
+        inverted.args = ArrayOperation.fromJSON(change.args).invert().toJSON();
+      }
     }
 
     return inverted;
@@ -168,6 +184,16 @@ ChronicleAdapter.Converter = function() {
       path: command.path.slice(0),
     };
     return converted;
+  }
+
+  // Note: delete commands need to be augmented with the
+  // node's data to allow command inversion
+  this.delete = function(command, node) {
+    return {
+      op: "delete",
+      path: [],
+      args: node.toJSON()
+    };
   }
 
   this.pop = function(command, array) {
