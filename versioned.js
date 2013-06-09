@@ -27,60 +27,15 @@ if (typeof exports !== 'undefined') {
   util = root.Substance.util;
   errors   = root.Substance.errors;
   Chronicle = root.Substance.Chronicle;
-  Data = root.Data;
+  Data = root.Substance.Data;
 }
 
 ArrayOperation = Chronicle.OT.ArrayOperation;
 TextOperation = Chronicle.OT.TextOperation;
 
-var Converter;
-
-var VersionedGraph = function(schema) {
-  Data.Graph.call(this, schema);
-
-  this.chronicle = Chronicle.create();
-  this.adapter = new VersionedGraph.ChronicleAdapter(this);
-  this.chronicle.manage(this.adapter);
-
-};
-
-VersionedGraph.__prototype__ = function() {
-
-  var __super__ = util.prototype(this);
-  var converter = new ChronicleAdapter.Converter();
-
-  this.exec = function(command) {
-
-    if (!command || command.op === "NOP") return;
-
-    // parse the command to have a normalized representation
-    command = new Data.Graph.Command(command);
-    // convert the command into a Chroniclible version
-    if (converter[command.op]) {
-      var item = this.resolve(command.path);
-      command = converter[command.op](command, item);
-    }
-
-    // it might happen that the converter returns null as if the command was a NOP
-    if (command && command.op !== "NOP") {
-      this.__exec__(converted);
-      this.chronicle.record(command);
-    }
-  };
-
-  this.__exec__ = function(command) {
-    __super__.exec(command);
-  }
-
-};
-
-VersionedGraph.__prototype__.prototype = Data.Graph.prototype;
-VersionedGraph.prototype = new VersionedGraph.__prototype__();
-
-// Adapter
-
 var ChronicleAdapter = function(graph) {
   this.graph = graph;
+  this.state = Chronicle.ROOT;
 };
 
 ChronicleAdapter.__prototype__ = function() {
@@ -93,7 +48,7 @@ ChronicleAdapter.__prototype__ = function() {
   };
 
   this.invert = function(change) {
-    var inverted = change.copy();
+    var inverted = util.deepclone(change);
 
     if (change.op === "create") {
       inverted.op = "delete";
@@ -132,7 +87,9 @@ ChronicleAdapter.__prototype__ = function() {
     // 'update' after 'delete' is turned into a NOP
     if (a.op === "delete" && b.op === "update") {
       return [a, {op: "NOP"}];
-    } else if (a.op === "update" && b.op === "delete") {
+    }
+    // ... and vice versa
+    else if (a.op === "update" && b.op === "delete") {
       return [{op: "NOP"}, b];
     }
 
@@ -144,24 +101,34 @@ ChronicleAdapter.__prototype__ = function() {
     else if (a.op === "update" && b.op === "update") {
       var a_t = a.copy();
       var b_t = b.copy();
-      var type = a.args.type;
-
+      var property = new Data.Graph.Property(this.graph, a.path);
       var op1, op2, transformed;
-      if (type === "string") {
-        op1 = TextOperation.fromJSON(a.args.diff);
-        op2 = TextOperation.fromJSON(b.args.diff);
-        transformed = TextOperation.transform(op1, op2);
-      } else if (type === "array") {
-        op1 = ArrayOperation.fromJSON(a.args.diff);
-        op2 = ArrayOperation.fromJSON(b.args.diff);
-        transformed = ArrayOperation.transform(op1, op2);
+
+      // String updates
+
+      if (property.type === "string") {
+        op1 = TextOperation.fromJSON(a.args);
+        op2 = TextOperation.fromJSON(b.args);
+        transformed = TextOperation.transform(op1, op2, options);
       }
-      a_t.args.diff = transformed[0].toJSON();
-      return [{op: "NOP"}, {op: "NOP"}];
+
+      // Array updates
+
+      else if (property.type === "array") {
+        op1 = ArrayOperation.fromJSON(a.args);
+        op2 = ArrayOperation.fromJSON(b.args);
+        transformed = ArrayOperation.transform(op1, op2, options);
+      }
+
+      a_t.args = transformed[0].toJSON();
+      b_t.args = transformed[1].toJSON();
+
+      return [a_t, b_t];
 
     } else {
       throw new errors.SubstanceError("Illegal state.");
     }
+
   };
 
   this.reset = function() {
@@ -170,13 +137,11 @@ ChronicleAdapter.__prototype__ = function() {
   };
 
 };
+
 ChronicleAdapter.__prototype__.prototype = Chronicle.Versioned.prototype;
 ChronicleAdapter.prototype = new ChronicleAdapter.__prototype__();
-VersionedGraph.ChronicleAdapter = ChronicleAdapter;
 
-// Converter
-
-ChronicleAdapter.Converter = function() {
+var Converter = function() {
 
   function create_update(command) {
     var converted = {
@@ -194,43 +159,77 @@ ChronicleAdapter.Converter = function() {
       path: [],
       args: node.toJSON()
     };
-  }
+  };
 
   this.pop = function(command, array) {
     if (array.length === 0)  return null;
 
     var converted = create_update(command);
     var last = _.last(array);
-    converted.args = {
-      type: "array",
-      diff: ["-", array.length-1, last];
-    };
+    converted.args = ["-", array.length-1, last];
     return converted;
   };
 
   this.push = function(command, array) {
     var converted = create_update(command);
-    converted.args = {
-      type: "array",
-      diff: ["+", array.length, command.args.value];
-    };
+    converted.args = ["+", array.length, command.args.value];
     return converted;
   };
 
   this.insert = function(command, array) {
     var converted = create_update(command);
-    converted.args = {
-      type: "array",
-      diff: ["+", array.length, command.args.value];
-    };
+    converted.args = ["+", array.length, command.args.value];
     return converted;
   };
 
 };
 
+var VersionedGraph = function(schema) {
+  Data.Graph.call(this, schema);
+
+  this.chronicle = Chronicle.create();
+  this.chronicle.manage(new ChronicleAdapter(this));
+};
+
+VersionedGraph.__prototype__ = function() {
+
+  var __super__ = util.prototype(this);
+  var converter = new Converter();
+
+  this.exec = function(command) {
+
+    if (!command || command.op === "NOP") return;
+
+    // parse the command to have a normalized representation
+    command = new Data.Graph.Command(command);
+
+    // convert the command into a Chroniclible version
+    if (converter[command.op]) {
+      var item = this.resolve(command.path);
+      command = converter[command.op](command, item);
+    } else {
+      command = command.toJSON();
+    }
+
+    // it might happen that the converter returns null as if the command was a NOP
+    if (command && command.op !== "NOP") {
+      this.__exec__(command);
+      this.chronicle.record(command);
+    }
+  };
+
+  this.__exec__ = function(command) {
+    __super__.exec.call(this, command);
+  };
+
+};
+
+VersionedGraph.__prototype__.prototype = Data.Graph.prototype;
+VersionedGraph.prototype = new VersionedGraph.__prototype__();
+
 
 if (typeof exports === 'undefined') {
-  root.Data.VersionedGraph = VersionedGraph;
+  root.Substance.Data.VersionedGraph = VersionedGraph;
 } else {
   module.exports = VersionedGraph;
 }

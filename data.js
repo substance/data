@@ -124,39 +124,6 @@ _.extend(Data.Graph.prototype, util.Events, {
 
 });
 
-
-var GraphCommand = function(options) {
-
-  if (!options) throw new Error("Illegal argument: expected command spec, was " + options);
-
-  // convert the convenient array notation into the internal object notation
-  if (_.isArray(options)) {
-    var op = options[0];
-    var path = options.slice(1);
-    var args = _.last(path);
-
-    options = {
-      op: op,
-      path: path
-    };
-
-    if (_.isObject(args)) {
-      options.args = path.pop();
-    }
-  }
-
-  this.op = options.op;
-  this.path = options.path;
-  this.args = options.args;
-
-  // hacky conversion to allow convenient notation: ["delete", <id>]
-  // the internal representation is: {op: "delete", path: [], args: {id: <id>}}
-  if (this.op === "delete" && !this.args) {
-    this.args = {id: this.path.pop()};
-  }
-
-};
-
 var GraphMethods = function() {
 
   this.NOP = function() {
@@ -221,6 +188,38 @@ var GraphMethods = function() {
 
 };
 
+var GraphCommand = function(options) {
+
+  if (!options) throw new Error("Illegal argument: expected command spec, was " + options);
+
+  // convert the convenient array notation into the internal object notation
+  if (_.isArray(options)) {
+    var op = options[0];
+    var path = options.slice(1);
+    var args = _.last(path);
+
+    options = {
+      op: op,
+      path: path
+    };
+
+    if (_.isObject(args)) {
+      options.args = path.pop();
+    }
+  }
+
+  this.op = options.op;
+  this.path = options.path;
+  this.args = options.args;
+
+  // hacky conversion to allow convenient notation: ["delete", <id>]
+  // the internal representation is: {op: "delete", path: [], args: {id: <id>}}
+  if (this.op === "delete" && !this.args) {
+    this.args = {id: this.path.pop()};
+  }
+
+};
+
 GraphCommand.__prototype__ = function() {
 
   var methods = new GraphMethods();
@@ -231,6 +230,18 @@ GraphCommand.__prototype__ = function() {
     }
 
     methods[this.op](graph, this.path, this.args);
+  };
+
+  this.copy = function() {
+    return new GraphCommand(this);
+  };
+
+  this.toJSON = function() {
+    return {
+      op: this.op,
+      path: this.path,
+      args: this.args
+    };
   };
 
 };
