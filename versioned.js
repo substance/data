@@ -40,8 +40,6 @@ var ChronicleAdapter = function(graph) {
 
 ChronicleAdapter.__prototype__ = function() {
 
-  var __super__ = util.prototype(this);
-
   // Note: there are only "create", "delete", and "update" after conversion
   this.apply = function(change) {
     this.graph.__exec__(change);

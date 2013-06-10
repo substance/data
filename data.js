@@ -286,7 +286,7 @@ Data.Graph.__prototype__ = function() {
     };
   };
 
-}
+};
 
 Data.Graph.prototype = _.extend(new Data.Graph.__prototype__(), util.Events);
 
