@@ -196,8 +196,6 @@ Data.Graph.__prototype__ = function() {
   };
 
 
-
-
   // View Traversal
   // --------
 
@@ -380,12 +378,6 @@ var GraphCommand = function(options) {
   this.op = options.op;
   this.path = options.path;
   this.args = options.args;
-
-  // hacky conversion to allow convenient notation: ["delete", <id>]
-  // the internal representation is: {op: "delete", path: [], args: {id: <id>}}
-  // if (this.op === "delete" && !this.args) {
-  //   this.args = {id: this.path.pop()};
-  // }
 
 };
 
