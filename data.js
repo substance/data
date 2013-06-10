@@ -76,7 +76,6 @@ Data.Graph = function(schema) {
 
 Data.Graph.__prototype__ = function() {
 
-
   this.getTypes = function(typeId) {
     var type = this.schema.types[typeId];
     if (type.parent) {
@@ -86,8 +85,17 @@ Data.Graph.__prototype__ = function() {
     }
   };
 
-  // Add node to index
+  // Rebuild all indexes
+  this.buildIndexes =  function() {
+    this.indexes = {};
+    _.each(this.nodes, function(node) {
+      _.each(this.schema.indexes, function(index, key) {
+        this.addToIndex(key, node);
+      }, this);
+    }, this);
+  };
 
+  // Add node to index
   this.addToIndex = function(node) {
 
     var self = this;
