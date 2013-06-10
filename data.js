@@ -64,9 +64,12 @@ Data.isValueType = function (type) {
 
 Data.Graph = function(schema) {
   this.schema = schema;
-  this.nodes = {};
 
-  this.reset();
+  this.nodes = {};
+  this.indexes = {
+    "comments": {},
+    "annotations": {}
+  };
 };
 
 
