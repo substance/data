@@ -37,7 +37,7 @@ var TextOperation = Chronicle.OT.TextOperation;
 var Data = {};
 
 // Current version of the library. Keep in sync with `package.json`.
-Data.VERSION = '0.6.2';
+Data.VERSION = '0.7.0';
 
 // Top Level API
 // -------
@@ -65,38 +65,185 @@ Data.isValueType = function (type) {
 Data.Graph = function(schema) {
   this.schema = schema;
   this.nodes = {};
+
+  // TODO: derive from schema
+  this.indexes = {
+    "comments": {},
+    "annotations": {}
+  };
 };
 
-_.extend(Data.Graph.prototype, util.Events, {
 
-  // Merges in another Graph
-//  merge: function(nodes) {
-//    _.each(nodes, _.bind(function(n, key) { this.set(_.extend(n, { id: key })); }, this));
-//    return this;
-//  },
+Data.Graph.__prototype__ = function() {
 
-  // API method for accessing objects in the graph space
-  get: function(id) {
+
+  this.getTypes = function(typeId) {
+    var type = this.schema.types[typeId];
+    if (type.parent) {
+      return [type.parent, typeId];
+    } else {
+      return [typeId];
+    }
+  };
+
+  // Add node to index
+
+  this.addToIndex = function(node) {
+
+    var self = this;
+    function add(index) {
+      var indexSpec = self.schema.indexes[index];
+      var indexes = self.indexes;
+
+      var idx = indexes[index];
+      if (!_.include(self.getTypes(node.type), indexSpec.type)) return;
+
+      // Create index if it doesn't exist
+      var prop = indexSpec.properties[0];
+      if (prop) {
+        if (!idx) idx = indexes[index] = {};
+        if (!node[prop]) return; // skip falsy values
+        // Scoped by one property
+        if (!idx[node[prop]]) {
+          idx[node[prop]] = [node.id];
+        } else {
+          idx[node[prop]].push(node.id);
+        }
+      } else {
+        // Flat indexes
+        if (!idx) idx = indexes[index] = [];
+        idx.push(node.id);
+      }
+    }
+
+    _.each(this.schema.indexes, function(index, key) {
+      add(key);
+    });
+  };
+
+  // Silently remove node from index
+  // --------
+
+  this.removeFromIndex = function(node) {
+    var self = this;
+    function remove(index) {
+      var indexSpec = self.schema.indexes[index];
+      var indexes = self.indexes;
+      var scopes = indexes[index];
+
+      // Remove when source
+      if (scopes[node.id]) {
+        delete scopes[node.id];
+      }
+
+      if (!_.include(self.getTypes(node.type), indexSpec.type)) return;
+
+      // Remove when target
+      var prop = indexSpec.properties[0];
+
+      var nodes = scopes[node[prop]];
+      if (nodes) {
+        scopes[node[prop]] = _.without(nodes, node.id);
+      }
+    }
+
+    _.each(this.schema.indexes, function(index, key) {
+      remove(key);
+    });
+  };
+
+  // TODO: Prettify -> Code duplication alert
+  this.updateIndex = function(node, prevNode) {
+
+    var self = this;
+    function update(index) {
+      var indexSpec = self.schema.indexes[index];
+      var indexes = self.indexes;
+
+      var scopes = indexes[index];
+
+      if (!_.include(self.getTypes(node.type), indexSpec.type)) return;
+
+      // Remove when target
+      var prop = indexSpec.properties[0];
+
+      var nodes = scopes[prevNode[prop]];
+      if (nodes) {
+        scopes[prevNode[prop]] = _.without(nodes, prevNode.id);
+      }
+
+      // Create index if it doesn't exist
+      if (!scopes) scopes = indexes[index] = {};
+      prop = indexSpec.properties[0];
+
+      if (!scopes[node[prop]]) {
+        scopes[node[prop]] = [node.id];
+      } else {
+        scopes[node[prop]].push(node.id);
+      }
+    }
+
+    _.each(this.schema.indexes, function(index, key) {
+      update(key);
+    });
+  };
+
+
+
+
+  // View Traversal
+  // --------
+
+  this.traverse = function(view) {
+    return _.map(this.views[view], function(node) {
+      return this.nodes[node];
+    }, this);
+  };
+
+  // Find data nodes based on index
+  // --------
+
+  this.find = function(index, scope) {
+    var indexes = this.indexes;
+    var nodes = this.nodes;
+
+    function wrap(nodeIds) {
+      return _.map(nodeIds, function(n) {
+        return nodes[n];
+      });
+    }
+
+    if (!indexes[index]) return []; // throw index-not-found error instead?
+    if (_.isArray(indexes[index])) return wrap(indexes[index]);
+    if (!indexes[index][scope]) return [];
+
+    return wrap(indexes[index][scope]);
+  };
+
+
+  this.get = function(id) {
     return this.nodes[id];
-  },
+  };
 
-  create: function(node) {
+  this.create = function(node) {
     this.nodes[node.id] = node;
+    this.addToIndex(node);
     return this;
-  },
+  };
 
   // Delete node by id, referenced nodes remain untouched
-  "delete": function(id) {
+  this.delete = function(id) {
     // TODO: update indexes
+    this.removeFromIndex(this.nodes[id]);
     delete this.nodes[id];
-  },
+  };
 
-  exec: function(command) {
+  this.exec = function(command) {
     console.log("Executing command: ", command);
     new Data.Graph.Command(command).apply(this);
-  },
+  };
 
-  resolve: function(path) {
+  this.resolve = function(path) {
     if (path.length === 0) return this;
 
     // resolve the item for manipulation
@@ -109,20 +256,23 @@ _.extend(Data.Graph.prototype, util.Events, {
       }
     }
     return node;
-  },
+  };
 
-  properties: function(type) {
+  this.properties = function(type) {
     var result = type.parent ? this.schema.types[type.parent].properties : {};
     _.extend(result, type.properties);
     return result;
-  },
+  };
 
-  propertyType: function(node, key) {
+  this.propertyType = function(node, key) {
     var properties = this.properties(this.schema.types[node.type]);
     return properties[key];
-  },
+  };
+}
 
-});
+Data.Graph.prototype = _.extend(new Data.Graph.__prototype__(), util.Events);
+
+
 
 var GraphMethods = function() {
 
@@ -164,6 +314,7 @@ var GraphMethods = function() {
   this.update = function(graph, path, args) {
 
     var property = new Data.Graph.Property(graph, path);
+    var oldNode = util.deepclone(property.node);
     var op;
 
     if (property.type === 'string') {
@@ -184,6 +335,8 @@ var GraphMethods = function() {
     } else {
       throw new Error("Illegal type: incremental update not available for type " + property.type);
     }
+
+    graph.updateIndex(property.node, oldNode);
   };
 
 };
