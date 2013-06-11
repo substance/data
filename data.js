@@ -269,9 +269,18 @@ Data.Graph.__prototype__ = function() {
     return result;
   };
 
+  // Returns the property type
+  // TODO: should take typename, key instead of node object, key
   this.propertyType = function(node, key) {
     var properties = this.properties(this.schema.types[node.type]);
-    return properties[key];
+    var type = properties[key];
+    return _.isArray(type) ? type : [type];
+  };
+
+  // Returns just the basetype
+  // TODO: should take typename, key instead of node object, key
+  this.propertyBaseType = function(node, key) {
+    return this.propertyType(node, key)[0];
   };
 
   this.reset = function() {
@@ -331,14 +340,14 @@ var GraphMethods = function() {
     var oldNode = util.deepclone(property.node);
     var op;
 
-    if (property.type === 'string') {
+    if (property.baseType === 'string') {
       try {
         op = TextOperation.fromJSON(args);
       } catch (err) {
         throw new Error("Illegal argument: provided diff is not a valid TextOperation: " + args);
       }
       property.set(op.apply(property.get()));
-    } else if (property.type === 'array') {
+    } else if (property.baseType === 'array') {
       try {
         op = ArrayOperation.fromJSON(args);
       } catch (err) {
@@ -347,7 +356,8 @@ var GraphMethods = function() {
       // Note: the array operation works inplace
       op.apply(property.get());
     } else {
-      throw new Error("Illegal type: incremental update not available for type " + property.type);
+      console.log('PROP', property);
+      throw new Error("Illegal type: incremental update not available for type " + property.baseType);
     }
 
     graph.updateIndex(property.node, oldNode);
@@ -378,7 +388,6 @@ var GraphCommand = function(options) {
   this.op = options.op;
   this.path = options.path;
   this.args = options.args;
-
 };
 
 GraphCommand.__prototype__ = function() {
@@ -414,7 +423,9 @@ var Property = function(graph, path) {
   if (this.node === undefined) {
     throw new Error("Could not look up property for path " + path.join("."));
   }
+
   this.type = graph.propertyType(this.node, this.key);
+  this.baseType = this.type[0];
 };
 
 Property.prototype = {
