@@ -82,9 +82,19 @@ Data.Schema.prototype.defaultValue = function (type) {
 // 
 
 Data.Schema.prototype.checkType = function (propertyBaseType, value) {
-  if (type === "array") return _.isArray(value);
-  if (type === "number") return _.isNumber(value);
-  if (type === "string") return _.isString(value);
+  if (propertyBaseType === "array") return _.isArray(value);
+  if (propertyBaseType === "number") return _.isNumber(value);
+  if (propertyBaseType === "string") return _.isString(value);
+};
+
+// Return type object for a given type id
+// --------
+// 
+
+Data.Schema.prototype.parseValue = function (propertyBaseType, value) {
+  if (propertyBaseType === "array") return JSON.parse(value);
+  if (propertyBaseType === "number") return parseInt(value, 10);
+  return value;
 };
 
 
@@ -499,7 +509,8 @@ var GraphMethods = function() {
       } catch (err) {
         throw new Error("Illegal argument: provided diff is not a valid TextOperation: " + args);
       }
-      property.set(op.apply(property.get()));
+
+      property.set(op.apply(property.get().toString()));
     }
 
     graph.updateIndex(property.node, oldNode);
@@ -560,6 +571,7 @@ GraphCommand.__prototype__ = function() {
 GraphCommand.prototype = new GraphCommand.__prototype__();
 
 var Property = function(graph, path) {
+  this.schema = graph.schema;
   this.key = _.last(path);
   this.node = graph.resolve(path.slice(0, -1));
   if (this.node === undefined) {
@@ -576,7 +588,7 @@ Property.prototype = {
   },
 
   set: function(value) {
-    this.node[this.key] = value;
+    this.node[this.key] = this.schema.parseValue(this.baseType, value);
   }
 };
 
