@@ -1,9 +1,9 @@
-//     (c) 2012 Michael Aufreiter
+//     (c) 2013 Michael Aufreiter
 //     Data.js is freely distributable under the MIT license.
 //     Portions of Data.js are inspired or borrowed from Underscore.js,
 //     Backbone.js and Google's Visualization API.
 //     For all details and documentation:
-//     http://substance.io/michael/data-js
+//     http://github.com/michael/data
 
 (function(root){
 
@@ -54,6 +54,137 @@ Data.isValueType = function (type) {
   return _.include(Data.VALUE_TYPES, _.last(type));
 };
 
+
+
+// Data.Schema
+// ========
+//
+// Provides a schema inspection API
+
+Data.Schema = function(schema) {
+  _.extend(this, schema);
+};
+
+
+// Return Default value for a given type
+// --------
+// 
+
+Data.Schema.prototype.defaultValue = function (type) {
+  if (type === "array") return [];
+  if (type === "number") return 0;
+  if (type === "string") return "";
+};
+
+
+// Return type object for a given type id
+// --------
+// 
+
+Data.Schema.prototype.checkType = function (propertyBaseType, value) {
+  if (type === "array") return _.isArray(value);
+  if (type === "number") return _.isNumber(value);
+  if (type === "string") return _.isString(value);
+};
+
+
+
+// Return type object for a given type id
+// --------
+// 
+
+Data.Schema.prototype.type = function(typeId) {
+  return this.types[typeId];
+};
+
+
+// For a given type id return the type hierarchy
+// --------
+// 
+// => ["base_type", "specific_type"]
+
+Data.Schema.prototype.typeChain = function(typeId) {
+  var type = this.type(typeId);
+  if (type.parent) {
+    return [type.parent, typeId];
+  } else {
+    return [typeId];
+  }
+};
+
+
+// Return all properties for a given type
+// --------
+// 
+
+Data.Schema.prototype.properties = function(type) {
+  var type = _.isObject(type) ? type : this.type(type);
+  var result = type.parent ? this.types[type.parent].properties : {};
+  _.extend(result, type.properties);
+  return result;
+};
+
+
+// Returns the property type for a given type
+// --------
+// 
+// => ["array", "string"]
+
+Data.Schema.prototype.propertyType = function(type, property) {
+  var properties = this.properties(type);
+  var propertyType = properties[property];
+  if (!propertyType) throw new Error("Property not found for" + type +'.'+property);
+  return _.isArray(propertyType) ? propertyType : [propertyType];
+};
+
+
+// Returns the property base type
+// --------
+// 
+// => "string"
+
+Data.Schema.prototype.propertyBaseType = function(type, property) {
+  return this.propertyType(type, property)[0];
+};
+
+
+
+// Data.Node
+// ========
+// 
+// A `Data.Node` refers to one element in the graph
+
+
+Data.Node = function() {
+  throw new Error("A Data.Node can't be instantiated.");
+};
+
+
+// Safely constructs a new node based on type information
+// Node needs to have a valid type
+// All properties that are not registered, are dropped
+// All properties that don't have a value are 
+
+Data.Node.create = function (schema, node) {
+  var type = schema.type(node.type);
+  if (!type) throw new Error("Type not found in the schema");
+  var properties = schema.properties(node.type);
+  var freshNode = { type: node.type, id: node.id };
+
+  // Start constructing the fresh node
+  _.each(properties, function(p, key) {
+    // Find property base type
+    var baseType = schema.propertyBaseType(node.type, key);
+
+    // Assign user defined property value or use default value for baseType
+    var val = node[key] || schema.defaultValue(baseType);
+    freshNode[key] = val;
+  });
+
+  return freshNode;
+}
+
+
 // Data.Graph
 // --------------
 
@@ -62,48 +193,56 @@ Data.isValueType = function (type) {
 // point to referred objects. Data.Graphs can be traversed in various ways.
 // See the testsuite for usage.
 
-Data.Graph = function(schema) {
-  this.schema = schema;
-
+Data.Graph = function(schema, graph) {
+  
+  // Initialization
+  this.schema = new Data.Schema(schema);
   this.nodes = {};
-  this.indexes = {
-    "comments": {},
-    "annotations": {}
-  };
+  this.initIndexes();
+
+  // Populate graph
+  if (graph) this.merge(graph);
 };
 
 
 Data.Graph.__prototype__ = function() {
 
-  this.getTypes = function(typeId) {
-    var type = this.schema.types[typeId];
-    if (type.parent) {
-      return [type.parent, typeId];
-    } else {
-      return [typeId];
-    }
-  };
+  // Setup indexes data-structure based on schema information
+  // --------
+  // 
 
-  // Rebuild all indexes
-  this.buildIndexes =  function() {
+  this.initIndexes = function() {
     this.indexes = {};
-    _.each(this.nodes, function(node) {
-      _.each(this.schema.indexes, function(index, key) {
-        this.addToIndex(key, node);
-      }, this);
+    _.each(this.schema.indexes, function(index, key) {
+      if (index.properties.length > 1) throw new Error('No multi-property indexes supported yet');
+      if (index.properties.length === 1) {
+        this.indexes[key] = {};
+      } else {
+        this.indexes[key] = [];
+      }
     }, this);
-  };
+  },
+
+  // Merge in a serialized graph
+  // --------
+  // 
+  // Existing nodes
+
+  this.merge = function(graph) {
+    _.each(graph.nodes, function(n) {
+      graph.create(n);
+    });
+  },
 
   // Add node to index
   this.addToIndex = function(node) {
-
     var self = this;
     function add(index) {
       var indexSpec = self.schema.indexes[index];
       var indexes = self.indexes;
 
       var idx = indexes[index];
-      if (!_.include(self.getTypes(node.type), indexSpec.type)) return;
+      if (!_.include(self.schema.typeChain(node.type), indexSpec.type)) return;
 
       // Create index if it doesn't exist
       var prop = indexSpec.properties[0];
@@ -143,7 +282,7 @@ Data.Graph.__prototype__ = function() {
         delete scopes[node.id];
       }
 
-      if (!_.include(self.getTypes(node.type), indexSpec.type)) return;
+      if (!_.include(self.schema.typeChain(node.type), indexSpec.type)) return;
 
       // Remove when target
       var prop = indexSpec.properties[0];
@@ -169,7 +308,7 @@ Data.Graph.__prototype__ = function() {
 
       var scopes = indexes[index];
 
-      if (!_.include(self.getTypes(node.type), indexSpec.type)) return;
+      if (!_.include(self.schema.typeChain(node.type), indexSpec.type)) return;
 
       // Remove when target
       var prop = indexSpec.properties[0];
@@ -225,14 +364,17 @@ Data.Graph.__prototype__ = function() {
     return wrap(indexes[index][scope]);
   };
 
-
   this.get = function(id) {
     return this.nodes[id];
   };
 
   this.create = function(node) {
-    this.nodes[node.id] = util.deepclone(node);
-    this.addToIndex(node);
+    var newNode = Data.Node.create(this.schema, node);
+    this.nodes[newNode.id] = newNode;
+
+    console.log(newNode);
+
+    this.addToIndex(newNode);
     return this;
   };
 
@@ -283,13 +425,16 @@ Data.Graph.__prototype__ = function() {
     return this.propertyType(node, key)[0];
   };
 
+
+
+
   this.reset = function() {
     this.nodes = {};
 
     // TODO: derive from schema
     this.indexes = {
-      "comments": {},
-      "annotations": {}
+      // "comments": {},
+      // "annotations": {}
     };
   };
 
@@ -410,8 +555,8 @@ GraphCommand.__prototype__ = function() {
       args: this.args
     };
   };
-
 };
+
 GraphCommand.prototype = new GraphCommand.__prototype__();
 
 var Property = function(graph, path) {
