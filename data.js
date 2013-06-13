@@ -340,14 +340,7 @@ var GraphMethods = function() {
     var oldNode = util.deepclone(property.node);
     var op;
 
-    if (property.baseType === 'string') {
-      try {
-        op = TextOperation.fromJSON(args);
-      } catch (err) {
-        throw new Error("Illegal argument: provided diff is not a valid TextOperation: " + args);
-      }
-      property.set(op.apply(property.get()));
-    } else if (property.baseType === 'array') {
+    if (property.baseType === 'array') {
       try {
         op = ArrayOperation.fromJSON(args);
       } catch (err) {
@@ -355,9 +348,13 @@ var GraphMethods = function() {
       }
       // Note: the array operation works inplace
       op.apply(property.get());
-    } else {
-      console.log('PROP', property);
-      throw new Error("Illegal type: incremental update not available for type " + property.baseType);
+    } else { // Everything that's not an array is considered a string
+      try {
+        op = TextOperation.fromJSON(args);
+      } catch (err) {
+        throw new Error("Illegal argument: provided diff is not a valid TextOperation: " + args);
+      }
+      property.set(op.apply(property.get()));
     }
 
     graph.updateIndex(property.node, oldNode);
