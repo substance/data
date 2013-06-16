@@ -397,7 +397,7 @@ Data.Graph.__prototype__ = function() {
 
   this.exec = function(command) {
     console.log("Executing command: ", command);
-    new Data.Graph.Command(command).apply(this);
+    new Data.Command(command).apply(this);
   };
 
   this.resolve = function(path) {
@@ -491,7 +491,7 @@ var GraphMethods = function() {
 
   this.update = function(graph, path, args) {
 
-    var property = new Data.Graph.Property(graph, path);
+    var property = new Data.Property(graph, path);
     var oldNode = util.deepclone(property.node);
     var op;
 
@@ -515,10 +515,10 @@ var GraphMethods = function() {
 
     graph.updateIndex(property.node, oldNode);
   };
-
 };
 
-var GraphCommand = function(options) {
+
+Data.Command = function(options) {
 
   if (!options) throw new Error("Illegal argument: expected command spec, was " + options);
 
@@ -543,7 +543,7 @@ var GraphCommand = function(options) {
   this.args = options.args;
 };
 
-GraphCommand.__prototype__ = function() {
+Data.Command.__prototype__ = function() {
 
   var methods = new GraphMethods();
 
@@ -556,7 +556,7 @@ GraphCommand.__prototype__ = function() {
   };
 
   this.copy = function() {
-    return new GraphCommand(this);
+    return new Data.Command(this);
   };
 
   this.toJSON = function() {
@@ -568,9 +568,9 @@ GraphCommand.__prototype__ = function() {
   };
 };
 
-GraphCommand.prototype = new GraphCommand.__prototype__();
+Data.Command.prototype = new Data.Command.__prototype__();
 
-var Property = function(graph, path) {
+Data.Property = function(graph, path) {
   this.schema = graph.schema;
   this.key = _.last(path);
   this.node = graph.resolve(path.slice(0, -1));
@@ -582,7 +582,7 @@ var Property = function(graph, path) {
   this.baseType = this.type[0];
 };
 
-Property.prototype = {
+Data.Property.prototype = {
   get: function() {
     return this.node[this.key];
   },
@@ -592,9 +592,6 @@ Property.prototype = {
   }
 };
 
-
-Data.Graph.Command = GraphCommand;
-Data.Graph.Property = Property;
 
 if (typeof exports !== 'undefined') {
   exports = Data;
