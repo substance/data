@@ -15,3 +15,5 @@ _Yardoc
 tmp/*
 README.bak
 node_modules
+/lib/chronicle
+/lib/util
