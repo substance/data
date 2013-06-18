@@ -10,10 +10,8 @@
 var _,
     util,
     errors,
-    Chronicle,
-    ArrayOperation,
-    TextOperation,
-    ObjectOperation;
+    ot,
+    Chronicle;
 
 if (typeof exports !== 'undefined') {
   _    = require('underscore');
@@ -21,17 +19,13 @@ if (typeof exports !== 'undefined') {
   util   = require('./lib/util/util');
   errors   = require('./lib/util/errors');
   Chronicle = require('./lib/chronicle/chronicle');
-  ArrayOperation = require('./lib/chronicle/lib/ot/array_operation');
-  TextOperation = require('./lib/chronicle/lib/ot/text_operation');
-  ObjectOperation = require('./lib/chronicle/lib/ot/object_operation');
+  ot = require('./lib/chronicle/lib/ot/index');
 } else {
   _ = root._;
   util = root.Substance.util;
   errors   = root.Substance.errors;
   Chronicle   = root.Substance.Chronicle;
-  ArrayOperation = Chronicle.OT.ArrayOperation;
-  TextOperation = Chronicle.OT.TextOperation;
-  ObjectOperation = Chronicle.OT.ObjectOperation;
+  ot = Chronicle.ot;
 }
 
 
@@ -503,21 +497,20 @@ var GraphMethods = function() {
 
     var property = new Data.Property(graph, path);
     var oldNode = util.deepclone(property.node);
-    var op;
 
     if (property.baseType === 'array') {
       // operation works inplace
-      ArrayOperation.apply(args, property.get());
+      ot.ArrayOperation.apply(args, property.get());
 
     } else if (property.baseType === 'object') {
       // operation works inplace
-      ObjectOperation.apply(args, property.get());
+      ot.ObjectOperation.apply(args, property.get());
 
     }
     // Everything that's not an array is considered a string
     else {
       var val = property.get().toString();
-      val = TextOperation.apply(args, val);
+      val = ot.TextOperation.apply(args, val);
       property.set(val);
     }
 
@@ -562,7 +555,7 @@ Data.Command.__prototype__ = function() {
     methods[this.op](graph, this.path, this.args);
   };
 
-  this.copy = function() {
+  this.clone = function() {
     return new Data.Command(this);
   };
 
@@ -581,6 +574,7 @@ Data.Property = function(graph, path) {
   this.schema = graph.schema;
   this.key = _.last(path);
   this.node = graph.resolve(path.slice(0, -1));
+
   if (this.node === undefined) {
     throw new Error("Could not look up property for path " + path.join("."));
   }
@@ -598,8 +592,6 @@ Data.Property.prototype = {
     this.node[this.key] = this.schema.parseValue(this.baseType, value);
   }
 };
-
-
 
 // Factory methods
 // ---------

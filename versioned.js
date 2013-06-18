@@ -4,34 +4,32 @@
 // ========
 
 var _,
-    ot,
     util,
     errors,
     Chronicle,
-    ArrayOperation,
-    TextOperation,
+    ot,
     Data;
 
 if (typeof exports !== 'undefined') {
   _    = require('underscore');
-  ot   = require('./lib/operation');
   // Should be require('substance-util') in the future
   util   = require('./lib/util/util');
   errors   = require('./lib/util/errors');
   Chronicle = require('./lib/chronicle/chronicle');
+  ot   = require('./lib/chronicle/lib/ot');
   Data = require('./data');
 
 } else {
   _ = root._;
-  ot = root.ot;
   util = root.Substance.util;
   errors   = root.Substance.errors;
   Chronicle = root.Substance.Chronicle;
+  ot = Chronicle.ot;
   Data = root.Substance.Data;
 }
 
-ArrayOperation = Chronicle.OT.ArrayOperation;
-TextOperation = Chronicle.OT.TextOperation;
+var ArrayOperation = ot.ArrayOperation;
+var TextOperation = ot.TextOperation;
 
 var ChronicleAdapter = function(graph) {
   this.graph = graph;
