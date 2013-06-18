@@ -131,7 +131,7 @@ Data.Schema.prototype.typeChain = function(typeId) {
 //
 
 Data.Schema.prototype.properties = function(type) {
-  var type = _.isObject(type) ? type : this.type(type);
+  type = _.isObject(type) ? type : this.type(type);
   var result = type.parent ? this.types[type.parent].properties : {};
   _.extend(result, type.properties);
   return result;
@@ -195,7 +195,7 @@ Data.Node.create = function (schema, node) {
   });
 
   return freshNode;
-}
+};
 
 
 // Data.Graph
@@ -234,22 +234,25 @@ Data.Graph.__prototype__ = function() {
         this.indexes[key] = [];
       }
     }, this);
-  },
+  };
 
   // Merge in a serialized graph
   // --------
   //
-  // Existing nodes
 
   this.merge = function(graph) {
     _.each(graph.nodes, function(n) {
       graph.create(n);
     });
-  },
+  };
 
-  // Add node to index
+  // Adds a node to indexes
+  // --------
+  //
+
   this.addToIndex = function(node) {
     var self = this;
+
     function add(index) {
       var indexSpec = self.schema.indexes[index];
       var indexes = self.indexes;
@@ -278,6 +281,7 @@ Data.Graph.__prototype__ = function() {
     _.each(this.schema.indexes, function(index, key) {
       add(key);
     });
+
   };
 
   // Silently remove node from index
@@ -506,7 +510,13 @@ var GraphMethods = function() {
       }
       // Note: the array operation works inplace
       op.apply(property.get());
-    } else { // Everything that's not an array is considered a string
+    }
+    else if (property.baseType === 'object') {
+      var newVal = args;
+      property.set(newVal);
+    }
+    // Everything that's not an array is considered a string
+    else {
       try {
         op = TextOperation.fromJSON(args);
       } catch (err) {
@@ -598,6 +608,39 @@ Property.prototype = {
 
 Data.Graph.Command = GraphCommand;
 Data.Graph.Property = Property;
+
+// Factory methods
+// ---------
+
+Data.Graph.NOP = function() {
+  return new GraphCommand({
+    op: "NOP"
+  });
+};
+
+Data.Graph.Create = function(node) {
+  return new GraphCommand({
+    op: "create",
+    path: [],
+    args: node
+  });
+};
+
+Data.Graph.Delete = function(node) {
+  return new GraphCommand({
+    op: "delete",
+    path: [],
+    args: node
+  });
+};
+
+Data.Graph.Update = function(path, update) {
+  return new GraphCommand({
+    op: "update",
+    path: path,
+    args: update
+  });
+};
 
 if (typeof exports !== 'undefined') {
   module.exports = Data;
