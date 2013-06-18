@@ -10,7 +10,9 @@
 var _,
     util,
     errors,
-    Chronicle;
+    Chronicle,
+    ArrayOperation,
+    TextOperation;
 
 if (typeof exports !== 'undefined') {
   _    = require('underscore');
@@ -18,15 +20,16 @@ if (typeof exports !== 'undefined') {
   util   = require('./lib/util/util');
   errors   = require('./lib/util/errors');
   Chronicle = require('./lib/chronicle/chronicle');
+  ArrayOperation = require('./lib/chronicle/lib/ot/array_operation');
+  TextOperation = require('./lib/chronicle/lib/ot/text_operation');
 } else {
   _ = root._;
   util = root.Substance.util;
   errors   = root.Substance.errors;
   Chronicle   = root.Substance.Chronicle;
+  ArrayOperation = Chronicle.OT.ArrayOperation;
+  TextOperation = Chronicle.OT.TextOperation;
 }
-
-var ArrayOperation = Chronicle.OT.ArrayOperation;
-var TextOperation = Chronicle.OT.TextOperation;
 
 
 // Initial Setup
@@ -55,7 +58,6 @@ Data.isValueType = function (type) {
 };
 
 
-
 // Data.Schema
 // ========
 //
@@ -68,7 +70,7 @@ Data.Schema = function(schema) {
 
 // Return Default value for a given type
 // --------
-// 
+//
 
 Data.Schema.prototype.defaultValue = function (type) {
   if (type === "array") return [];
@@ -79,7 +81,7 @@ Data.Schema.prototype.defaultValue = function (type) {
 
 // Return type object for a given type id
 // --------
-// 
+//
 
 Data.Schema.prototype.checkType = function (propertyBaseType, value) {
   if (propertyBaseType === "array") return _.isArray(value);
@@ -89,7 +91,7 @@ Data.Schema.prototype.checkType = function (propertyBaseType, value) {
 
 // Return type object for a given type id
 // --------
-// 
+//
 
 Data.Schema.prototype.parseValue = function (propertyBaseType, value) {
   if (propertyBaseType === "array") return JSON.parse(value);
@@ -101,7 +103,7 @@ Data.Schema.prototype.parseValue = function (propertyBaseType, value) {
 
 // Return type object for a given type id
 // --------
-// 
+//
 
 Data.Schema.prototype.type = function(typeId) {
   return this.types[typeId];
@@ -110,7 +112,7 @@ Data.Schema.prototype.type = function(typeId) {
 
 // For a given type id return the type hierarchy
 // --------
-// 
+//
 // => ["base_type", "specific_type"]
 
 Data.Schema.prototype.typeChain = function(typeId) {
@@ -122,13 +124,17 @@ Data.Schema.prototype.typeChain = function(typeId) {
   }
 };
 
+Data.Schema.prototype.baseType = function(typeId) {
+  return this.typeChain(typeId)[0];
+};
+
 
 // Return all properties for a given type
 // --------
-// 
+//
 
 Data.Schema.prototype.properties = function(type) {
-  var type = _.isObject(type) ? type : this.type(type);
+  type = _.isObject(type) ? type : this.type(type);
   var result = type.parent ? this.types[type.parent].properties : {};
   _.extend(result, type.properties);
   return result;
@@ -137,7 +143,7 @@ Data.Schema.prototype.properties = function(type) {
 
 // Returns the property type for a given type
 // --------
-// 
+//
 // => ["array", "string"]
 
 Data.Schema.prototype.propertyType = function(type, property) {
@@ -150,7 +156,7 @@ Data.Schema.prototype.propertyType = function(type, property) {
 
 // Returns the property base type
 // --------
-// 
+//
 // => "string"
 
 Data.Schema.prototype.propertyBaseType = function(type, property) {
@@ -161,7 +167,7 @@ Data.Schema.prototype.propertyBaseType = function(type, property) {
 
 // Data.Node
 // ========
-// 
+//
 // A `Data.Node` refers to one element in the graph
 
 
@@ -173,7 +179,7 @@ Data.Node = function() {
 // Safely constructs a new node based on type information
 // Node needs to have a valid type
 // All properties that are not registered, are dropped
-// All properties that don't have a value are 
+// All properties that don't have a value are
 
 Data.Node.create = function (schema, node) {
   var type = schema.type(node.type);
@@ -192,7 +198,7 @@ Data.Node.create = function (schema, node) {
   });
 
   return freshNode;
-}
+};
 
 
 // Data.Graph
@@ -204,7 +210,7 @@ Data.Node.create = function (schema, node) {
 // See the testsuite for usage.
 
 Data.Graph = function(schema, graph) {
-  
+
   // Initialization
   this.schema = new Data.Schema(schema);
   this.nodes = {};
@@ -219,7 +225,7 @@ Data.Graph.__prototype__ = function() {
 
   // Setup indexes data-structure based on schema information
   // --------
-  // 
+  //
 
   this.initIndexes = function() {
     this.indexes = {};
@@ -231,22 +237,25 @@ Data.Graph.__prototype__ = function() {
         this.indexes[key] = [];
       }
     }, this);
-  },
+  };
 
   // Merge in a serialized graph
   // --------
-  // 
-  // Existing nodes
+  //
 
   this.merge = function(graph) {
     _.each(graph.nodes, function(n) {
       graph.create(n);
     });
-  },
+  };
 
-  // Add node to index
+  // Adds a node to indexes
+  // --------
+  //
+
   this.addToIndex = function(node) {
     var self = this;
+
     function add(index) {
       var indexSpec = self.schema.indexes[index];
       var indexes = self.indexes;
@@ -275,6 +284,7 @@ Data.Graph.__prototype__ = function() {
     _.each(this.schema.indexes, function(index, key) {
       add(key);
     });
+
   };
 
   // Silently remove node from index
@@ -435,9 +445,6 @@ Data.Graph.__prototype__ = function() {
     return this.propertyType(node, key)[0];
   };
 
-
-
-
   this.reset = function() {
     this.nodes = {};
 
@@ -503,7 +510,13 @@ var GraphMethods = function() {
       }
       // Note: the array operation works inplace
       op.apply(property.get());
-    } else { // Everything that's not an array is considered a string
+    }
+    else if (property.baseType === 'object') {
+      var newVal = args;
+      property.set(newVal);
+    }
+    // Everything that's not an array is considered a string
+    else {
       try {
         op = TextOperation.fromJSON(args);
       } catch (err) {
@@ -593,8 +606,42 @@ Data.Property.prototype = {
 };
 
 
+
+// Factory methods
+// ---------
+
+Data.Graph.NOP = function() {
+  return new Data.Command({
+    op: "NOP"
+  });
+};
+
+Data.Graph.Create = function(node) {
+  return new Data.Command({
+    op: "create",
+    path: [],
+    args: node
+  });
+};
+
+Data.Graph.Delete = function(node) {
+  return new Data.Command({
+    op: "delete",
+    path: [],
+    args: node
+  });
+};
+
+Data.Graph.Update = function(path, update) {
+  return new Data.Command({
+    op: "update",
+    path: path,
+    args: update
+  });
+};
+
 if (typeof exports !== 'undefined') {
-  exports = Data;
+  module.exports = Data;
 } else {
   root.Substance.Data = Data;
 }
