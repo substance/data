@@ -12,7 +12,8 @@ var _,
     errors,
     Chronicle,
     ArrayOperation,
-    TextOperation;
+    TextOperation,
+    ObjectOperation;
 
 if (typeof exports !== 'undefined') {
   _    = require('underscore');
@@ -22,6 +23,7 @@ if (typeof exports !== 'undefined') {
   Chronicle = require('./lib/chronicle/chronicle');
   ArrayOperation = require('./lib/chronicle/lib/ot/array_operation');
   TextOperation = require('./lib/chronicle/lib/ot/text_operation');
+  ObjectOperation = require('./lib/chronicle/lib/ot/object_operation');
 } else {
   _ = root._;
   util = root.Substance.util;
@@ -29,6 +31,7 @@ if (typeof exports !== 'undefined') {
   Chronicle   = root.Substance.Chronicle;
   ArrayOperation = Chronicle.OT.ArrayOperation;
   TextOperation = Chronicle.OT.TextOperation;
+  ObjectOperation = Chronicle.OT.ObjectOperation;
 }
 
 
@@ -503,33 +506,24 @@ var GraphMethods = function() {
     var op;
 
     if (property.baseType === 'array') {
-      try {
-        op = ArrayOperation.fromJSON(args);
-      } catch (err) {
-        throw new Error("Illegal argument: provided diff is not a valid ArrayOperation: " + args);
-      }
-      // Note: the array operation works inplace
-      op.apply(property.get());
-    }
-    else if (property.baseType === 'object') {
-      var newVal = args;
-      property.set(newVal);
+      // operation works inplace
+      ArrayOperation.apply(args, property.get());
+
+    } else if (property.baseType === 'object') {
+      // operation works inplace
+      ObjectOperation.apply(args, property.get());
+
     }
     // Everything that's not an array is considered a string
     else {
-      try {
-        op = TextOperation.fromJSON(args);
-      } catch (err) {
-        throw new Error("Illegal argument: provided diff is not a valid TextOperation: " + args);
-      }
-
-      property.set(op.apply(property.get().toString()));
+      var val = property.get().toString();
+      val = TextOperation.apply(args, val);
+      property.set(val);
     }
 
     graph.updateIndex(property.node, oldNode);
   };
 };
-
 
 Data.Command = function(options) {
 
