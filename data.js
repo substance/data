@@ -207,10 +207,12 @@ Data.Node.create = function (schema, node) {
 // See the testsuite for usage.
 
 Data.Graph = function(schema, graph) {
-
   // Initialization
   this.schema = new Data.Schema(schema);
+
   this.nodes = {};
+  this.indexes = {};
+
   this.initIndexes();
 
   // Populate graph
@@ -219,6 +221,79 @@ Data.Graph = function(schema, graph) {
 
 
 Data.Graph.__prototype__ = function() {
+
+  this.get = function(id) {
+    return this.nodes[id];
+  };
+
+  this.set = function(id, node) {
+    this.nodes[id] = node;
+  };
+
+  this.create = function(node) {
+    var newNode = Data.Node.create(this.schema, node);
+    this.set(newNode.id, newNode);
+
+    console.log(newNode);
+
+    this.addToIndex(newNode);
+    return this;
+  };
+
+  // Delete node by id, referenced nodes remain untouched
+  this.delete = function(id) {
+    // TODO: update indexes
+    this.removeFromIndex(this.nodes[id]);
+    delete this.nodes[id];
+  };
+
+  this.exec = function(command) {
+    console.log("Executing command: ", command);
+    new Data.Command(command).apply(this);
+  };
+
+  this.getView = function(viewId) {
+    return this.views[viewId];
+  };
+
+  this.getProperty = function(path) {
+    return new Data.Property(this, path);
+  };
+
+  this.resolve = function(path) {
+    if (path.length === 0) return this;
+
+    // resolve the item for manipulation
+    // TODO: it would be great if we could resolve references stored in properties (using schema)
+    var node = this.get(path[0]);
+    for (var idx = 1; idx < path.length; idx++) {
+      node = node[path[idx]];
+      if (node === undefined) {
+        throw new Error("Key error: could not find element for path " + JSON.stringify(path));
+      }
+    }
+    return node;
+  };
+
+  this.reset = function() {
+    this.nodes = {};
+
+    // TODO: derive from schema
+    this.indexes = {
+      // "comments": {},
+      // "annotations": {}
+    };
+  };
+
+  // Merge in a serialized graph
+  // --------
+  //
+
+  this.merge = function(graph) {
+    _.each(graph.nodes, function(n) {
+      graph.create(n);
+    });
+  };
 
   // Setup indexes data-structure based on schema information
   // --------
@@ -234,16 +309,6 @@ Data.Graph.__prototype__ = function() {
         this.indexes[key] = [];
       }
     }, this);
-  };
-
-  // Merge in a serialized graph
-  // --------
-  //
-
-  this.merge = function(graph) {
-    _.each(graph.nodes, function(n) {
-      graph.create(n);
-    });
   };
 
   // Adds a node to indexes
@@ -351,13 +416,12 @@ Data.Graph.__prototype__ = function() {
     });
   };
 
-
   // View Traversal
   // --------
 
   this.traverse = function(view) {
-    return _.map(this.views[view], function(node) {
-      return this.nodes[node];
+    return _.map(this.getView(view), function(node) {
+      return this.get(node);
     }, this);
   };
 
@@ -366,11 +430,11 @@ Data.Graph.__prototype__ = function() {
 
   this.find = function(index, scope) {
     var indexes = this.indexes;
-    var nodes = this.nodes;
+    var self = this;
 
     function wrap(nodeIds) {
       return _.map(nodeIds, function(n) {
-        return nodes[n];
+        return self.get(n);
       });
     }
 
@@ -379,47 +443,6 @@ Data.Graph.__prototype__ = function() {
     if (!indexes[index][scope]) return [];
 
     return wrap(indexes[index][scope]);
-  };
-
-  this.get = function(id) {
-    return this.nodes[id];
-  };
-
-  this.create = function(node) {
-    var newNode = Data.Node.create(this.schema, node);
-    this.nodes[newNode.id] = newNode;
-
-    console.log(newNode);
-
-    this.addToIndex(newNode);
-    return this;
-  };
-
-  // Delete node by id, referenced nodes remain untouched
-  this.delete = function(id) {
-    // TODO: update indexes
-    this.removeFromIndex(this.nodes[id]);
-    delete this.nodes[id];
-  };
-
-  this.exec = function(command) {
-    console.log("Executing command: ", command);
-    new Data.Command(command).apply(this);
-  };
-
-  this.resolve = function(path) {
-    if (path.length === 0) return this;
-
-    // resolve the item for manipulation
-    // TODO: it would be great if we could resolve references stored in properties (using schema)
-    var node = this.get(path[0]);
-    for (var idx = 1; idx < path.length; idx++) {
-      node = node[path[idx]];
-      if (node === undefined) {
-        throw new Error("Key error: could not find element for path " + JSON.stringify(path));
-      }
-    }
-    return node;
   };
 
   this.properties = function(type) {
@@ -442,19 +465,32 @@ Data.Graph.__prototype__ = function() {
     return this.propertyType(node, key)[0];
   };
 
-  this.reset = function() {
-    this.nodes = {};
-
-    // TODO: derive from schema
-    this.indexes = {
-      // "comments": {},
-      // "annotations": {}
-    };
-  };
-
 };
 
 Data.Graph.prototype = _.extend(new Data.Graph.__prototype__(), util.Events);
+
+Data.Property = function(graph, path) {
+  this.schema = graph.schema;
+  this.key = _.last(path);
+  this.node = graph.resolve(path.slice(0, -1));
+
+  if (this.node === undefined) {
+    throw new Error("Could not look up property for path " + path.join("."));
+  }
+
+  this.type = graph.propertyType(this.node, this.key);
+  this.baseType = this.type[0];
+};
+
+Data.Property.prototype = {
+  get: function() {
+    return this.node[this.key];
+  },
+
+  set: function(value) {
+    this.node[this.key] = this.schema.parseValue(this.baseType, value);
+  }
+};
 
 var GraphMethods = function() {
 
@@ -472,30 +508,12 @@ var GraphMethods = function() {
     graph.delete(args.id);
   };
 
-  // Array manipulation
-  // --------
-
-  this.pop = function(graph, path) {
-    var array = graph.resolve(path);
-    array.pop();
-  };
-
-  this.push = function(graph, path, args) {
-    var array = graph.resolve(path);
-    array.push(args.value);
-  };
-
-  this.insert = function(graph, path, args) {
-    var array = graph.resolve(path);
-    array.splice(args.index, 0, args.value);
-  };
-
   // Diff based update
   // --------
 
   this.update = function(graph, path, args) {
 
-    var property = new Data.Property(graph, path);
+    var property = graph.getProperty(path);
     var oldNode = util.deepclone(property.node);
 
     if (property.baseType === 'array') {
@@ -516,6 +534,33 @@ var GraphMethods = function() {
 
     graph.updateIndex(property.node, oldNode);
   };
+
+  // Convenience methods
+  // --------
+  //
+  // Everything must be done using the primitive commands.
+
+  // Array manipulation
+  // --------
+
+  this.pop = function(graph, path) {
+    var array = graph.resolve(path);
+    var result = array[array.length-1];
+    if (array.length > 0) {
+      this.update(graph, path, ot.ArrayOperation.Delete(array.length-1, result));
+    }
+    return result;
+  };
+
+  this.push = function(graph, path, args) {
+    var array = graph.resolve(path);
+    this.update(graph, path, ot.ArrayOperation.Insert(array.length, args.value));
+  };
+
+  this.insert = function(graph, path, args) {
+    this.update(graph, path, ot.ArrayOperation.Insert(args.index, args.value));
+  };
+
 };
 
 Data.Command = function(options) {
@@ -569,29 +614,6 @@ Data.Command.__prototype__ = function() {
 };
 
 Data.Command.prototype = new Data.Command.__prototype__();
-
-Data.Property = function(graph, path) {
-  this.schema = graph.schema;
-  this.key = _.last(path);
-  this.node = graph.resolve(path.slice(0, -1));
-
-  if (this.node === undefined) {
-    throw new Error("Could not look up property for path " + path.join("."));
-  }
-
-  this.type = graph.propertyType(this.node, this.key);
-  this.baseType = this.type[0];
-};
-
-Data.Property.prototype = {
-  get: function() {
-    return this.node[this.key];
-  },
-
-  set: function(value) {
-    this.node[this.key] = this.schema.parseValue(this.baseType, value);
-  }
-};
 
 // Factory methods
 // ---------
