@@ -53,14 +53,13 @@ ChronicleAdapter.__prototype__ = function() {
       inverted.op = "create";
     }
     else if (change.op === "update") {
-      var property = new Data.Graph.Property(this.graph, change.path);
-      if (property.type === "string") {
+      var property = this.graph.getProperty(change.path);
+      if (property.baseType === "string") {
         inverted.args = TextOperation.fromJSON(change.args).invert().toJSON();
-      } else if (property.type === "array") {
+      } else if (property.baseType === "array") {
         inverted.args = ArrayOperation.fromJSON(change.args).invert().toJSON();
       }
     }
-
     return inverted;
   };
 
@@ -198,7 +197,7 @@ VersionedGraph.__prototype__ = function() {
     if (!command || command.op === "NOP") return;
 
     // parse the command to have a normalized representation
-    command = new Data.Graph.Command(command);
+    command = new Data.Command(command);
 
     // convert the command into a Chroniclible version
     if (converter[command.op]) {
