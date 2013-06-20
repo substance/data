@@ -1,4 +1,4 @@
-//     (c) 2013 Michael Aufreiter
+//     (c) 2013 Michael Aufreiter, Oliver Buchtala
 //     Data.js is freely distributable under the MIT license.
 //     Portions of Data.js are inspired or borrowed from Underscore.js,
 //     Backbone.js and Google's Visualization API.
@@ -234,8 +234,6 @@ Data.Graph.__prototype__ = function() {
     var newNode = Data.Node.create(this.schema, node);
     this.set(newNode.id, newNode);
 
-    console.log(newNode);
-
     this.addToIndex(newNode);
     return this;
   };
@@ -248,7 +246,7 @@ Data.Graph.__prototype__ = function() {
   };
 
   this.exec = function(command) {
-    console.log("Executing command: ", command);
+    //console.log("Executing command: ", command);
     command = new Data.Command(command);
     command.apply(this);
     return command;
