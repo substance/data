@@ -252,10 +252,6 @@ Data.Graph.__prototype__ = function() {
     return command;
   };
 
-  this.getView = function(viewId) {
-    return this.views[viewId];
-  };
-
   this.getProperty = function(path) {
     return new Data.Property(this, path);
   };
