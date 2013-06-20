@@ -234,8 +234,6 @@ Data.Graph.__prototype__ = function() {
     var newNode = Data.Node.create(this.schema, node);
     this.set(newNode.id, newNode);
 
-    console.log(newNode);
-
     this.addToIndex(newNode);
     return this;
   };
@@ -248,7 +246,7 @@ Data.Graph.__prototype__ = function() {
   };
 
   this.exec = function(command) {
-    console.log("Executing command: ", command);
+    // console.log("Executing command: ", command);
     new Data.Command(command).apply(this);
   };
 
