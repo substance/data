@@ -28,9 +28,6 @@ if (typeof exports !== 'undefined') {
   Data = root.Substance.Data;
 }
 
-var ArrayOperation = ot.ArrayOperation;
-var TextOperation = ot.TextOperation;
-
 var ChronicleAdapter = function(graph) {
   this.graph = graph;
   this.state = Chronicle.ROOT;
@@ -55,9 +52,11 @@ ChronicleAdapter.__prototype__ = function() {
     else if (change.op === "update") {
       var property = this.graph.getProperty(change.path);
       if (property.baseType === "string") {
-        inverted.args = TextOperation.fromJSON(change.args).invert().toJSON();
+        inverted.args = ot.TextOperation.fromJSON(change.args).invert();
       } else if (property.baseType === "array") {
-        inverted.args = ArrayOperation.fromJSON(change.args).invert().toJSON();
+        inverted.args = ot.ArrayOperation.fromJSON(change.args).invert();
+      } else if (property.baseType === "object") {
+        inverted.args = ot.ObjectOperation.fromJSON(change.args).invert();
       }
     }
     return inverted;
@@ -97,27 +96,24 @@ ChronicleAdapter.__prototype__ = function() {
       var a_t = {op: "update", path: a.path};
       var b_t = {op: "update", path: b.path};
 
-      var property = new Data.Graph.Property(this.graph, a.path);
-      var op1, op2, transformed;
+      var property = this.graph.getProperty(a.path);
+      var transformed;
 
       // String updates
-
-      if (property.type === "string") {
-        op1 = TextOperation.fromJSON(a.args);
-        op2 = TextOperation.fromJSON(b.args);
-        transformed = TextOperation.transform(op1, op2, options);
+      if (property.baseType === "string") {
+        transformed = ot.TextOperation.transform(a.args, b.args, options);
       }
-
       // Array updates
-
-      else if (property.type === "array") {
-        op1 = ArrayOperation.fromJSON(a.args);
-        op2 = ArrayOperation.fromJSON(b.args);
-        transformed = ArrayOperation.transform(op1, op2, options);
+      else if (property.baseType === "array") {
+        transformed = ot.ArrayOperation.transform(a.args, b.args, options);
+      }
+      // Object updates
+      else if (property.baseType === "object") {
+        transformed = ot.ArrayOperation.transform(a.args, b.args, options);
       }
 
-      a_t.args = transformed[0].toJSON();
-      b_t.args = transformed[1].toJSON();
+      a_t.args = transformed[0];
+      b_t.args = transformed[1];
 
       return [a_t, b_t];
 
@@ -209,13 +205,29 @@ VersionedGraph.__prototype__ = function() {
 
     // it might happen that the converter returns null as if the command was a NOP
     if (command && command.op !== "NOP") {
-      this.__exec__(command);
+      command = this.__exec__(command);
+
+      // normalize update commands
+      if (command.op === "update") {
+
+        var prop = this.getProperty(command.path);
+        if (prop.baseType === "string") {
+          command.args = ot.TextOperation.fromJSON(command.args);
+
+        } else if (prop.baseType === "array") {
+          command.args = ot.ArrayOperation.fromJSON(command.args);
+
+        } else if (prop.baseType === "object") {
+          command.args = ot.ObjectOperation.fromJSON(command.args);
+        }
+      }
+
       this.chronicle.record(util.deepclone(command));
     }
   };
 
   this.__exec__ = function(command) {
-    __super__.exec.call(this, command);
+    return __super__.exec.call(this, command);
   };
 
   this.reset = function() {
