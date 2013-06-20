@@ -5,7 +5,7 @@
 //     For all details and documentation:
 //     http://github.com/michael/data
 
-(function(root){
+(function(root){ "use strict";
 
 var _,
     util,
@@ -191,7 +191,7 @@ Data.Node.create = function (schema, node) {
 
     // Assign user defined property value or use default value for baseType
     var val = node[key] || schema.defaultValue(baseType);
-    freshNode[key] = val;
+    freshNode[key] = util.deepclone(val);
   });
 
   return freshNode;
@@ -249,7 +249,9 @@ Data.Graph.__prototype__ = function() {
 
   this.exec = function(command) {
     console.log("Executing command: ", command);
-    new Data.Command(command).apply(this);
+    command = new Data.Command(command);
+    command.apply(this);
+    return command;
   };
 
   this.getView = function(viewId) {
@@ -283,6 +285,8 @@ Data.Graph.__prototype__ = function() {
       // "comments": {},
       // "annotations": {}
     };
+
+    this.initIndexes();
   };
 
   // Merge in a serialized graph
