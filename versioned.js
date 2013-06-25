@@ -50,7 +50,7 @@ ChronicleAdapter.__prototype__ = function() {
       inverted.op = "create";
     }
     else if (change.op === "update") {
-      var property = this.graph.getProperty(change.path);
+      var property = this.graph.resolve(change.path);
       if (property.baseType === "string") {
         inverted.args = ot.TextOperation.fromJSON(change.args).invert();
       } else if (property.baseType === "array") {
@@ -96,7 +96,7 @@ ChronicleAdapter.__prototype__ = function() {
       var a_t = {op: "update", path: a.path};
       var b_t = {op: "update", path: b.path};
 
-      var property = this.graph.getProperty(a.path);
+      var property = this.graph.resolve(a.path);
       var transformed;
 
       // String updates
@@ -152,7 +152,8 @@ var Converter = function() {
     };
   };
 
-  this.pop = function(command, array) {
+  this.pop = function(command, property) {
+    var array = property.get();
     if (array.length === 0)  return null;
 
     var converted = create_update(command);
@@ -161,13 +162,15 @@ var Converter = function() {
     return converted;
   };
 
-  this.push = function(command, array) {
+  this.push = function(command, property) {
+    var array = property.get();
     var converted = create_update(command);
     converted.args = ["+", array.length, command.args.value];
     return converted;
   };
 
-  this.insert = function(command, array) {
+  this.insert = function(command, property) {
+    var array = property.get();
     var converted = create_update(command);
     converted.args = ["+", array.length, command.args.value];
     return converted;
@@ -210,7 +213,7 @@ VersionedGraph.__prototype__ = function() {
       // normalize update commands
       if (command.op === "update") {
 
-        var prop = this.getProperty(command.path);
+        var prop = this.resolve(command.path);
         if (prop.baseType === "string") {
           command.args = ot.TextOperation.fromJSON(command.args);
 
