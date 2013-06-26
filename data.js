@@ -114,6 +114,7 @@ Data.Schema.prototype.type = function(typeId) {
 
 Data.Schema.prototype.typeChain = function(typeId) {
   var type = this.type(typeId);
+  if (!type) return []; // empty chain
   if (type.parent) {
     return [type.parent, typeId];
   } else {
