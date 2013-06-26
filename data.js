@@ -43,8 +43,9 @@ Data.VERSION = '0.7.0';
 // -------
 
 Data.VALUE_TYPES = [
-  'string',
   'object',
+  'array',
+  'string',
   'number',
   'boolean',
   'date'
@@ -53,7 +54,6 @@ Data.VALUE_TYPES = [
 Data.isValueType = function (type) {
   return _.include(Data.VALUE_TYPES, _.last(type));
 };
-
 
 // Data.Schema
 // ========
@@ -64,37 +64,79 @@ Data.Schema = function(schema) {
   _.extend(this, schema);
 };
 
-
 Data.Schema.__prototype__ = function() {
 
   // Return Default value for a given type
   // --------
   //
 
-  this.defaultValue = function(type) {
-    if (type === "array") return [];
-    if (type === "number") return 0;
-    if (type === "string") return "";
+  this.defaultValue = function(valueType) {
+    if (valueType === "object") return {};
+    if (valueType === "array") return [];
+    if (valueType === "string") return "";
+    if (valueType === "number") return 0;
+    if (valueType === "boolean") return false;
+    if (valueType === "date") return new Date();
+
+    throw new Error("Unknown value type: " + valueType);
   };
 
   // Return type object for a given type id
   // --------
   //
 
-  this.checkType = function(propertyBaseType, value) {
-    if (propertyBaseType === "array") return _.isArray(value);
-    if (propertyBaseType === "number") return _.isNumber(value);
-    if (propertyBaseType === "string") return _.isString(value);
-  };
+  this.parseValue = function(valueType, value) {
+    if (_.isString(value)) {
+      if (valueType === "object") return JSON.parse(value);
+      if (valueType === "array") return JSON.parse(value);
+      if (valueType === "string") return value;
+      if (valueType === "number") return parseInt(value, 10);
+      if (valueType === "boolean") {
+        if (value === "true") return true;
+        else if (value === "false") return false;
+        else throw new Error("Can not parse boolean value from: " + value);
+      }
+      if (valueType === "date") return new Date(value);
 
-  // Return type object for a given type id
-  // --------
-  //
+      // all other types must be string compatible ??
+      return value;
 
-  this.parseValue = function(propertyBaseType, value) {
-    if (propertyBaseType === "array") return JSON.parse(value);
-    if (propertyBaseType === "number") return parseInt(value, 10);
-    return value;
+    } else {
+      if (valueType === 'array') {
+        if (!_.isArray(value)) {
+          throw new Error("Illegal value type: expected array.");
+        }
+        value = util.deepclone(value);
+      }
+      else if (valueType === 'string') {
+        if (!_.isString(value)) {
+          throw new Error("Illegal value type: expected string.");
+        }
+      }
+      else if (valueType === 'object') {
+        if (!_.isObject(value)) {
+          throw new Error("Illegal value type: expected object.");
+        }
+        value = util.deepclone(value);
+      }
+      else if (valueType === 'number') {
+        if (!_.isNumber(value)) {
+          throw new Error("Illegal value type: expected number.");
+        }
+      }
+      else if (valueType === 'boolean') {
+        if (!_.isBoolean(value)) {
+          throw new Error("Illegal value type: expected boolean.");
+        }
+      }
+      else if (valueType === 'date') {
+        value = new Date(value);
+      }
+      else {
+        throw new Error("Unsupported value type: " + valueType);
+      }
+      return value;
+    }
   };
 
   // Return type object for a given type id
@@ -112,12 +154,14 @@ Data.Schema.__prototype__ = function() {
 
   this.typeChain = function(typeId) {
     var type = this.type(typeId);
-    if (type.parent) {
-      return [type.parent, typeId];
-    } else {
-      return [typeId];
-    }
+    var chain = (type.parent) ? this.typeChain(type.parent) : [];
+    chain.push(typeId);
+    return chain;
   };
+
+  // Provides the top-most parent type of a given type.
+  // --------
+  //
 
   this.baseType = function(typeId) {
     return this.typeChain(typeId)[0];
@@ -129,12 +173,12 @@ Data.Schema.__prototype__ = function() {
 
   this.properties = function(type) {
     type = _.isObject(type) ? type : this.type(type);
-    var result = type.parent ? this.types[type.parent].properties : {};
+    var result = (type.parent) ? this.properties(type.parent) : {};
     _.extend(result, type.properties);
     return result;
   };
 
-  // Returns the property type for a given type
+  // Returns the full type for a given property
   // --------
   //
   // => ["array", "string"]
@@ -146,10 +190,11 @@ Data.Schema.__prototype__ = function() {
     return _.isArray(propertyType) ? propertyType : [propertyType];
   };
 
-  // Returns the property base type
+  // Returns the base type for a given property
   // --------
   //
-  // => "string"
+  //  ["string"] => "string"
+  //  ["array", "string"] => "array"
 
   this.propertyBaseType = function(type, property) {
     return this.propertyType(type, property)[0];
@@ -158,17 +203,14 @@ Data.Schema.__prototype__ = function() {
 
 Data.Schema.prototype = new Data.Schema.__prototype__();
 
-
 // Data.Node
 // ========
 //
 // A `Data.Node` refers to one element in the graph
 
-
 Data.Node = function() {
   throw new Error("A Data.Node can't be instantiated.");
 };
-
 
 // Safely constructs a new node based on type information
 // Node needs to have a valid type
@@ -176,8 +218,13 @@ Data.Node = function() {
 // All properties that don't have a value are
 
 Data.Node.create = function (schema, node) {
+  if (!node.id || !node.type) {
+    throw new Error("Can not create Node: 'id' and 'type' are mandatory.");
+  }
+
   var type = schema.type(node.type);
   if (!type) throw new Error("Type not found in the schema");
+
   var properties = schema.properties(node.type);
   var freshNode = { type: node.type, id: node.id };
 
@@ -195,7 +242,7 @@ Data.Node.create = function (schema, node) {
 };
 
 // Data.Graph
-// --------------
+// ========
 
 // A `Data.Graph` can be used for representing arbitrary complex object
 // graphs. Relations between objects are expressed through links that
@@ -209,7 +256,7 @@ Data.Graph = function(schema, graph) {
   this.nodes = {};
   this.indexes = {};
 
-  this.initIndexes();
+  this.init();
 
   // Populate graph
   if (graph) this.merge(graph);
@@ -219,53 +266,94 @@ Data.Graph.__prototype__ = function() {
 
   var _private = new Data.Graph.__private__();
 
-  this.get = function(id) {
-    return this.nodes[id];
-  };
+  // Manipulation API
+  // ========
 
-  this.set = function(id, node) {
-    this.nodes[id] = node;
-  };
+  // Adds a new node to the graph
+  // --------
+  // Only properties that are specified in the schema are taken.
 
   this.create = function(node) {
-    var newNode = Data.Node.create(this.schema, node);
-    this.set(newNode.id, newNode);
-
-    this.addToIndex(newNode);
-    return this;
+    this.exec(Data.Graph.Create(node));
   };
 
-  // Delete node by id, referenced nodes remain untouched
+  // Removes a node with given id
+  // --------
+
   this.delete = function(id) {
-    // TODO: update indexes
-    this.removeFromIndex(this.nodes[id]);
-    delete this.nodes[id];
+    this.exec(Data.Graph.Delete(this.get(id)));
   };
+
+  // Updates the property with a given operation.
+  // --------
+  // Note: the diff has to be given as an appropriate operation.
+
+  this.update = function(path, diff) {
+    this.exec(Data.Graph.Update(path, diff));
+  };
+
+  // Sets the property to a given value
+  // --------
+
+  this.set = function(path, value) {
+    this.exec(Data.Graph.Set(path, value));
+  }
+
+  // Executes a graph command
+  // --------
 
   this.exec = function(command) {
-    //console.log("Executing command: ", command);
+    // normalize the command
     command = new Data.Command(command);
-    command.apply(this);
+
+    if (command.op === "NOP") return command;
+
+    if (!_private[command.op]) {
+      throw new Error("Unknown command: " + command.op);
+    }
+    _private[command.op].call(this, command.args, command.path);
+
     return command;
   };
+
+  // Others
+  // ========
+
+  this.get = function(path) {
+    if (_.isString(path)) return this.nodes[path];
+
+    var prop = this.resolve(path);
+    return prop.get();
+  };
+
+  // Checks if a node with given id exists
+  // ---------
+
+  this.contains = function(id) {
+    return (!!this.nodes[id]);
+  }
+
+  // Resolves a property with a given path
+  // ---------
 
   this.resolve = function(path) {
     return new Data.Property(this, path);
   };
 
+  // Resets the graph to an initial state.
+  // --------
+
   this.reset = function() {
-    this.nodes = {};
-
-    // TODO: derive from schema
-    this.indexes = {
-      // "comments": {},
-      // "annotations": {}
-    };
-
-    this.initIndexes();
+    this.init();
   };
 
-  // Merge in a serialized graph
+  this.init = function() {
+    this.nodes = {};
+    this.indexes = {};
+    _private.initIndexes.call(this);
+  };
+
+  // Merges this graph with another graph
   // --------
   //
 
@@ -273,71 +361,6 @@ Data.Graph.__prototype__ = function() {
     _.each(graph.nodes, function(n) {
       graph.create(n);
     });
-  };
-
-  // Setup indexes data-structure based on schema information
-  // --------
-  //
-
-  this.initIndexes = function() {
-    this.indexes = {};
-    _.each(this.schema.indexes, function(index, key) {
-      if (index.properties.length > 1) throw new Error('No multi-property indexes supported yet');
-      if (index.properties.length === 1) {
-        this.indexes[key] = {};
-      } else {
-        this.indexes[key] = [];
-      }
-    }, this);
-  };
-
-  // Adds a node to indexes
-  // --------
-  //
-
-  this.addToIndex = function(node) {
-    _.each(this.schema.indexes, function(indexSpec, key) {
-      // skip irrelevant indexes
-      if (_private.matchIndex(this.schema, node.type, indexSpec.type)) {
-        _private.addToIndex(indexSpec, this.indexes[key], node);
-      }
-    }, this);
-  };
-
-  // Removes a node from indexes
-  // --------
-  //
-
-  this.removeFromIndex = function(node) {
-    _.each(this.schema.indexes, function(indexSpec, key) {
-      var index = this.indexes[key];
-
-      // Remove all indexed entries that have been registered for
-      // a given node itself
-      if (index[node.id]) delete index[node.id];
-
-      // skip irrelevant indexes
-      if (_private.matchIndex(this.schema, node.type, indexSpec.type)) {
-        _private.removeFromIndex(indexSpec, index, node);
-      }
-
-    }, this);
-  };
-
-  // Updates all indexes affected by the change of a given property
-  // --------
-  //
-
-  this.updateIndex = function(property, oldValue) {
-    if (oldValue === property.get()) return;
-
-    _.each(this.schema.indexes, function(indexSpec, key) {
-      // skip unrelated indexes
-      if (_private.matchIndex(this.schema, property.node.type, indexSpec.type)) {
-        _private.updateIndex(indexSpec, this.indexes[key], property, oldValue);
-      }
-
-    }, this);
   };
 
   // View Traversal
@@ -393,12 +416,79 @@ Data.Graph.__prototype__ = function() {
 
 Data.Graph.__private__ = function() {
 
+  var _private = this;
+
+  this.create = function(node) {
+    var newNode = Data.Node.create(this.schema, node);
+    if (this.contains(newNode.id)) {
+      throw new Error("Node already exists: " + newNode.id);
+    }
+    this.nodes[newNode.id] = newNode;
+    _private.addToIndex.call(this, newNode);
+    return this;
+  };
+
+  // Delete node by id, referenced nodes remain untouched
+  this.delete = function(node) {
+    // TODO: update indexes
+    _private.removeFromIndex.call(this, this.nodes[node.id]);
+    delete this.nodes[node.id];
+  };
+
+  this.set = function(value, path) {
+    var property = this.resolve(path);
+    var oldValue = util.deepclone(property.get());
+    property.set(value);
+
+    _private.updateIndex.call(this, property, oldValue);
+  };
+
+  this.update = function(diff, path) {
+    var property = this.resolve(path);
+    var oldValue = util.deepclone(property.get());
+    var val = property.get();
+
+    if (property.baseType === 'string') {
+      val = ot.TextOperation.apply(diff, val);
+    } else if (property.baseType === 'array') {
+      val = ot.ArrayOperation.apply(diff, val);
+    } else if (property.baseType === 'object') {
+      val = ot.ObjectOperation.apply(diff, val);
+    } else {
+      // Note: all other types are treated via TextOperation on the String representation
+      val = val.toString();
+      val = ot.TextOperation.apply(diff, val);
+    }
+
+    property.set(val);
+
+    _private.updateIndex.call(this, property, oldValue);
+  };
+
+  // Setup indexes data-structure based on schema information
+  // --------
+  //
+
+  this.initIndexes = function() {
+    this.indexes = {};
+    _.each(this.schema.indexes, function(index, key) {
+      if (index.properties === undefined || index.properties.length === 0) {
+        this.indexes[key] = [];
+      } else if (index.properties.length === 1) {
+        this.indexes[key] = {};
+      } else {
+        // index.properties.length > 1
+        throw new Error('No multi-property indexes supported yet');
+      }
+    }, this);
+  };
+
   this.matchIndex = function(schema, nodeType, indexType) {
     var typeChain = schema.typeChain(nodeType);
     return (typeChain.indexOf(indexType) >= 0);
   };
 
-  this.addToIndex = function(indexSpec, index, node) {
+  this.addToSingleIndex = function(indexSpec, index, node) {
 
     // Note: it is not necessary to create index containers as
     // it is already done by initIndexes
@@ -420,11 +510,25 @@ Data.Graph.__private__ = function() {
     }
   };
 
+  // Adds a node to indexes
+  // --------
+  //
+
+  this.addToIndex = function(node) {
+    _.each(this.schema.indexes, function(indexSpec, key) {
+      // skip irrelevant indexes
+      if (_private.matchIndex(this.schema, node.type, indexSpec.type)) {
+        _private.addToSingleIndex(indexSpec, this.indexes[key], node);
+      }
+    }, this);
+  };
+
   // Silently remove node from index
   // --------
 
-  this.removeFromIndex = function(indexSpec, index, node) {
+  this.removeFromSingleIndex = function(indexSpec, index, node) {
     var groups = indexSpec.properties;
+    var pos;
     if (groups) {
       // remove the node from every group
       for (var i = 0; i < groups.length; i++) {
@@ -434,17 +538,38 @@ Data.Graph.__private__ = function() {
         if (groupVal === undefined) {
           throw new Error("Illegal node: missing property for indexing " + groupKey);
         }
-
-        index[groupVal] = _.without(index[groupVal], node.id);
+        pos = index[groupVal].indexOf(node.id);
+        if (pos >= 0) index[groupVal].splice(pos, 1);
         // prune empty groups
         if (index[groupVal].length === 0) delete index[groupVal];
       }
     } else {
-      index = _.without(index, node.id);
+      pos = index.indexOf(node.id);
+      if (pos >= 0) index.splice(pos, 1);
     }
   };
 
-  this.updateIndex = function(indexSpec, index, property, oldValue) {
+  // Removes a node from indexes
+  // --------
+  //
+
+  this.removeFromIndex = function(node) {
+    _.each(this.schema.indexes, function(indexSpec, key) {
+      var index = this.indexes[key];
+
+      // Remove all indexed entries that have been registered for
+      // a given node itself
+      if (index[node.id]) delete index[node.id];
+
+      // skip irrelevant indexes
+      if (_private.matchIndex(this.schema, node.type, indexSpec.type)) {
+        _private.removeFromSingleIndex(indexSpec, index, node);
+      }
+
+    }, this);
+  };
+
+  this.updateSingleIndex = function(indexSpec, index, property, oldValue) {
     // Note: grouping indexes are currently only supported for the first property level
     if (property.path.length > 1) {
       throw new Error("Indexes are supported only for nodes and first-level properties used for grouping");
@@ -454,6 +579,8 @@ Data.Graph.__private__ = function() {
     //  and addToIndex. The reason, removeFromIndex erases every occurance of the
     //  modified property. Instead we have to update only the affected indexes,
     //  i.e., those which are registered to the property key
+
+    if (!indexSpec.properties) return;
 
     var groups = indexSpec.properties;
 
@@ -475,6 +602,23 @@ Data.Graph.__private__ = function() {
     index[newValue].push(nodeId);
 
   };
+
+  // Updates all indexes affected by the change of a given property
+  // --------
+  //
+
+  this.updateIndex = function(property, oldValue) {
+    if (oldValue === property.get()) return;
+
+    _.each(this.schema.indexes, function(indexSpec, key) {
+      // skip unrelated indexes
+      if (_private.matchIndex(this.schema, property.node.type, indexSpec.type)) {
+        _private.updateSingleIndex(indexSpec, this.indexes[key], property, oldValue);
+      }
+
+    }, this);
+  };
+
 };
 
 Data.Graph.prototype = _.extend(new Data.Graph.__prototype__(), util.Events);
@@ -519,8 +663,15 @@ Data.Property.__prototype__ = function() {
     item[this.path[idx]] = this.schema.parseValue(this.baseType, value);
   };
 
-  this.getKey = function() {
-    return _.last(this.path);
+  this.delete = function() {
+    var item = this.node;
+    for (var idx = 0; idx < this.path.length-1; idx++) {
+      if (item === undefined) {
+        throw new Error("Key error: could not find element for path " + JSON.stringify(this.path));
+      }
+      item = item[this.path[idx]];
+    }
+    delete item[this.path[idx]];
   };
 
 };
@@ -544,77 +695,6 @@ Data.Property.resolve = function(graph, path) {
   }
 
   return result;
-};
-
-var GraphMethods = function() {
-
-  this.NOP = function() {
-  };
-
-  // Node manipulation
-  // --------
-
-  this.create = function(graph, path, args) {
-    graph.create(args);
-  };
-
-  this.delete = function(graph, path, args) {
-    graph.delete(args.id);
-  };
-
-  // Diff based update
-  // --------
-
-  this.update = function(graph, path, args) {
-
-    var property = graph.resolve(path);
-    var oldValue = util.deepclone(property.get());
-
-    if (property.baseType === 'array') {
-      // operation works inplace
-      ot.ArrayOperation.apply(args, property.get());
-
-    } else if (property.baseType === 'object') {
-      // operation works inplace
-      ot.ObjectOperation.apply(args, property.get());
-
-    }
-    // Everything that's not an array is considered a string
-    else {
-      var val = property.get().toString();
-      val = ot.TextOperation.apply(args, val);
-      property.set(val);
-    }
-
-    graph.updateIndex(property, oldValue);
-  };
-
-  // Convenience methods
-  // --------
-  //
-  // Everything must be done using the primitive commands.
-
-  // Array manipulation
-  // --------
-
-  this.pop = function(graph, path) {
-    var array = graph.resolve(path).get();
-    var result = array[array.length-1];
-    if (array.length > 0) {
-      this.update(graph, path, ot.ArrayOperation.Delete(array.length-1, result));
-    }
-    return result;
-  };
-
-  this.push = function(graph, path, args) {
-    var array = graph.resolve(path).get();
-    this.update(graph, path, ot.ArrayOperation.Insert(array.length, args.value));
-  };
-
-  this.insert = function(graph, path, args) {
-    this.update(graph, path, ot.ArrayOperation.Insert(args.index, args.value));
-  };
-
 };
 
 Data.Command = function(options) {
@@ -643,16 +723,6 @@ Data.Command = function(options) {
 };
 
 Data.Command.__prototype__ = function() {
-
-  var methods = new GraphMethods();
-
-  this.apply = function(graph) {
-    if (!methods[this.op]) {
-      throw new Error("Unknown operation: " + this.op);
-    }
-
-    methods[this.op](graph, this.path, this.args);
-  };
 
   this.clone = function() {
     return new Data.Command(this);
@@ -694,11 +764,19 @@ Data.Graph.Delete = function(node) {
   });
 };
 
-Data.Graph.Update = function(path, update) {
+Data.Graph.Update = function(path, diff) {
   return new Data.Command({
     op: "update",
     path: path,
-    args: update
+    args: diff
+  });
+};
+
+Data.Graph.Set = function(path, val) {
+  return new Data.Command({
+    op: "set",
+    path: path,
+    args: val
   });
 };
 
@@ -709,3 +787,53 @@ if (typeof exports !== 'undefined') {
 }
 
 })(this);
+
+// TODO: this was pulled from the test case and should be revisited and merged into
+// the Graph documentation.
+// We should decide what convenience methods are wanted, and if we want to introduce
+// NumberOperations as well.
+
+// Graph operations
+// ================
+//
+// Message format
+// [:opcode, :target, :data] where opcodes can be overloaded for different types, the type is determined by the target (can either be a node or node.property),
+//                           data is an optional hash
+//
+// Node operations
+// --------
+// create heading node
+// ["create", {id: "h1", type: "heading", "content": "Hello World" } ]
+//
+// internal representation:
+// { op: "create", path: [], args: {id: "h1", type: "heading", "content": "Hello World" } }
+//
+// delete node
+// ["delete", {"id": "t1"}]
+
+// String operations
+// ---------
+//
+// update content (String OT)
+// ["update", "h1", "content", [-1, "ABC", 4]]
+//
+
+// Number operations
+// ---------
+//
+// update content (String OT)
+// ["increment", "h1.level"]
+//
+
+// Array operations
+// ---------------
+
+// Push new value to end of array
+// ["push", "content_view.nodes", {value: "new-entry"}]
+//
+// Delete 1..n elements
+// ["delete", "content_view.nodes", {values: ["v1", "v2"]}]
+
+// Insert element at position index
+// ["insert", "content_view.nodes", {value: "newvalue", index: 3}]
+
