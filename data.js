@@ -74,7 +74,10 @@ Data.Schema.__prototype__ = function() {
   this.defaultValue = function(type) {
     if (type === "array") return [];
     if (type === "number") return 0;
+    if (type === "date") return new Date();
     if (type === "string") return "";
+    if (type === "boolean") return false;
+    if (type === "object") return {};
   };
 
   // Return type object for a given type id
