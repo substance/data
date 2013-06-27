@@ -51,6 +51,9 @@ Data.VALUE_TYPES = [
   'date'
 ];
 
+// TODO: is this really useful or actually in use?
+// The actual basic type of a type chain is the first entry, not the last
+// I.e., ["array", "string"] is an array in first place
 Data.isValueType = function (type) {
   return _.include(Data.VALUE_TYPES, _.last(type));
 };
@@ -254,6 +257,7 @@ Data.Node.create = function (schema, node) {
 Data.Graph = function(schema, graph) {
   // Initialization
   this.schema = new Data.Schema(schema);
+  this.objectAdapter = new Data.Graph.ObjectAdapter(this);
 
   this.nodes = {};
   this.indexes = {};
@@ -266,7 +270,7 @@ Data.Graph = function(schema, graph) {
 
 Data.Graph.__prototype__ = function() {
 
-  var _private = new Data.Graph.Impl();
+  var _private = new Data.Graph.Private();
 
   // Manipulation API
   // ========
@@ -305,23 +309,18 @@ Data.Graph.__prototype__ = function() {
   // --------
 
   this.exec = function(command) {
-    // normalize the command
-    command = new Data.Command(command);
 
-    if (command.op === "NOP") return command;
+    // Note: all Graph commands are converted to ObjectOperations
+    // which get applied on this graph instance (via ObjectAdapter).
+    var op;
 
-    if (!_private[command.op]) {
-      throw new Error("Unknown command: " + command.op);
-    }
-
-    if (command.op === "create" || command.op === "delete") {
-      _private[command.op].call(this, command.args);
+    if (!(command instanceof ot.ObjectOperation)) {
+      op = _private.convertToObjectOperation.call(this, command);
     } else {
-      _private[command.op].call(this, command.path, command.args);
+      op = command;
     }
-
-
-    return command;
+    op.apply(this.objectAdapter);
+    return op;
   };
 
   // Others
@@ -422,9 +421,48 @@ Data.Graph.__prototype__ = function() {
 
 };
 
-Data.Graph.Impl = function() {
+// Private Graph implementation
+// ========
+//
+
+Data.Graph.Private = function() {
 
   var _private = this;
+
+  this.convertToObjectOperation = function(command) {
+
+    // parse the command to have a normalized representation
+    // TODO: need to map convenience operations to atomic graph commands
+    command = new Data.Command(command);
+
+    var op, id, prop;
+    // Note: we convert the Data.Commands to ObjectOperations
+
+    if (command.op === "create") {
+      id = command.args.id;
+      // Note: in this case the path must be empty, as otherwise the property lookup
+      // claims due to the missing data
+      op = ot.ObjectOperation.Create([id], command.args);
+    }
+    else if (command.op === "delete") {
+      id = command.args.id;
+      var node = this.get(id);
+      // Note: OTOH, in this case the path must be set to the node id
+      // as ObjectOperation will check if the value is correct
+      op = ot.ObjectOperation.Delete([id], node);
+    }
+    else if (command.op === "update") {
+      prop = this.resolve(command.path);
+      var valueType = prop.type()[0];
+      op = ot.ObjectOperation.Update(command.path, command.args, valueType);
+    }
+    else if (command.op === "set") {
+      prop = this.resolve(command.path);
+      op = ot.ObjectOperation.Set(command.path, prop.get(), command.args);
+    }
+
+    return op;
+  };
 
   this.create = function(node) {
     var newNode = Data.Node.create(this.schema, node);
@@ -469,7 +507,6 @@ Data.Graph.Impl = function() {
       val = val.toString();
       val = ot.TextOperation.apply(diff, val);
     }
-
     property.set(val);
 
     _private.updateIndex.call(this, property, oldValue);
@@ -625,8 +662,42 @@ Data.Graph.Impl = function() {
   };
 
 };
-
 Data.Graph.prototype = _.extend(new Data.Graph.__prototype__(), util.Events);
+
+// ObjectOperation Adapter
+// ========
+//
+// This adapter delegates object changes as supported by ot.ObjectOperation
+// to graph methods
+
+Data.Graph.ObjectAdapter = function(graph) {
+  this.graph = graph;
+};
+
+Data.Graph.ObjectAdapter.__prototype__ = function() {
+  var impl = new Data.Graph.Private();
+
+  this.get = function(path) {
+    var prop = this.graph.resolve(path);
+    return prop.get();
+  };
+
+  this.create = function(__, value) {
+    // Note: only nodes (top-level) can be created
+    impl.create.call(this.graph, value);
+  };
+
+  this.set = function(path, value) {
+    impl.set.call(this.graph, path, value);
+  };
+
+  this.delete = function(__, value) {
+    // Note: only nodes (top-level) can be deleted
+    impl.delete.call(this.graph, value);
+  };
+};
+Data.Graph.ObjectAdapter.__prototype__.prototype = ot.ObjectOperation.Object.prototype;
+Data.Graph.ObjectAdapter.prototype = new Data.Graph.ObjectAdapter.__prototype__();
 
 
 Data.Property = function(graph, path) {
@@ -757,12 +828,6 @@ Data.Command.prototype = new Data.Command.__prototype__();
 
 // Factory methods
 // ---------
-
-Data.Graph.NOP = function() {
-  return new Data.Command({
-    op: "NOP"
-  });
-};
 
 Data.Graph.Create = function(node) {
   return new Data.Command({
