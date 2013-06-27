@@ -299,7 +299,7 @@ Data.Graph.__prototype__ = function() {
 
   this.set = function(path, value) {
     this.exec(Data.Graph.Set(path, value));
-  }
+  };
 
   // Executes a graph command
   // --------
@@ -339,7 +339,7 @@ Data.Graph.__prototype__ = function() {
 
   this.contains = function(id) {
     return (!!this.nodes[id]);
-  }
+  };
 
   // Resolves a property with a given path
   // ---------

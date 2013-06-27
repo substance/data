@@ -77,17 +77,17 @@ VersionedGraph.__prototype__ = function() {
     // TODO: need to map convenience operations to atomic graph commands
     command = new Data.Command(command);
 
-    var op;
+    var op, id;
     // Note: we convert the Data.Commands to ObjectOperations
 
     if (command.op === "create") {
-      var id = command.args.id;
+      id = command.args.id;
       // Note: in this case the path must be empty, as otherwise the property lookup
       // claims due to the missing data
       op = ot.ObjectOperation.Create([id], command.args);
     }
     else if (command.op === "delete") {
-      var id = command.args.id;
+      id = command.args.id;
       var node = this.get(id);
       // Note: OTOH, in this case the path must be set to the node id
       // as ObjectOperation will check if the value is correct
@@ -132,10 +132,8 @@ VersionedGraph.Object.__prototype__ = function () {
     return prop.get();
   };
 
-  this.create = function(path, value) {
-    // if (path.length > 0) {
-    //   throw new Error("Create is only supported for nodes (= top-level elements).");
-    // }
+  this.create = function(__, value) {
+    // Note: only nodes (top-level) can be created
     impl.create.call(this.graph, value);
   };
 
@@ -143,10 +141,8 @@ VersionedGraph.Object.__prototype__ = function () {
     impl.set.call(this.graph, path, value);
   };
 
-  this.delete = function(path, value) {
-    // if (path.length > 0) {
-    //   throw new Error("Delete is only supported for nodes (= top-level elements).");
-    // }
+  this.delete = function(__, value) {
+    // Note: only nodes (top-level) can be deleted
     impl.delete.call(this.graph, value);
   };
 };
