@@ -41,7 +41,7 @@ ChronicleAdapter.__prototype__ = function() {
   };
 
   this.invert = function(change) {
-    return ot.ObjectOperation.invert(change);
+    return ot.ObjectOperation.fromJSON(change).invert();
   };
 
   this.transform = function(a, b, options) {
@@ -61,6 +61,8 @@ var VersionedGraph = function(schema) {
   Data.Graph.call(this, schema);
   this.chronicle = Chronicle.create();
   this.chronicle.manage(new ChronicleAdapter(this));
+
+  this.__object__ = new VersionedGraph.Object(this);
 };
 
 VersionedGraph.__prototype__ = function() {
@@ -77,16 +79,22 @@ VersionedGraph.__prototype__ = function() {
 
     var op;
     // Note: we convert the Data.Commands to ObjectOperations
+
     if (command.op === "create") {
-      op = ot.ObjectOperation.Create(["nodes"], command.args);
+      var id = command.args.id;
+      // Note: in this case the path must be empty, as otherwise the property lookup
+      // claims due to the missing data
+      op = ot.ObjectOperation.Create([id], command.args);
     }
     else if (command.op === "delete") {
       var id = command.args.id;
       var node = this.get(id);
-      op = ot.ObjectOperation.Delete(["nodes", id], node);
+      // Note: OTOH, in this case the path must be set to the node id
+      // as ObjectOperation will check if the value is correct
+      op = ot.ObjectOperation.Delete([id], node);
     }
     else if (command.op === "update") {
-      op = ot.ObjectOperation.Update([command.path], command.args);
+      op = ot.ObjectOperation.Update(command.path, command.args);
     }
     else if (command.op === "set") {
       var prop = this.resolve(command.path);
@@ -101,7 +109,7 @@ VersionedGraph.__prototype__ = function() {
     if (!(op instanceof ot.ObjectOperation)) {
       op = ot.ObjectOperation.fromJSON(op);
     }
-    op.apply(this);
+    op.apply(this.__object__);
   };
 
   this.reset = function() {
@@ -113,6 +121,37 @@ VersionedGraph.__prototype__ = function() {
 VersionedGraph.__prototype__.prototype = Data.Graph.prototype;
 VersionedGraph.prototype = new VersionedGraph.__prototype__();
 
+VersionedGraph.Object = function(graph) {
+  this.graph = graph;
+};
+VersionedGraph.Object.__prototype__ = function () {
+  var impl = new Data.Graph.Impl();
+
+  this.get = function(path) {
+    var prop = this.graph.resolve(path);
+    return prop.get();
+  };
+
+  this.create = function(path, value) {
+    // if (path.length > 0) {
+    //   throw new Error("Create is only supported for nodes (= top-level elements).");
+    // }
+    impl.create.call(this.graph, value);
+  };
+
+  this.set = function(path, value) {
+    impl.set.call(this.graph, path, value);
+  };
+
+  this.delete = function(path, value) {
+    // if (path.length > 0) {
+    //   throw new Error("Delete is only supported for nodes (= top-level elements).");
+    // }
+    impl.delete.call(this.graph, value);
+  };
+};
+VersionedGraph.Object.__prototype__.prototype = ot.ObjectOperation.Object.prototype;
+VersionedGraph.Object.prototype = new VersionedGraph.Object.__prototype__();
 
 if (typeof exports === 'undefined') {
   root.Substance.Data.VersionedGraph = VersionedGraph;

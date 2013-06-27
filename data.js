@@ -266,7 +266,7 @@ Data.Graph = function(schema, graph) {
 
 Data.Graph.__prototype__ = function() {
 
-  var _private = new Data.Graph.__private__();
+  var _private = new Data.Graph.Impl();
 
   // Manipulation API
   // ========
@@ -313,7 +313,13 @@ Data.Graph.__prototype__ = function() {
     if (!_private[command.op]) {
       throw new Error("Unknown command: " + command.op);
     }
-    _private[command.op].call(this, command.args, command.path);
+
+    if (command.op === "create" || command.op === "delete") {
+      _private[command.op].call(this, command.args);
+    } else {
+      _private[command.op].call(this, command.path, command.args);
+    }
+
 
     return command;
   };
@@ -416,7 +422,7 @@ Data.Graph.__prototype__ = function() {
 
 };
 
-Data.Graph.__private__ = function() {
+Data.Graph.Impl = function() {
 
   var _private = this;
 
@@ -437,7 +443,7 @@ Data.Graph.__private__ = function() {
     delete this.nodes[node.id];
   };
 
-  this.set = function(value, path) {
+  this.set = function(path, value) {
     var property = this.resolve(path);
     var oldValue = util.deepclone(property.get());
     property.set(value);
@@ -445,16 +451,18 @@ Data.Graph.__private__ = function() {
     _private.updateIndex.call(this, property, oldValue);
   };
 
-  this.update = function(diff, path) {
+  this.update = function(path, diff) {
     var property = this.resolve(path);
     var oldValue = util.deepclone(property.get());
     var val = property.get();
 
-    if (property.baseType === 'string') {
+    var valueType = property.type()[0];
+
+    if (valueType === 'string') {
       val = ot.TextOperation.apply(diff, val);
-    } else if (property.baseType === 'array') {
+    } else if (valueType === 'array') {
       val = ot.ArrayOperation.apply(diff, val);
-    } else if (property.baseType === 'object') {
+    } else if (valueType === 'object') {
       val = ot.ObjectOperation.apply(diff, val);
     } else {
       // Note: all other types are treated via TextOperation on the String representation
@@ -572,11 +580,6 @@ Data.Graph.__private__ = function() {
   };
 
   this.updateSingleIndex = function(indexSpec, index, property, oldValue) {
-    // Note: grouping indexes are currently only supported for the first property level
-    if (property.path.length > 1) {
-      throw new Error("Indexes are supported only for nodes and first-level properties used for grouping");
-    }
-
     // Note: intentionally, this is not implemented by delegating to removeFromIndex
     //  and addToIndex. The reason, removeFromIndex erases every occurance of the
     //  modified property. Instead we have to update only the affected indexes,
@@ -586,12 +589,12 @@ Data.Graph.__private__ = function() {
 
     var groups = indexSpec.properties;
 
-    var groupIdx = groups.indexOf(property.path[0]);
+    var groupIdx = groups.indexOf(property.key());
 
     // only indexes with groupBy semantic have to be handled
     if (!groups || groupIdx < 0) return;
 
-    var nodeId = property.node.id;
+    var nodeId = property.node().id;
     var newValue = property.get();
 
     // remove the changed node from the old group
@@ -614,7 +617,7 @@ Data.Graph.__private__ = function() {
 
     _.each(this.schema.indexes, function(indexSpec, key) {
       // skip unrelated indexes
-      if (_private.matchIndex(this.schema, property.node.type, indexSpec.type)) {
+      if (_private.matchIndex(this.schema, property.node().type, indexSpec.type)) {
         _private.updateSingleIndex(indexSpec, this.indexes[key], property, oldValue);
       }
 
@@ -627,53 +630,58 @@ Data.Graph.prototype = _.extend(new Data.Graph.__prototype__(), util.Events);
 
 
 Data.Property = function(graph, path) {
-  var resolved = Data.Property.resolve(graph, path);
-
-  this.node = resolved.node;
-  this.path = resolved.path;
+  this.graph = graph;
+  this.path = path;
   this.schema = graph.schema;
-
-  if (this.node === undefined) {
-    throw new Error("Could not look up property for path " + path.join("."));
-  }
-
-  this.type = graph.propertyType(this.node, this.path);
-  this.baseType = this.type[0];
 };
 
 Data.Property.__prototype__ = function() {
 
   this.get = function() {
-    var item = this.node;
+    var item = this.graph;
     for (var idx = 0; idx < this.path.length; idx++) {
       if (item === undefined) {
         throw new Error("Key error: could not find element for path " + JSON.stringify(this.path));
       }
-      item = item[this.path[idx]];
+      if (item === this.graph) {
+        item = item.get(this.path[idx]);
+      } else {
+        item = item[this.path[idx]];
+      }
     }
     return item;
   };
 
   this.set = function(value) {
-    var item = this.node;
+    var item = this.graph;
     for (var idx = 0; idx < this.path.length-1; idx++) {
       if (item === undefined) {
         throw new Error("Key error: could not find element for path " + JSON.stringify(this.path));
       }
-      item = item[this.path[idx]];
+      if (item === this.graph) {
+        item = item.get(this.path[idx]);
+      } else {
+        item = item[this.path[idx]];
+      }
     }
-    item[this.path[idx]] = this.schema.parseValue(this.baseType, value);
+    var valueType = this.type()[0];
+    item[this.path[idx]] = this.schema.parseValue(valueType, value);
   };
 
-  this.delete = function() {
-    var item = this.node;
-    for (var idx = 0; idx < this.path.length-1; idx++) {
-      if (item === undefined) {
-        throw new Error("Key error: could not find element for path " + JSON.stringify(this.path));
-      }
-      item = item[this.path[idx]];
-    }
-    delete item[this.path[idx]];
+  this.type = function() {
+    // TODO: currently we do not resolve types accross node references
+    // so, either the node is the graph or a property fou
+    var node = this.node();
+    return this.graph.propertyType(node, this.path.slice(1));
+  };
+
+  this.node = function() {
+    var node = (this.path.length > 0) ? this.graph.get(this.path[0]) : this.graph;
+    return node;
+  };
+
+  this.key = function() {
+    return this.path[this.path.length-1];
   };
 
 };
@@ -694,6 +702,12 @@ Data.Property.resolve = function(graph, path) {
     //       for now, the first fragment of the path is the id of a node or empty
     result.node = graph.get(path[0]);
     result.path = path.slice(1);
+  }
+
+  // in case the path is used to specify a new node
+  if (result.node === undefined && path.length === 1) {
+    result.node = graph;
+    result.path = path;
   }
 
   return result;
