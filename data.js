@@ -51,6 +51,50 @@ Data.VALUE_TYPES = [
   'date'
 ];
 
+
+// Command Registry
+// -------
+
+Data.COMMANDS = {
+  "delete": {
+    "types": ["graph", "array"],
+    "arguments": 1
+  },
+  "create": {
+    "types": ["graph"],
+    "arguments": 1
+  },
+  "update": {
+    "types": Data.VALUE_TYPES,
+    "arguments": 1
+  },
+  "set": {
+    "types": Data.VALUE_TYPES,
+    "arguments": 1
+  },
+  "push": {
+    "types": ["array"],
+    "arguments": 1
+  },
+  "pop": {
+    "types": ["array"],
+    "arguments": 0
+  },
+  "clear": {
+    "types": ["array", "graph"],
+    "arguments": 0
+  }
+};
+
+
+
+// Get Data.Commands
+
+Data.commands = function(adsf) {
+  return Data.COMMANDS;
+};
+
+
 // Node: the actual type of a composite type is the first entry
 // I.e., ["array", "string"] is an array in first place
 Data.isValueType = function (type) {
@@ -300,23 +344,16 @@ Data.Graph.__prototype__ = function() {
   // --------
 
   this.delete = function(path, key) {
-    // Shortcut for graph deletes
-    if (_.isString(path)) {
-      key = path;
-      path = [];
-      // console.log('DELETE', key);
-      return this.exec(Data.Graph.Delete(this.get(key)));
+    var fullPath = ["delete"];
+
+    // On Graph
+    if (arguments.length === 1) {
+      fullPath.push(this.get(path));
+    } else {
+      fullPath = fullPath.concat(path).concat(key);
     }
 
-    // 1. resolve
-    var prop = this.resolve(path);
-    var propType = prop.baseType();
-
-    if (propType === "array") {
-      return this.exec(Data.Graph.Update(path, Data.Array.Delete(prop.get(), key)));
-    }
-
-    throw new Error('Delete not supported for '+ propType);
+    return this.exec(fullPath);
   };
 
   // Updates the property with a given operation.
@@ -481,35 +518,50 @@ Data.Graph.Private = function() {
   var _private = this;
 
   this.convertToObjectOperation = function(command) {
-
     // parse the command to have a normalized representation
     // TODO: need to map convenience operations to atomic graph commands
-    command = new Data.Command(command);
 
-    var op, id, prop;
+    command = new Data.Command(command, Data.COMMANDS);
+
+    var op, id, prop, propType, args;
+
+    // Check type command combination
+    prop = this.resolve(command.path);
+    propType = prop.baseType();
+    args = command.args;
+
+    if (!_.include(Data.COMMANDS[command.op].types, propType)) {
+      throw new Error("Command not supported for "+ propType);
+    }
+
     // Note: we convert the Data.Commands to ObjectOperations
-
-    if (command.op === "create") {
-      id = command.args.id;
+    if (command.op === "pop") {
+      op = ot.ObjectOperation.Update(command.path, Data.Array.Pop(prop.get()));
+    } else if (command.op === "push") {
+      op = ot.ObjectOperation.Update(command.path, Data.Array.Push(prop.get(), args));
+    } else if (command.op === "create") {
+      id = args.id;
       // Note: in this case the path must be empty, as otherwise the property lookup
       // claims due to the missing data
-      op = ot.ObjectOperation.Create([id], command.args);
+      op = ot.ObjectOperation.Create([id], args);
     }
     else if (command.op === "delete") {
-      id = command.args.id;
-      var node = this.get(id);
-      // Note: OTOH, in this case the path must be set to the node id
-      // as ObjectOperation will check if the value is correct
-      op = ot.ObjectOperation.Delete([id], node);
+      if (command.path.length === 0) {
+        id = args.id;
+        var node = this.get(id);
+        op = ot.ObjectOperation.Delete([id], node);  
+      } else if (propType === "array") {
+        // For arrays
+        op = ot.ObjectOperation.Update(command.path, Data.Array.Delete(prop.get(), args), propType);
+      } else if (propType === "object") {
+        op = ot.ObjectOperation.Delete(prop.path(), prop.get());
+      }
     }
     else if (command.op === "update") {
-      prop = this.resolve(command.path);
-      var valueType = prop.baseType();
-      op = ot.ObjectOperation.Update(command.path, command.args, valueType);
+      op = ot.ObjectOperation.Update(command.path, args, propType);
     }
     else if (command.op === "set") {
-      prop = this.resolve(command.path);
-      op = ot.ObjectOperation.Set(command.path, prop.get(), command.args);
+      op = ot.ObjectOperation.Set(command.path, prop.get(), args);
     }
 
     return op;
@@ -733,6 +785,7 @@ Data.Graph.Private = function() {
   };
 
 };
+
 Data.Graph.prototype = _.extend(new Data.Graph.__prototype__(), util.Events);
 
 // ObjectOperation Adapter
@@ -788,7 +841,7 @@ Data.Property.__prototype__ = function() {
   this.resolve = function() {
     var node = this.graph;
     var parent = node;
-    var type = "ROOT";
+    var type = "graph";
 
     var key;
     var value;
@@ -800,7 +853,7 @@ Data.Property.__prototype__ = function() {
         throw new Error("Key error: could not find element for path " + JSON.stringify(this.path));
       }
       // TODO: check if the property references a node type
-      if (type === "ROOT" || this.schema.types[type] !== undefined) {
+      if (type === "graph" || this.schema.types[type] !== undefined) {
         // remember the last node type
         parent = this.graph.get(this.path[idx]);
         node = parent;
@@ -858,6 +911,10 @@ Data.Property.__prototype__ = function() {
     return this.__data__.node;
   };
 
+  this.path = function() {
+    return [this.node().id, this.key()];
+  };
+
   this.key = function() {
     return this.__data__.key;
   };
@@ -868,8 +925,8 @@ Data.Property.prototype = new Data.Property.__prototype__();
 // Resolves the containing node and the node relative path to a property
 // --------
 //
-Data.Property.resolve = function(graph, path) {
 
+Data.Property.resolve = function(graph, path) {
   var result = {};
 
   if (path.length === 0) {
@@ -891,30 +948,32 @@ Data.Property.resolve = function(graph, path) {
   return result;
 };
 
-Data.Command = function(options) {
+Data.Command = function(options, commands) {
+  // var options;
+  // if (arguments.length > 1) options = _.toArray(arguments);
+  // else options = arguments[0];
 
   if (!options) throw new Error("Illegal argument: expected command spec, was " + options);
 
   // convert the convenient array notation into the internal object notation
   if (_.isArray(options)) {
     var op = options[0];
-    var path = options.slice(1);
-    var args = _.last(path);
+    var argc = commands[op].arguments;
+    var path = options.slice(1, options.length - argc);
+    var args = argc > 0 ? _.last(options) : null;
 
     options = {
       op: op,
-      path: path
+      path: path,
+      args: args
     };
-
-    if (_.isObject(args)) {
-      options.args = path.pop();
-    }
   }
 
   this.op = options.op;
   this.path = options.path;
   this.args = options.args;
 };
+
 
 Data.Command.__prototype__ = function() {
 
@@ -1060,7 +1119,6 @@ Data.Graph.makePersistent = function(graph, store) {
     __reset__.call(this);
     if (this.__nodes__) this.__nodes__.clear();
   };
-
 };
 
 
@@ -1090,6 +1148,7 @@ ChronicleAdapter.__prototype__ = function() {
     this.graph.reset();
   };
 };
+
 ChronicleAdapter.__prototype__.prototype = Chronicle.Versioned.prototype;
 ChronicleAdapter.prototype = new ChronicleAdapter.__prototype__();
 
