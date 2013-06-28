@@ -51,11 +51,13 @@ Data.VALUE_TYPES = [
   'date'
 ];
 
-// TODO: is this really useful or actually in use?
-// The actual basic type of a type chain is the first entry, not the last
+// Node: the actual type of a composite type is the first entry
 // I.e., ["array", "string"] is an array in first place
 Data.isValueType = function (type) {
-  return _.include(Data.VALUE_TYPES, _.last(type));
+  if (_.isArray(type)) {
+    type = type[0];
+  }
+  return Data.VALUE_TYPES.indexOf(type) >= 0;
 };
 
 // Data.Schema
@@ -239,7 +241,7 @@ Data.Node.create = function (schema, node) {
     var baseType = schema.propertyBaseType(node.type, key);
 
     // Assign user defined property value or use default value for baseType
-    var val = node[key] || schema.defaultValue(baseType);
+    var val = (node[key] !== undefined) ? node[key] : schema.defaultValue(baseType);
     freshNode[key] = util.deepclone(val);
   });
 
@@ -329,10 +331,28 @@ Data.Graph.__prototype__ = function() {
   this.get = function(path) {
     if (!path) return undefined;
 
+    if (arguments.length > 1) path = _.toArray(arguments);
     if (_.isString(path)) return this.nodes[path];
 
     var prop = this.resolve(path);
     return prop.get();
+  };
+
+  this.query = function(path) {
+    var prop = this.resolve(path);
+
+    var type = prop.type();
+    var baseType = prop.baseType();
+    var val = prop.get();
+
+    // resolve referenced nodes in array types
+    if (baseType === "array") {
+      return _private.queryArray.call(this, val, type);
+    } else if (!Data.isValueType(baseType)) {
+      return this.get(val);
+    } else {
+      return val;
+    }
   };
 
   // Checks if a node with given id exists
@@ -455,7 +475,7 @@ Data.Graph.Private = function() {
     }
     else if (command.op === "update") {
       prop = this.resolve(command.path);
-      var valueType = prop.type();
+      var valueType = prop.baseType();
       op = ot.ObjectOperation.Update(command.path, command.args, valueType);
     }
     else if (command.op === "set") {
@@ -496,7 +516,7 @@ Data.Graph.Private = function() {
     var oldValue = util.deepclone(property.get());
     var val = property.get();
 
-    var valueType = property.type();
+    var valueType = property.baseType();
 
     if (valueType === 'string') {
       val = ot.TextOperation.apply(diff, val);
@@ -512,6 +532,27 @@ Data.Graph.Private = function() {
     property.set(val);
 
     _private.updateIndex.call(this, property, oldValue);
+  };
+
+  this.queryArray = function(arr, type) {
+    if (!_.isArray(type)) {
+      throw new Error("Illegal argument: array types must be specified as ['array'(, 'array')*, <type>]");
+    }
+    var result, idx;
+    if (type[1] === "array") {
+      result = [];
+      for (idx = 0; idx < arr.length; idx++) {
+        result.push(_private.queryArray.call(this, arr[idx], type.slice(1)));
+      }
+    } else if (!Data.isValueType(type[1])) {
+      result = [];
+      for (idx = 0; idx < arr.length; idx++) {
+        result.push(this.get(arr[idx]));
+      }
+    } else {
+      result = arr;
+    }
+    return result;
   };
 
   // Setup indexes data-structure based on schema information
@@ -770,13 +811,17 @@ Data.Property.__prototype__ = function() {
 
   this.set = function(value) {
     if (this.__data__.key !== undefined) {
-      this.__data__.parent[this.__data__.key] = this.schema.parseValue(this.type(), value);
+      this.__data__.parent[this.__data__.key] = this.schema.parseValue(this.baseType(), value);
     } else {
       throw new Error("'set' is only supported for node properties.");
     }
   };
 
   this.type = function() {
+    return this.__data__.type;
+  };
+
+  this.baseType = function() {
     if (_.isArray(this.__data__.type)) return this.__data__.type[0];
     else return this.__data__.type;
   };
