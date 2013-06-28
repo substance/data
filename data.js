@@ -453,7 +453,7 @@ Data.Graph.Private = function() {
     }
     else if (command.op === "update") {
       prop = this.resolve(command.path);
-      var valueType = prop.type()[0];
+      var valueType = prop.type();
       op = ot.ObjectOperation.Update(command.path, command.args, valueType);
     }
     else if (command.op === "set") {
@@ -494,7 +494,7 @@ Data.Graph.Private = function() {
     var oldValue = util.deepclone(property.get());
     var val = property.get();
 
-    var valueType = property.type()[0];
+    var valueType = property.type();
 
     if (valueType === 'string') {
       val = ot.TextOperation.apply(diff, val);
@@ -704,55 +704,83 @@ Data.Property = function(graph, path) {
   this.graph = graph;
   this.path = path;
   this.schema = graph.schema;
+
+  this.__data__ = this.resolve();
 };
 
 Data.Property.__prototype__ = function() {
 
-  this.get = function() {
-    var item = this.graph;
-    for (var idx = 0; idx < this.path.length; idx++) {
-      if (item === undefined) {
+  this.resolve = function() {
+    var node = this.graph;
+    var parent = node;
+    var type = "ROOT";
+
+    var key;
+    var value;
+
+    var idx = 0;
+    for (; idx < this.path.length; idx++) {
+
+      if (parent === undefined) {
         throw new Error("Key error: could not find element for path " + JSON.stringify(this.path));
       }
-      if (item === this.graph) {
-        item = item.get(this.path[idx]);
+      // TODO: check if the property references a node type
+      if (type === "ROOT" || this.schema.types[type] !== undefined) {
+        // remember the last node type
+        parent = this.graph.get(this.path[idx]);
+        node = parent;
+        type = this.schema.properties(parent.type);
+        value = node;
+        key = undefined;
       } else {
-        item = item[this.path[idx]];
+        key = this.path[idx];
+        var propName = this.path[idx];
+        type = type[propName];
+        value = parent[key];
+
+        if (idx < this.path.length-1) {
+          parent = parent[propName];
+        }
       }
     }
-    return item;
+
+    return {
+      node: node,
+      parent: parent,
+      type: type,
+      key: key,
+      value: value
+    };
+
+  };
+
+  this.get = function() {
+    if (this.__data__.key !== undefined) {
+      return this.__data__.parent[this.__data__.key];
+    } else {
+      return this.__data__.node;
+    }
   };
 
   this.set = function(value) {
-    var item = this.graph;
-    for (var idx = 0; idx < this.path.length-1; idx++) {
-      if (item === undefined) {
-        throw new Error("Key error: could not find element for path " + JSON.stringify(this.path));
-      }
-      if (item === this.graph) {
-        item = item.get(this.path[idx]);
-      } else {
-        item = item[this.path[idx]];
-      }
+    if (this.__data__.key !== undefined) {
+      this.__data__.parent[this.__data__.key] = this.schema.parseValue(this.type(), value);
+    } else {
+      throw new Error("'set' is only supported for node properties.");
     }
-    var valueType = this.type()[0];
-    item[this.path[idx]] = this.schema.parseValue(valueType, value);
   };
 
   this.type = function() {
-    // TODO: currently we do not resolve types accross node references
-    // so, either the node is the graph or a property fou
-    var node = this.node();
-    return this.graph.propertyType(node, this.path.slice(1));
+    if (_.isArray(this.__data__.type)) return this.__data__.type[0];
+    else return this.__data__.type;
   };
 
   this.node = function() {
-    var node = (this.path.length > 0) ? this.graph.get(this.path[0]) : this.graph;
-    return node;
+    return this.__data__.node;
   };
 
   this.key = function() {
-    return this.path[this.path.length-1];
+    return this.__data__.key;
   };
 
 };
