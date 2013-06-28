@@ -83,7 +83,8 @@ Data.Schema.__prototype__ = function() {
     if (valueType === "boolean") return false;
     if (valueType === "date") return new Date();
 
-    throw new Error("Unknown value type: " + valueType);
+    return null;
+    // throw new Error("Unknown value type: " + valueType);
   };
 
   // Return type object for a given type id
@@ -288,8 +289,24 @@ Data.Graph.__prototype__ = function() {
   // Removes a node with given id
   // --------
 
-  this.delete = function(id) {
-    this.exec(Data.Graph.Delete(this.get(id)));
+  this.delete = function(path, key) {
+    // Shortcut for graph deletes
+    if (_.isString(path)) {
+      key = path;
+      path = [];
+      // console.log('DELETE', key);
+      return this.exec(Data.Graph.Delete(this.get(key)));
+    }
+
+    // 1. resolve
+    var prop = this.resolve(path);
+    var propType = prop.baseType();
+
+    if (propType === "array") {
+      return this.exec(Data.Graph.Update(path, Data.Array.Delete(prop.get(), key)));
+    }
+
+    throw new Error('Delete not supported for '+ propType);
   };
 
   // Updates the property with a given operation.
@@ -498,7 +515,6 @@ Data.Graph.Private = function() {
 
   // Delete node by id, referenced nodes remain untouched
   this.delete = function(node) {
-    // TODO: update indexes
     _private.removeFromIndex.call(this, this.nodes[node.id]);
     delete this.nodes[node.id];
   };
@@ -905,7 +921,7 @@ Data.Command.__prototype__ = function() {
 
 Data.Command.prototype = new Data.Command.__prototype__();
 
-// Factory methods
+// Graph manipulation
 // ---------
 
 Data.Graph.Create = function(node) {
@@ -938,6 +954,29 @@ Data.Graph.Set = function(path, val) {
     path: path,
     args: val
   });
+};
+
+
+// Array manipulation
+// ---------
+
+Data.Array = {};
+
+Data.Array.Delete = function(arr, val) {
+  return ot.ArrayOperation.Delete(arr, val);
+};
+
+Data.Array.Push = function(arr, val) {
+  return ot.ArrayOperation.Push(arr, val);
+};
+
+// Does not yet return a value
+Data.Array.Pop = function(arr) {
+  return ot.ArrayOperation.Pop(arr);
+};
+
+Data.Array.Clear = function(arr) {
+  return ot.ArrayOperation.Clear(arr);
 };
 
 if (typeof exports !== 'undefined') {
