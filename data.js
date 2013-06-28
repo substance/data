@@ -327,6 +327,8 @@ Data.Graph.__prototype__ = function() {
   // ========
 
   this.get = function(path) {
+    if (!path) return undefined;
+
     if (_.isString(path)) return this.nodes[path];
 
     var prop = this.resolve(path);
@@ -701,6 +703,10 @@ Data.Graph.ObjectAdapter.prototype = new Data.Graph.ObjectAdapter.__prototype__(
 
 
 Data.Property = function(graph, path) {
+  if (!path) {
+    throw new Error("Illegal argument: path is null/undefined.");
+  }
+
   this.graph = graph;
   this.path = path;
   this.schema = graph.schema;
