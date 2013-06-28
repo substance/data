@@ -256,7 +256,9 @@ Data.Node.create = function (schema, node) {
 // point to referred objects. Data.Graphs can be traversed in various ways.
 // See the testsuite for usage.
 
-Data.Graph = function(schema, graph) {
+Data.Graph = function(schema, options) {
+  options = options || {};
+
   // Initialization
   this.schema = new Data.Schema(schema);
   this.objectAdapter = new Data.Graph.ObjectAdapter(this);
@@ -266,8 +268,16 @@ Data.Graph = function(schema, graph) {
 
   this.init();
 
+  if(options.store) {
+    Data.Graph.makePersistent(this, options.store);
+  }
+
+  if(options.chronicle) {
+    Data.Graph.makeVersioned(this, options.chronicle);
+  }
+
   // Populate graph
-  if (graph) this.merge(graph);
+  if (options.graph) this.merge(options.graph);
 };
 
 Data.Graph.__prototype__ = function() {
@@ -390,6 +400,8 @@ Data.Graph.__prototype__ = function() {
     _.each(graph.nodes, function(n) {
       graph.create(n);
     });
+
+    return this;
   };
 
   // View Traversal
@@ -939,6 +951,134 @@ Data.Graph.Set = function(path, val) {
     args: val
   });
 };
+
+
+// Extensions
+// ========
+
+var PersistenceAdapter = function(delegate, nodes) {
+  this.delegate = delegate;
+  this.nodes = nodes;
+};
+
+PersistenceAdapter.__prototype__ = function() {
+
+  this.get = function(path) {
+    return this.delegate.get(path);
+  };
+
+  this.create = function(__, value) {
+    this.delegate.create(__, value);
+    this.nodes.set(value.id, value);
+  };
+
+  this.set = function(path, value) {
+    this.delegate.set(path, value);
+    // TODO: is it ok to store the value as node???
+    var nodeId = path[0];
+    var updated = this.delegate.get([nodeId]);
+    this.nodes.set(nodeId, updated);
+  };
+
+  this.delete = function(__, value) {
+    this.delegate.delete(__, value);
+    this.nodes.delete(value.id);
+  };
+};
+PersistenceAdapter.__prototype__.prototype = ot.ObjectOperation.Object.prototype;
+PersistenceAdapter.prototype = new PersistenceAdapter.__prototype__();
+
+// A mix-in for Data.Graph that makes a graph persistent
+Data.Graph.makePersistent = function(graph, store) {
+
+  if (graph.__nodes__ !== undefined) {
+    throw new Error("Graph is already persistent");
+  }
+
+  var nodes = store.hash("nodes");
+  graph.__nodes__ = nodes;
+  graph.objectAdapter = new PersistenceAdapter(graph.objectAdapter, nodes);
+
+  graph.load = function() {
+    // import persistet nodes
+    var keys = this.__nodes__.keys();
+    for (var idx = 0; idx < keys.length; idx++) {
+      graph.create(this.__nodes__.get(keys[idx]));
+    }
+
+    return this;
+  };
+
+  var __get__ = graph.get;
+  graph.get = function(path) {
+    if (_.isString(path)) return this.__nodes__.get(path);
+    else return __get__.call(this, path);
+  };
+
+  var __reset__ = graph.reset;
+  graph.reset = function() {
+    __reset__.call(this);
+    if (this.__nodes__) this.__nodes__.clear();
+  };
+
+};
+
+
+// Versioning
+// --------
+
+var ChronicleAdapter = function(graph) {
+  this.graph = graph;
+  this.state = Chronicle.ROOT;
+};
+
+ChronicleAdapter.__prototype__ = function() {
+
+  this.apply = function(change) {
+    this.graph.__exec__(change);
+  };
+
+  this.invert = function(change) {
+    return ot.ObjectOperation.fromJSON(change).invert();
+  };
+
+  this.transform = function(a, b, options) {
+    return ot.ObjectOperation.transform(a, b, options);
+  };
+
+  this.reset = function() {
+    this.graph.reset();
+  };
+};
+ChronicleAdapter.__prototype__.prototype = Chronicle.Versioned.prototype;
+ChronicleAdapter.prototype = new ChronicleAdapter.__prototype__();
+
+
+Data.Graph.makeVersioned = function(graph, chronicle) {
+
+  if (graph.chronicle !== undefined) {
+    throw new Error("Graph is already versioned.");
+  }
+
+  graph.chronicle = chronicle || Chronicle.create();
+  graph.chronicle.manage(new ChronicleAdapter(graph));
+
+  graph.__exec__ = graph.exec;
+  graph.exec = function(command) {
+    var op = graph.__exec__.call(this, command);
+    this.chronicle.record(util.clone(op));
+    return op;
+  };
+
+  var __reset__ = graph.reset;
+  graph.reset = function() {
+    __reset__.call(this);
+    this.chronicle.versioned.state = Chronicle.ROOT;
+  };
+};
+
+// Exports
+// ========
 
 if (typeof exports !== 'undefined') {
   module.exports = Data;
