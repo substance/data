@@ -254,9 +254,6 @@ Data.Schema.prototype = new Data.Schema.__prototype__();
 // point to referred objects. Data.Graphs can be traversed in various ways.
 // See the testsuite for usage.
 
-// forward declaration of a private helper function
-var addExtensions;
-
 Data.Graph = function(schema, options) {
   options = options || {};
 
@@ -268,15 +265,33 @@ Data.Graph = function(schema, options) {
   this.indexes = {};
 
   this.__mode__ = options.mode || Data.Graph.DEFAULT_MODE;
-
   this.__seed__ = options.seed;
-  this.init();
 
   // Note: don't init automatically after making persistent
   // as this would delete the persistet graph.
   // Instead, the application has to call `graph.load()` if the store is supposed to
   // contain a persisted graph
-  addExtensions(this, options);
+  this.isVersioned = !!options.chronicle;
+  this.isPersistent = !!options.store;
+
+  if (this.isVersioned) {
+    this.chronicle = options.chronicle;
+    this.chronicle.manage(new Data.Graph.ChronicleAdapter(this));
+  }
+
+  if (this.isPersistent) {
+    var nodes = options.store.hash("nodes");
+    this.__store__ = options.store;
+    this.__nodes__ = nodes;
+
+    if (this.isVersioned) {
+      this.__version__ = options.store.hash("__version__");
+    }
+
+    this.objectAdapter = new Data.Graph.PersistenceAdapter(this.objectAdapter, nodes);
+  }
+
+  this.init();
 
   // Populate graph
   if (options.graph) this.merge(options.graph);
@@ -328,6 +343,11 @@ Data.Graph.__prototype__ = function() {
     this.exec(Data.Graph.Set(path, value));
   };
 
+  this.__exec__ = function(op) {
+    op.apply(this.objectAdapter);
+    this.updated_at = new Date();
+  };
+
   // Executes a graph command
   // --------
 
@@ -338,13 +358,18 @@ Data.Graph.__prototype__ = function() {
     var op;
 
     if (!(command instanceof ot.ObjectOperation)) {
-      op = _private.convertToObjectOperation.call(this, command);
+      op = Data.Graph.toObjectOperation(this, command);
     } else {
       op = command;
     }
-    op.apply(this.objectAdapter);
 
-    this.updated_at = new Date();
+    this.__exec__(op);
+
+    // do not record changes during initialization
+    if (!this.__is_initializing__ && this.isVersioned) {
+      op.timestamp = new Date();
+      this.chronicle.record(util.clone(op));
+    }
 
     return op;
   };
@@ -398,7 +423,15 @@ Data.Graph.__prototype__ = function() {
   // Note: This clears all nodes and calls `init()` which may seed the graph.
 
   this.reset = function() {
+    if (this.isPersistent) {
+      if (this.__nodes__) this.__nodes__.clear();
+    }
+
     this.init();
+
+    if (this.isVersioned) {
+      this.state = Chronicle.ROOT;
+    }
   };
 
   this.init = function() {
@@ -412,6 +445,12 @@ Data.Graph.__prototype__ = function() {
       for (var idx = 0; idx < this.__seed__.length; idx++) {
         this.exec(this.__seed__[idx]);
       }
+    }
+
+    if (this.isPersistent) {
+      _.each(this.nodes, function(n) {
+        this.__nodes__.set(n.id, n);
+      }, this);
     }
 
     delete this.__is_initializing__;
@@ -478,6 +517,27 @@ Data.Graph.__prototype__ = function() {
     return _.isArray(type) ? type : [type];
   };
 
+  // Note: currently this must be called explicitely by the app
+  this.load = function() {
+
+    if (!this.isPersistent) {
+      console.log("Graph is not persistent.");
+      return;
+    }
+
+    // import persistet nodes
+    var keys = this.__nodes__.keys();
+    for (var idx = 0; idx < keys.length; idx++) {
+      this.create(this.__nodes__.get(keys[idx]));
+    }
+
+    if (this.isVersioned) {
+      this.state = this.__version__.get("state") || "ROOT";
+    }
+
+    return this;
+  };
+
 };
 
 // modes
@@ -522,56 +582,6 @@ Data.Graph.Private = function() {
     return freshNode;
   };
 
-  this.convertToObjectOperation = function(command) {
-    // parse the command to have a normalized representation
-    // TODO: need to map convenience operations to atomic graph commands
-
-    command = new Data.Command(command, Data.COMMANDS);
-
-    var op, id, prop, propType, args;
-
-    // Check type command combination
-    prop = this.resolve(command.path);
-    propType = prop.baseType();
-    args = command.args;
-
-    // TODO: Rethink. E.g., what about sub-types...disabling this for now.
-    // if (!_.include(Data.COMMANDS[command.op].types, propType) && Data.COMMANDS[command.op].types !== "ALL") {
-    //   throw new Error("Command not supported for "+ propType);
-    // }
-
-    // Note: we convert the Data.Commands to ObjectOperations
-    if (command.op === "pop") {
-      op = ot.ObjectOperation.Update(command.path, Data.Array.Pop(prop.get()));
-    } else if (command.op === "push") {
-      op = ot.ObjectOperation.Update(command.path, Data.Array.Push(prop.get(), args));
-    } else if (command.op === "create") {
-      id = args.id;
-      // Note: in this case the path must be empty, as otherwise the property lookup
-      // claims due to the missing data
-      op = ot.ObjectOperation.Create([id], args);
-    }
-    else if (command.op === "delete") {
-      if (command.path.length === 0) {
-        id = args.id;
-        var node = this.get(id);
-        op = ot.ObjectOperation.Delete([id], node);
-      } else if (propType === "array") {
-        // For arrays
-        op = ot.ObjectOperation.Update(command.path, Data.Array.Delete(prop.get(), args), propType);
-      } else if (propType === "object") {
-        op = ot.ObjectOperation.Delete(prop.path(), prop.get());
-      }
-    }
-    else if (command.op === "update") {
-      op = ot.ObjectOperation.Update(command.path, args, propType);
-    }
-    else if (command.op === "set") {
-      op = ot.ObjectOperation.Set(command.path, prop.get(), args);
-    }
-
-    return op;
-  };
 
   this.create = function(node) {
     var newNode = _private.createNode(this.schema, node);
@@ -799,6 +809,59 @@ Data.Graph.Private = function() {
 
 Data.Graph.prototype = _.extend(new Data.Graph.__prototype__(), util.Events);
 
+Data.Graph.toObjectOperation = function(graph, command) {
+
+  if (command instanceof ot.ObjectOperation) return command;
+
+  command = new Data.Command(command, Data.COMMANDS);
+
+  var op, id, prop, propType, args;
+
+  // Check type command combination
+  prop = graph.resolve(command.path);
+  propType = prop.baseType();
+  args = command.args;
+
+  // TODO: Rethink. E.g., what about sub-types...disabling this for now.
+  // if (!_.include(Data.COMMANDS[command.type].types, propType) && Data.COMMANDS[command.type].types !== "ALL") {
+  //   throw new Error("Command not supported for "+ propType);
+  // }
+
+  // Note: we convert the Data.Commands to ObjectOperations
+  if (command.type === "create") {
+    id = args.id;
+    // Note: in this case the path must be empty, as otherwise the property lookup
+    // claims due to the missing data
+    op = ot.ObjectOperation.Create([id], args);
+  }
+  else if (command.type === "delete") {
+    if (command.path.length === 0) {
+      id = args.id;
+      var node = graph.get(id);
+      op = ot.ObjectOperation.Delete([id], node);
+    } else if (propType === "array") {
+      op = ot.ObjectOperation.Update(command.path, Data.Array.Delete(prop.get(), args), propType);
+    } else if (propType === "object") {
+      op = ot.ObjectOperation.Delete(prop.path(), prop.get());
+    }
+  }
+  else if (command.type === "update") {
+    op = ot.ObjectOperation.Update(command.path, args, propType);
+  }
+  else if (command.type === "set") {
+    op = ot.ObjectOperation.Set(command.path, prop.get(), args);
+  } 
+  // Convenience commands
+  else if (command.type === "pop") {
+    op = ot.ObjectOperation.Update(command.path, Data.Array.Pop(prop.get()));
+  }
+  else if (command.type === "push") {
+    op = ot.ObjectOperation.Update(command.path, Data.Array.Push(prop.get(), args));
+  } 
+
+  return op;
+};
+
 // ObjectOperation Adapter
 // ========
 //
@@ -968,19 +1031,19 @@ Data.Command = function(options, commands) {
 
   // convert the convenient array notation into the internal object notation
   if (_.isArray(options)) {
-    var op = options[0];
-    var argc = commands[op].arguments;
+    var type = options[0];
+    var argc = commands[type].arguments;
     var path = options.slice(1, options.length - argc);
     var args = argc > 0 ? _.last(options) : null;
 
     options = {
-      op: op,
+      type: type,
       path: path,
       args: args
     };
   }
 
-  this.op = options.op;
+  this.type = options.type;
   this.path = options.path;
   this.args = options.args;
 };
@@ -993,7 +1056,7 @@ Data.Command.__prototype__ = function() {
 
   this.toJSON = function() {
     return {
-      op: this.op,
+      type: this.type,
       path: this.path,
       args: this.args
     };
@@ -1007,7 +1070,7 @@ Data.Command.prototype = new Data.Command.__prototype__();
 
 Data.Graph.Create = function(node) {
   return new Data.Command({
-    op: "create",
+    type: "create",
     path: [],
     args: node
   });
@@ -1015,7 +1078,7 @@ Data.Graph.Create = function(node) {
 
 Data.Graph.Delete = function(node) {
   return new Data.Command({
-    op: "delete",
+    type: "delete",
     path: [],
     args: node
   });
@@ -1023,7 +1086,7 @@ Data.Graph.Delete = function(node) {
 
 Data.Graph.Update = function(path, diff) {
   return new Data.Command({
-    op: "update",
+    type: "update",
     path: path,
     args: diff
   });
@@ -1031,10 +1094,20 @@ Data.Graph.Update = function(path, diff) {
 
 Data.Graph.Set = function(path, val) {
   return new Data.Command({
-    op: "set",
+    type: "set",
     path: path,
     args: val
   });
+};
+
+Data.Graph.Compound = function(graph, commands) {
+  var ops = [];
+
+  for (var idx = 0; idx < commands.length; idx++) {
+    ops.push(Data.Graph.toObjectOperation(graph, commands[idx]));
+  }
+
+  return ot.ObjectOperation.Compound(ops);
 };
 
 // Array manipulation
@@ -1102,9 +1175,12 @@ var ChronicleAdapter = function(graph) {
 
 ChronicleAdapter.__prototype__ = function() {
 
-  this.apply = function(change) {
-    this.graph.__exec__(change);
-    this.graph.updated_at = new Date(change.timestamp);
+  this.apply = function(op) {
+    // Note: we call the Graph.exec intentionally, as the chronicled change
+    // should be an ObjectOperation
+    console.log("ChronicleAdapter.apply, op=", op);
+    Data.Graph.prototype.__exec__.call(this.graph, op);
+    this.graph.updated_at = new Date(op.timestamp);
   };
 
   this.invert = function(change) {
@@ -1131,94 +1207,8 @@ ChronicleAdapter.__prototype__ = function() {
 ChronicleAdapter.__prototype__.prototype = Chronicle.Versioned.prototype;
 ChronicleAdapter.prototype = new ChronicleAdapter.__prototype__();
 
-addExtensions = function(graph, options) {
-
-  var isVersioned = !!options.chronicle;
-  var isPersistent = !!options.store;
-
-  if (!isVersioned && !isPersistent) return;
-
-  var chronicle = options.chronicle;
-  var store = options.store;
-
-  // Extended member variables
-
-  if (isVersioned) {
-    graph.chronicle = chronicle;
-    graph.chronicle.manage(new ChronicleAdapter(graph));
-  }
-
-  if (isPersistent) {
-    var nodes = options.store.hash("nodes");
-    graph.__store__ = store;
-    graph.__nodes__ = nodes;
-
-    if (isVersioned) {
-      graph.__version__ = store.hash("__version__");
-    }
-
-    graph.objectAdapter = new PersistenceAdapter(graph.objectAdapter, nodes);
-  }
-
-  // Extended member functions
-
-  if (isPersistent) {
-
-    // Note: currently this must be called explicitely by the app
-    graph.load = function() {
-      // import persistet nodes
-      var keys = this.__nodes__.keys();
-      for (var idx = 0; idx < keys.length; idx++) {
-        graph.create(this.__nodes__.get(keys[idx]));
-      }
-
-      if (isVersioned) {
-        graph.state = graph.__version__.get("state") || "ROOT";
-      }
-      return this;
-    };
-
-    var __init__ = graph.init;
-    graph.init = function() {
-      __init__.call(this);
-      _.each(this.nodes, function(n) {
-        this.__nodes__.set(n.id, n);
-      });
-    };
-  }
-
-  if (isVersioned) {
-    graph.__exec__ = graph.exec;
-    graph.exec = function(command) {
-      var op = graph.__exec__.call(this, command);
-
-      // do not record changes during initialization
-      if (!this.__is_initializing__) {
-        op.timestamp = new Date();
-        this.chronicle.record(util.clone(op));
-      }
-
-      return op;
-    };
-  }
-
-  graph.reset = function() {
-    // Note: we are not re-using `Graph.reset()` as it is important
-    // to have the initial changes persisted but unversioned.
-
-    if (isPersistent) {
-      if (this.__nodes__) this.__nodes__.clear();
-    }
-
-    this.init();
-
-    if (isVersioned) {
-      this.state = Chronicle.ROOT;
-    }
-
-  };
-
-};
+Data.Graph.PersistenceAdapter = PersistenceAdapter;
+Data.Graph.ChronicleAdapter = ChronicleAdapter;
 
 // Exports
 // ========
