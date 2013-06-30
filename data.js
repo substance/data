@@ -254,6 +254,9 @@ Data.Schema.prototype = new Data.Schema.__prototype__();
 // point to referred objects. Data.Graphs can be traversed in various ways.
 // See the testsuite for usage.
 
+// forward declaration of a private helper function
+var addExtensions;
+
 Data.Graph = function(schema, options) {
   options = options || {};
 
@@ -264,15 +267,14 @@ Data.Graph = function(schema, options) {
   this.nodes = {};
   this.indexes = {};
 
+  this.__seed__ = options.seed;
   this.init();
 
-  if(options.store) {
-    Data.Graph.makePersistent(this, options.store);
-  }
-
-  if(options.chronicle) {
-    Data.Graph.makeVersioned(this, options.chronicle);
-  }
+  // Note: don't init automatically after making persistent
+  // as this would delete the persistet graph.
+  // Instead, the application has to call `graph.load()` if the store is supposed to
+  // contain a persisted graph
+  addExtensions(this, options);
 
   // Populate graph
   if (options.graph) this.merge(options.graph);
@@ -339,6 +341,9 @@ Data.Graph.__prototype__ = function() {
       op = command;
     }
     op.apply(this.objectAdapter);
+
+    this.updated_at = new Date();
+
     return op;
   };
 
@@ -386,17 +391,28 @@ Data.Graph.__prototype__ = function() {
     return new Data.Property(this, path);
   };
 
-  // Resets the graph to an initial state.
+  // Resets the graph to its initial state.
   // --------
+  // Note: This clears all nodes and calls `init()` which may seed the graph.
 
   this.reset = function() {
     this.init();
   };
 
   this.init = function() {
+    this.__is_initializing__ = true;
+
     this.nodes = {};
     this.indexes = {};
     _private.initIndexes.call(this);
+
+    if (this.__seed__) {
+      for (var idx = 0; idx < this.__seed__.length; idx++) {
+        this.exec(this.__seed__[idx]);
+      }
+    }
+
+    delete this.__is_initializing__;
   };
 
   // Merges this graph with another graph
@@ -955,7 +971,6 @@ Data.Command = function(options, commands) {
   this.args = options.args;
 };
 
-
 Data.Command.__prototype__ = function() {
 
   this.clone = function() {
@@ -1007,8 +1022,6 @@ Data.Graph.Set = function(path, val) {
     args: val
   });
 };
-
-
 
 // Array manipulation
 // ---------
@@ -1068,53 +1081,16 @@ PersistenceAdapter.__prototype__ = function() {
 PersistenceAdapter.__prototype__.prototype = ot.ObjectOperation.Object.prototype;
 PersistenceAdapter.prototype = new PersistenceAdapter.__prototype__();
 
-// A mix-in for Data.Graph that makes a graph persistent
-Data.Graph.makePersistent = function(graph, store) {
-
-  if (graph.__nodes__ !== undefined) {
-    throw new Error("Graph is already persistent");
-  }
-
-  var nodes = store.hash("nodes");
-  graph.__nodes__ = nodes;
-  graph.objectAdapter = new PersistenceAdapter(graph.objectAdapter, nodes);
-
-  graph.load = function() {
-    // import persistet nodes
-    var keys = this.__nodes__.keys();
-    for (var idx = 0; idx < keys.length; idx++) {
-      graph.create(this.__nodes__.get(keys[idx]));
-    }
-
-    return this;
-  };
-
-  var __get__ = graph.get;
-  graph.get = function(path) {
-    if (_.isString(path)) return this.__nodes__.get(path);
-    else return __get__.call(this, path);
-  };
-
-  var __reset__ = graph.reset;
-  graph.reset = function() {
-    __reset__.call(this);
-    if (this.__nodes__) this.__nodes__.clear();
-  };
-};
-
-
-// Versioning
-// --------
-
 var ChronicleAdapter = function(graph) {
   this.graph = graph;
-  this.state = Chronicle.ROOT;
+  this.graph.state = "ROOT";
 };
 
 ChronicleAdapter.__prototype__ = function() {
 
   this.apply = function(change) {
     this.graph.__exec__(change);
+    this.graph.updated_at = new Date(change.timestamp);
   };
 
   this.invert = function(change) {
@@ -1128,33 +1104,106 @@ ChronicleAdapter.__prototype__ = function() {
   this.reset = function() {
     this.graph.reset();
   };
+
+  this.getState = function() {
+    return this.graph.state;
+  };
+
+  this.setState = function(state) {
+    this.graph.state = state;
+  };
 };
 
 ChronicleAdapter.__prototype__.prototype = Chronicle.Versioned.prototype;
 ChronicleAdapter.prototype = new ChronicleAdapter.__prototype__();
 
+addExtensions = function(graph, options) {
 
-Data.Graph.makeVersioned = function(graph, chronicle) {
+  var isVersioned = !!options.chronicle;
+  var isPersistent = !!options.store;
 
-  if (graph.chronicle !== undefined) {
-    throw new Error("Graph is already versioned.");
+  if (!isVersioned && !isPersistent) return;
+
+  var chronicle = options.chronicle;
+  var store = options.store;
+
+  // Extended member variables
+
+  if (isVersioned) {
+    graph.chronicle = chronicle;
+    graph.chronicle.manage(new ChronicleAdapter(graph));
   }
 
-  graph.chronicle = chronicle || Chronicle.create();
-  graph.chronicle.manage(new ChronicleAdapter(graph));
+  if (isPersistent) {
+    var nodes = options.store.hash("nodes");
+    graph.__store__ = store;
+    graph.__nodes__ = nodes;
 
-  graph.__exec__ = graph.exec;
-  graph.exec = function(command) {
-    var op = graph.__exec__.call(this, command);
-    this.chronicle.record(util.clone(op));
-    return op;
-  };
+    if (isVersioned) {
+      graph.__version__ = store.hash("__version__");
+    }
 
-  var __reset__ = graph.reset;
+    graph.objectAdapter = new PersistenceAdapter(graph.objectAdapter, nodes);
+  }
+
+  // Extended member functions
+
+  if (isPersistent) {
+
+    // Note: currently this must be called explicitely by the app
+    graph.load = function() {
+      // import persistet nodes
+      var keys = this.__nodes__.keys();
+      for (var idx = 0; idx < keys.length; idx++) {
+        graph.create(this.__nodes__.get(keys[idx]));
+      }
+
+      if (isVersioned) {
+        graph.state = graph.__version__.get("state") || "ROOT";
+      }
+      return this;
+    };
+
+    var __init__ = graph.init;
+    graph.init = function() {
+      __init__.call(this);
+      _.each(this.nodes, function(n) {
+        this.__nodes__.set(n.id, n);
+      });
+    };
+  }
+
+  if (isVersioned) {
+    graph.__exec__ = graph.exec;
+    graph.exec = function(command) {
+      var op = graph.__exec__.call(this, command);
+
+      // do not record changes during initialization
+      if (!this.__is_initializing__) {
+        op.timestamp = new Date();
+        this.chronicle.record(util.clone(op));
+      }
+
+      return op;
+    };
+  }
+
   graph.reset = function() {
-    __reset__.call(this);
-    this.chronicle.versioned.state = Chronicle.ROOT;
+    // Note: we are not re-using `Graph.reset()` as it is important
+    // to have the initial changes persisted but unversioned.
+
+    if (isPersistent) {
+      if (this.__nodes__) this.__nodes__.clear();
+    }
+
+    this.init();
+
+    if (isVersioned) {
+      this.state = Chronicle.ROOT;
+    }
+
   };
+
 };
 
 // Exports
