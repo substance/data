@@ -69,7 +69,7 @@ Data.COMMANDS = {
     "arguments": 1
   },
   "set": {
-    "types": Data.VALUE_TYPES,
+    "types": "ALL",
     "arguments": 1
   },
   "push": {
@@ -266,6 +266,8 @@ Data.Graph = function(schema, options) {
 
   this.nodes = {};
   this.indexes = {};
+
+  this.__mode__ = options.mode || Data.Graph.DEFAULT_MODE;
 
   this.__seed__ = options.seed;
   this.init();
@@ -478,6 +480,10 @@ Data.Graph.__prototype__ = function() {
 
 };
 
+// modes
+Data.Graph.STRICT_INDEXING = 1 << 1;
+Data.Graph.DEFAULT_MODE = Data.Graph.STRICT_INDEXING;
+
 // Private Graph implementation
 // ========
 //
@@ -496,7 +502,9 @@ Data.Graph.Private = function() {
     }
 
     var type = schema.type(node.type);
-    if (!type) throw new Error("Type not found in the schema");
+    if (!type) {
+      throw new Error("Type not found in the schema");
+    }
 
     var properties = schema.properties(node.type);
     var freshNode = { type: node.type, id: node.id };
@@ -527,9 +535,10 @@ Data.Graph.Private = function() {
     propType = prop.baseType();
     args = command.args;
 
-    if (!_.include(Data.COMMANDS[command.op].types, propType)) {
-      throw new Error("Command not supported for "+ propType);
-    }
+    // TODO: Rethink. E.g., what about sub-types...disabling this for now.
+    // if (!_.include(Data.COMMANDS[command.op].types, propType) && Data.COMMANDS[command.op].types !== "ALL") {
+    //   throw new Error("Command not supported for "+ propType);
+    // }
 
     // Note: we convert the Data.Commands to ObjectOperations
     if (command.op === "pop") {
@@ -665,8 +674,13 @@ Data.Graph.Private = function() {
         var groupKey = groups[i];
         // Note: grouping is only supported for first level properties
         var groupVal = node[groupKey];
+
         if (groupVal === undefined) {
-          throw new Error("Illegal node: missing property for indexing " + groupKey);
+          if (this.__mode__ & Data.Graph.STRICT_INDEXING) {
+            throw new Error("Illegal node: missing property for indexing " + groupKey);
+          } else {
+            continue;
+          }
         }
 
         index[groupVal] = index[groupVal] || [];
