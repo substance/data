@@ -86,15 +86,6 @@ Data.COMMANDS = {
   }
 };
 
-
-
-// Get Data.Commands
-
-Data.commands = function(adsf) {
-  return Data.COMMANDS;
-};
-
-
 // Node: the actual type of a composite type is the first entry
 // I.e., ["array", "string"] is an array in first place
 Data.isValueType = function (type) {
@@ -254,44 +245,6 @@ Data.Schema.__prototype__ = function() {
 };
 
 Data.Schema.prototype = new Data.Schema.__prototype__();
-
-// Data.Node
-// ========
-//
-// A `Data.Node` refers to one element in the graph
-
-Data.Node = function() {
-  throw new Error("A Data.Node can't be instantiated.");
-};
-
-// Safely constructs a new node based on type information
-// Node needs to have a valid type
-// All properties that are not registered, are dropped
-// All properties that don't have a value are
-
-Data.Node.create = function (schema, node) {
-  if (!node.id || !node.type) {
-    throw new Error("Can not create Node: 'id' and 'type' are mandatory.");
-  }
-
-  var type = schema.type(node.type);
-  if (!type) throw new Error("Type not found in the schema");
-
-  var properties = schema.properties(node.type);
-  var freshNode = { type: node.type, id: node.id };
-
-  // Start constructing the fresh node
-  _.each(properties, function(p, key) {
-    // Find property base type
-    var baseType = schema.propertyBaseType(node.type, key);
-
-    // Assign user defined property value or use default value for baseType
-    var val = (node[key] !== undefined) ? node[key] : schema.defaultValue(baseType);
-    freshNode[key] = util.deepclone(val);
-  });
-
-  return freshNode;
-};
 
 // Data.Graph
 // ========
@@ -517,6 +470,34 @@ Data.Graph.Private = function() {
 
   var _private = this;
 
+  // Safely constructs a new node based on type information
+  // Node needs to have a valid type
+  // All properties that are not registered, are dropped
+  // All properties that don't have a value are
+  this.createNode = function (schema, node) {
+    if (!node.id || !node.type) {
+      throw new Error("Can not create Node: 'id' and 'type' are mandatory.");
+    }
+
+    var type = schema.type(node.type);
+    if (!type) throw new Error("Type not found in the schema");
+
+    var properties = schema.properties(node.type);
+    var freshNode = { type: node.type, id: node.id };
+
+    // Start constructing the fresh node
+    _.each(properties, function(p, key) {
+      // Find property base type
+      var baseType = schema.propertyBaseType(node.type, key);
+
+      // Assign user defined property value or use default value for baseType
+      var val = (node[key] !== undefined) ? node[key] : schema.defaultValue(baseType);
+      freshNode[key] = util.deepclone(val);
+    });
+
+    return freshNode;
+  };
+
   this.convertToObjectOperation = function(command) {
     // parse the command to have a normalized representation
     // TODO: need to map convenience operations to atomic graph commands
@@ -549,7 +530,7 @@ Data.Graph.Private = function() {
       if (command.path.length === 0) {
         id = args.id;
         var node = this.get(id);
-        op = ot.ObjectOperation.Delete([id], node);  
+        op = ot.ObjectOperation.Delete([id], node);
       } else if (propType === "array") {
         // For arrays
         op = ot.ObjectOperation.Update(command.path, Data.Array.Delete(prop.get(), args), propType);
@@ -568,7 +549,7 @@ Data.Graph.Private = function() {
   };
 
   this.create = function(node) {
-    var newNode = Data.Node.create(this.schema, node);
+    var newNode = _private.createNode(this.schema, node);
     if (this.contains(newNode.id)) {
       throw new Error("Node already exists: " + newNode.id);
     }
@@ -1186,53 +1167,3 @@ if (typeof exports !== 'undefined') {
 }
 
 })(this);
-
-// TODO: this was pulled from the test case and should be revisited and merged into
-// the Graph documentation.
-// We should decide what convenience methods are wanted, and if we want to introduce
-// NumberOperations as well.
-
-// Graph operations
-// ================
-//
-// Message format
-// [:opcode, :target, :data] where opcodes can be overloaded for different types, the type is determined by the target (can either be a node or node.property),
-//                           data is an optional hash
-//
-// Node operations
-// --------
-// create heading node
-// ["create", {id: "h1", type: "heading", "content": "Hello World" } ]
-//
-// internal representation:
-// { op: "create", path: [], args: {id: "h1", type: "heading", "content": "Hello World" } }
-//
-// delete node
-// ["delete", {"id": "t1"}]
-
-// String operations
-// ---------
-//
-// update content (String OT)
-// ["update", "h1", "content", [-1, "ABC", 4]]
-//
-
-// Number operations
-// ---------
-//
-// update content (String OT)
-// ["increment", "h1.level"]
-//
-
-// Array operations
-// ---------------
-
-// Push new value to end of array
-// ["push", "content_view.nodes", {value: "new-entry"}]
-//
-// Delete 1..n elements
-// ["delete", "content_view.nodes", {values: ["v1", "v2"]}]
-
-// Insert element at position index
-// ["insert", "content_view.nodes", {value: "newvalue", index: 3}]
-
