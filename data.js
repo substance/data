@@ -390,8 +390,8 @@ Data.Graph.__prototype__ = function() {
   this.query = function(path) {
     var prop = this.resolve(path);
 
-    var type = prop.type();
-    var baseType = prop.baseType();
+    var type = prop.type;
+    var baseType = prop.baseType;
     var val = prop.get();
 
     // resolve referenced nodes in array types
@@ -612,7 +612,7 @@ Data.Graph.Private = function() {
     var oldValue = util.deepclone(property.get());
     var val = property.get();
 
-    var valueType = property.baseType();
+    var valueType = property.baseType;
 
     if (valueType === 'string') {
       val = ot.TextOperation.apply(diff, val);
@@ -775,7 +775,7 @@ Data.Graph.Private = function() {
     // only indexes with groupBy semantic have to be handled
     if (!groups || groupIdx < 0) return;
 
-    var nodeId = property.node().id;
+    var nodeId = property.node.id;
     var newValue = property.get();
 
     // remove the changed node from the old group
@@ -798,7 +798,7 @@ Data.Graph.Private = function() {
 
     _.each(this.schema.indexes, function(indexSpec, key) {
       // skip unrelated indexes
-      if (_private.matchIndex(this.schema, property.node().type, indexSpec.type)) {
+      if (_private.matchIndex(this.schema, property.node.type, indexSpec.type)) {
         _private.updateSingleIndex(indexSpec, this.indexes[key], property, oldValue);
       }
 
@@ -819,7 +819,7 @@ Data.Graph.toObjectOperation = function(graph, command) {
 
   // Check type command combination
   prop = graph.resolve(command.path);
-  propType = prop.baseType();
+  propType = prop.baseType;
   args = command.args;
 
   // TODO: Rethink. E.g., what about sub-types...disabling this for now.
@@ -842,7 +842,7 @@ Data.Graph.toObjectOperation = function(graph, command) {
     } else if (propType === "array") {
       op = ot.ObjectOperation.Update(command.path, Data.Array.Delete(prop.get(), args), propType);
     } else if (propType === "object") {
-      op = ot.ObjectOperation.Delete(prop.path(), prop.get());
+      op = ot.ObjectOperation.Delete(prop.path, prop.get());
     }
   }
   else if (command.type === "update") {
@@ -904,15 +904,14 @@ Data.Property = function(graph, path) {
   }
 
   this.graph = graph;
-  this.path = path;
   this.schema = graph.schema;
 
-  this.__data__ = this.resolve();
+  _.extend(this, this.resolve(path));
 };
 
 Data.Property.__prototype__ = function() {
 
-  this.resolve = function() {
+  this.resolve = function(path) {
     var node = this.graph;
     var parent = node;
     var type = "graph";
@@ -921,26 +920,26 @@ Data.Property.__prototype__ = function() {
     var value;
 
     var idx = 0;
-    for (; idx < this.path.length; idx++) {
+    for (; idx < path.length; idx++) {
 
       if (parent === undefined) {
-        throw new Error("Key error: could not find element for path " + JSON.stringify(this.path));
+        throw new Error("Key error: could not find element for path " + JSON.stringify(path));
       }
       // TODO: check if the property references a node type
       if (type === "graph" || this.schema.types[type] !== undefined) {
         // remember the last node type
-        parent = this.graph.get(this.path[idx]);
+        parent = this.graph.get(path[idx]);
         node = parent;
         type = this.schema.properties(parent.type);
         value = node;
         key = undefined;
       } else {
-        key = this.path[idx];
-        var propName = this.path[idx];
+        key = path[idx];
+        var propName = path[idx];
         type = type[propName];
         value = parent[key];
 
-        if (idx < this.path.length-1) {
+        if (idx < path.length-1) {
           parent = parent[propName];
         }
       }
@@ -957,70 +956,36 @@ Data.Property.__prototype__ = function() {
   };
 
   this.get = function() {
-    if (this.__data__.key !== undefined) {
-      return this.__data__.parent[this.__data__.key];
+    if (this.key !== undefined) {
+      return this.parent[this.key];
     } else {
-      return this.__data__.node;
+      return this.node;
     }
   };
 
   this.set = function(value) {
-    if (this.__data__.key !== undefined) {
-      this.__data__.parent[this.__data__.key] = this.schema.parseValue(this.baseType(), value);
+    if (this.key !== undefined) {
+      this.parent[this.key] = this.schema.parseValue(this.baseType, value);
     } else {
       throw new Error("'set' is only supported for node properties.");
     }
   };
 
-  this.type = function() {
-    return this.__data__.type;
-  };
-
-  this.baseType = function() {
-    if (_.isArray(this.__data__.type)) return this.__data__.type[0];
-    else return this.__data__.type;
-  };
-
-  this.node = function() {
-    return this.__data__.node;
-  };
-
-  this.path = function() {
-    return [this.node().id, this.key()];
-  };
-
-  this.key = function() {
-    return this.__data__.key;
-  };
-
 };
 Data.Property.prototype = new Data.Property.__prototype__();
-
-// Resolves the containing node and the node relative path to a property
-// --------
-//
-
-Data.Property.resolve = function(graph, path) {
-  var result = {};
-
-  if (path.length === 0) {
-    result.node = graph;
-    result.path = [];
-  } else {
-    // TODO: it would be great if we could resolve references stored in properties (using schema)
-    //       for now, the first fragment of the path is the id of a node or empty
-    result.node = graph.get(path[0]);
-    result.path = path.slice(1);
+Object.defineProperties(Data.Property.prototype, {
+  baseType: {
+    get: function() {
+      if (_.isArray(this.type)) return this.type[0];
+      else return this.type;
+    }
+  },
+  path: {
+    get: function() {
+      return [this.node.id, this.key];
+    }
   }
-
-  // in case the path is used to specify a new node
-  if (result.node === undefined && path.length === 1) {
-    result.node = graph;
-    result.path = path;
-  }
-
-  return result;
-};
+});
 
 Data.Command = function(options, commands) {
   // var options;
