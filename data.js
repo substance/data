@@ -823,7 +823,8 @@ Data.Graph.prototype = _.extend(new Data.Graph.__prototype__(), util.Events);
 
 Data.Graph.toObjectOperation = function(graph, command) {
 
-  if (command instanceof ot.ObjectOperation) return command;
+  // TODO: would be great if Compound would match the instanceof check
+  if (command instanceof ot.ObjectOperation || command instanceof ot.Compound) return command;
 
   command = new Data.Command(command, Data.COMMANDS);
 
