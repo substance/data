@@ -291,7 +291,11 @@ Data.Graph = function(schema, options) {
     this.objectAdapter = new Data.Graph.PersistenceAdapter(this.objectAdapter, nodes);
   }
 
-  this.init();
+  if (options.load) {
+    this.load();
+  } else {
+    this.init();
+  }
 
   // Populate graph
   if (options.graph) this.merge(options.graph);
@@ -448,8 +452,8 @@ Data.Graph.__prototype__ = function() {
     }
 
     if (this.isPersistent) {
-      _.each(this.nodes, function(n) {
-        this.__nodes__.set(n.id, n);
+      _.each(this.nodes, function(node, id) {
+        this.__nodes__.set(id, node);
       }, this);
     }
 
@@ -525,15 +529,24 @@ Data.Graph.__prototype__ = function() {
       return;
     }
 
+    this.__is_initializing__ = true;
+
+    this.nodes = {};
+    this.indexes = {};
+    _private.initIndexes.call(this);
+
+
     // import persistet nodes
     var keys = this.__nodes__.keys();
     for (var idx = 0; idx < keys.length; idx++) {
-      this.create(this.__nodes__.get(keys[idx]));
+      _private.create.call(this, this.__nodes__.get(keys[idx]));
     }
 
     if (this.isVersioned) {
       this.state = this.__version__.get("state") || "ROOT";
     }
+
+    delete this.__is_initializing__;
 
     return this;
   };
@@ -769,8 +782,7 @@ Data.Graph.Private = function() {
     if (!indexSpec.properties) return;
 
     var groups = indexSpec.properties;
-
-    var groupIdx = groups.indexOf(property.key());
+    var groupIdx = groups.indexOf(property.key);
 
     // only indexes with groupBy semantic have to be handled
     if (!groups || groupIdx < 0) return;
@@ -850,14 +862,14 @@ Data.Graph.toObjectOperation = function(graph, command) {
   }
   else if (command.type === "set") {
     op = ot.ObjectOperation.Set(command.path, prop.get(), args);
-  } 
+  }
   // Convenience commands
   else if (command.type === "pop") {
     op = ot.ObjectOperation.Update(command.path, Data.Array.Pop(prop.get()));
   }
   else if (command.type === "push") {
     op = ot.ObjectOperation.Update(command.path, Data.Array.Push(prop.get(), args));
-  } 
+  }
 
   return op;
 };
@@ -922,18 +934,23 @@ Data.Property.__prototype__ = function() {
     var idx = 0;
     for (; idx < path.length; idx++) {
 
-      if (parent === undefined) {
-        throw new Error("Key error: could not find element for path " + JSON.stringify(path));
-      }
       // TODO: check if the property references a node type
       if (type === "graph" || this.schema.types[type] !== undefined) {
         // remember the last node type
         parent = this.graph.get(path[idx]);
+
+        if (parent === undefined) {
+          throw new Error("Key error: could not find element for path " + JSON.stringify(path));
+        }
+
         node = parent;
         type = this.schema.properties(parent.type);
         value = node;
         key = undefined;
       } else {
+        if (parent === undefined) {
+          throw new Error("Key error: could not find element for path " + JSON.stringify(path));
+        }
         key = path[idx];
         var propName = path[idx];
         type = type[propName];
@@ -1128,6 +1145,10 @@ PersistenceAdapter.__prototype__ = function() {
   this.delete = function(__, value) {
     this.delegate.delete(__, value);
     this.nodes.delete(value.id);
+  };
+
+  this.inplace = function() {
+    return false;
   };
 };
 PersistenceAdapter.__prototype__.prototype = ot.ObjectOperation.Object.prototype;
