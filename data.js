@@ -350,6 +350,8 @@ Data.Graph.__prototype__ = function() {
   this.__exec__ = function(op) {
     op.apply(this.objectAdapter);
     this.updated_at = new Date();
+
+    this.trigger('graph:changed', op, this);
   };
 
   // Executes a graph command
@@ -1166,7 +1168,7 @@ ChronicleAdapter.__prototype__ = function() {
     // Note: we call the Graph.exec intentionally, as the chronicled change
     // should be an ObjectOperation
     console.log("ChronicleAdapter.apply, op=", op);
-    Data.Graph.prototype.__exec__.call(this.graph, op);
+    this.graph.__exec__(op);
     this.graph.updated_at = new Date(op.timestamp);
   };
 
