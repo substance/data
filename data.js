@@ -380,11 +380,12 @@ Data.Graph.__prototype__ = function() {
     return op;
   };
 
+
   // Others
   // ========
 
   this.get = function(path) {
-    if (!path) return undefined;
+    if (!_.isArray(path) && !_.isString(path)) throw new Error("Invalid argument path. Must be String or Array");
 
     if (arguments.length > 1) path = _.toArray(arguments);
     if (_.isString(path)) return this.nodes[path];
