@@ -1,7 +1,8 @@
 0.7.0
 =============
-  * Switched to operational transforms
-  * Dropped backends (this will be reimplemented)
+  * Switched to operations for graph manipulation
+  * Persistence through Substance.Store
+  * Graphs can now be versioned through Substance.Chronicle
 
 0.6.0
 =============
