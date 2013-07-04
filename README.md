@@ -16,6 +16,6 @@ Features
 ---------------------
 
 * `Data.Graph` (A data abstraction for all kinds of linked data)
-* Persistence (You an persist your data to different data-stores)
-* Replication Graphs can be synchronized with remote
-* Versioning (Every graph operation is remembered and can be reverted)
+* [Persistence](http://github.com/substance/store) (You an persist your data to a Data.Store)
+* [Replication](http://github.com/substance/replicator) (graphs can be synchronized with any)
+* [Versioning](http://github.com/substance/chronicle) (Every graph operation is remembered and can be reverted)

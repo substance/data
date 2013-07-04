@@ -4,9 +4,9 @@
   "url"           : "http://github.com/michael/data/",
   "keywords"      : ["util", "linked-data", "server", "client", "browser"],
   "author"        : "Michael Aufreiter",
-  "contributors"  : [],
+  "contributors"  : ["Oliver Buchtala"],
   "dependencies"  : ["underscore"],
   "lib"           : ".",
   "main"          : "index",
-  "version"       : "0.6.1"
+  "version"       : "0.7.0"
 }

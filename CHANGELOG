@@ -1,3 +1,8 @@
+0.7.0
+=============
+  * Switched to operational transforms
+  * Dropped backends (this will be reimplemented)
+
 0.6.0
 =============
   * Native data structures (Arrays and Objects instead of Data.Hash datastructures)
