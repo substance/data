@@ -1,10 +1,21 @@
 (function(root) {
 
-var _ = root._;
-var assert = root.Substance.assert;
-var Substance = root.Substance;
-var Data = root.Substance.Data;
-var ot = root.Substance.Chronicle.ot;
+var _,
+    assert,
+    Operator,
+    Data;
+
+if (typeof exports !== 'undefined') {
+  _    = require('underscore');
+  assert = require('substance-test/assert');
+  Operator = require('substance-operator');
+  Data = require('substance-data');
+} else {
+  _ = root._;
+  assert = root.Substance.assert;
+  Operator = root.Substance.Operator;
+  Data = root.Substance.Data;
+}
 
 var test = {};
 
@@ -122,12 +133,12 @@ var SCHEMA4 = {
 };
 
 test.fixture1 = function() {
-  this.graph = new Substance.Data.Graph(SCHEMA1);
+  this.graph = new Data.Graph(SCHEMA1);
   this.schema = this.graph.schema;
 };
 
 test.fixture2 = function() {
-  this.graph = new Substance.Data.Graph(SCHEMA2);
+  this.graph = new Data.Graph(SCHEMA2);
   this.schema = this.graph.schema;
 };
 
@@ -176,12 +187,12 @@ test.fixture3 = function() {
 };
 
 test.fixture4 = function() {
-  this.graph = new Substance.Data.Graph(SCHEMA3);
+  this.graph = new Data.Graph(SCHEMA3);
   this.schema = this.graph.schema;
 };
 
 test.fixture5 = function() {
-  this.graph = new Substance.Data.Graph(SCHEMA4);
+  this.graph = new Data.Graph(SCHEMA4);
   this.schema = this.graph.schema;
 
   this.graph.create({id: "i1", type: "linked_item", next: null});
@@ -340,8 +351,8 @@ test.actions = [
     // Maybe it would be helpful to have some convenience mechanism
     // to create node property updates more easily
 
-    var valueUpdate = ot.TextOperation.fromOT("bar", [1, -1, "e", 1, "ry"]);
-    var propertyUpdate = ot.ObjectOperation.Update(["a", "foo"], valueUpdate);
+    var valueUpdate = Operator.TextOperation.fromOT("bar", [1, -1, "e", 1, "ry"]);
+    var propertyUpdate = Operator.ObjectOperation.Update(["a", "foo"], valueUpdate);
     var nodeUpdate = Data.Graph.Update(["the_custom", "val"], propertyUpdate);
     this.graph.exec(nodeUpdate);
 
@@ -350,7 +361,7 @@ test.actions = [
   },
 
   "Graph: update 'array'", function() {
-    var propertyUpdate = ot.ArrayOperation.Insert(3, 4);
+    var propertyUpdate = Operator.ArrayOperation.Insert(3, 4);
     var nodeUpdate = Data.Graph.Update(["the_numbers", "arr"], propertyUpdate);
     this.graph.exec(nodeUpdate);
 
@@ -359,7 +370,7 @@ test.actions = [
   },
 
   "Graph: update 'string'", function() {
-    var propertyUpdate = ot.TextOperation.fromOT("foo", [3, "tball"]);
+    var propertyUpdate = Operator.TextOperation.fromOT("foo", [3, "tball"]);
     var nodeUpdate = Data.Graph.Update(["the_strings", "val"], propertyUpdate);
     this.graph.exec(nodeUpdate);
 
@@ -511,8 +522,8 @@ test.actions = [
     };
 
     this.graph.propertyChanges().bind(listener, {path: ["the_strings", "val"]});
-    this.graph.update(["the_strings", "val"], ot.TextOperation.Insert(0, "bla"));
-    this.graph.update(["the_strings", "arr"], ot.ArrayOperation.Insert(0, "bla"));
+    this.graph.update(["the_strings", "val"], Operator.TextOperation.Insert(0, "bla"));
+    this.graph.update(["the_strings", "arr"], Operator.ArrayOperation.Insert(0, "bla"));
 
     assert.isEqual(1, called);
     this.graph.propertyChanges().unbind(listener);
@@ -526,7 +537,7 @@ test.actions = [
 
     this.graph.propertyChanges().bind(listener, {type: "set"});
     this.graph.set(["the_strings", "val"], "bla");
-    this.graph.update(["the_strings", "arr"], ot.ArrayOperation.Insert(0, "bla"));
+    this.graph.update(["the_strings", "arr"], Operator.ArrayOperation.Insert(0, "bla"));
 
     assert.isEqual(1, called);
 
@@ -563,8 +574,8 @@ test.actions = [
 
     var ops = [
       Data.Graph.Set(["the_strings", "val"], "bla"),
-      Data.Graph.Update(["the_strings", "val"], ot.TextOperation.Insert(0, "bla")),
-    ]
+      Data.Graph.Update(["the_strings", "val"], Operator.TextOperation.Insert(0, "bla")),
+    ];
     this.graph.exec(Data.Graph.Compound(this.graph, ops));
 
     assert.isEqual(1, called_set);

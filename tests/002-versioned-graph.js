@@ -1,11 +1,28 @@
 (function(root) {
 
-var _ = root._;
-var Substance = root.Substance;
-var util = Substance.util;
-var assert = Substance.assert;
-var ot = root.Substance.Chronicle.ot;
-var Chronicle = Substance.Chronicle;
+
+var _,
+    util,
+    assert,
+    Operator,
+    Data,
+    Chronicle;
+
+if (typeof exports !== 'undefined') {
+  _    = require('underscore');
+  util = require('substance-util');
+  assert = require('substance-test/assert');
+  Operator = require('substance-operator');
+  Data = require('substance-data');
+  Chronicle = require('substance-chronicle');
+} else {
+  _ = root._;
+  util = root.Substance.util;
+  assert = root.Substance.assert;
+  Operator = root.Substance.Operator;
+  Data = root.Substance.Data;
+  Chronicle = root.Substance.Chronicle;
+}
 
 var test = {};
 
@@ -153,12 +170,12 @@ var SCHEMA = {
 var OP1 = ["create", { "id": "document", "type": "document", "views": ["content", "figures"]} ];
 var OP2 = ["create", { "id": "content", "type": "view", "nodes": []} ];
 var OP3 = ["create", { "id": "h1", "type": "heading", "content": "Heading 1" } ];
-var OP4 = ["update", "content", "nodes", ot.ArrayOperation.Insert(0, "h1")];
+var OP4 = ["update", "content", "nodes", Operator.ArrayOperation.Insert(0, "h1")];
 var OP5 = ["create", { "id": "text1", "type": "text", "content": "This is text1." } ];
-var OP6 = ["update", "content", "nodes", ot.ArrayOperation.Insert(1, "text1") ];
-var OP7 = ["update", "content", "nodes", ot.ArrayOperation.Move(1, 0) ];
+var OP6 = ["update", "content", "nodes", Operator.ArrayOperation.Insert(1, "text1") ];
+var OP7 = ["update", "content", "nodes", Operator.ArrayOperation.Move(1, 0) ];
 var OP8 = ["create", { "id": "text2", "type": "text", "content": "This is text2." } ];
-var OP9 = ["update", "content", "nodes", ot.ArrayOperation.Insert(1, "text2") ];
+var OP9 = ["update", "content", "nodes", Operator.ArrayOperation.Insert(1, "text2") ];
 
 // Graph:
 //
@@ -172,7 +189,7 @@ var OP9 = ["update", "content", "nodes", ot.ArrayOperation.Insert(1, "text2") ];
 //
 
 test.setup = function() {
-  this.graph = new Substance.Data.Graph(SCHEMA, {chronicle: Chronicle.create()});
+  this.graph = new Data.Graph(SCHEMA, {chronicle: Chronicle.create()});
   this.chronicle = this.graph.chronicle;
   this.index = this.chronicle.index;
   this.adapter = this.graph.chronicle.versioned;

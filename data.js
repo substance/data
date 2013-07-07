@@ -10,22 +10,22 @@
 var _,
     util,
     errors,
-    ot,
+    Operator,
     Chronicle;
 
 if (typeof exports !== 'undefined') {
   _    = require('underscore');
   // Should be require('substance-util') in the future
-  util   = require('./lib/util/util');
-  errors   = require('./lib/util/errors');
-  Chronicle = require('./lib/chronicle/chronicle');
-  ot = require('./lib/chronicle/lib/ot/index');
+  util   = require('substance-util');
+  errors   = require('substance-util/errors');
+  Chronicle = require('substance-chronicle');
+  Operator = require('substance-operator');
 } else {
   _ = root._;
   util = root.Substance.util;
   errors   = root.Substance.errors;
   Chronicle   = root.Substance.Chronicle;
-  ot = Chronicle.ot;
+  Operator = Chronicle.Operator;
 }
 
 
@@ -366,7 +366,7 @@ Data.Graph.__prototype__ = function() {
     // which get applied on this graph instance (via ObjectAdapter).
     var op;
 
-    if (!(command instanceof ot.ObjectOperation)) {
+    if (!(command instanceof Operator.ObjectOperation)) {
       op = Data.Graph.toObjectOperation(this, command);
     } else {
       op = command;
@@ -639,15 +639,15 @@ Data.Graph.Private = function() {
     var valueType = property.baseType;
 
     if (valueType === 'string') {
-      val = ot.TextOperation.apply(diff, val);
+      val = Operator.TextOperation.apply(diff, val);
     } else if (valueType === 'array') {
-      val = ot.ArrayOperation.apply(diff, val);
+      val = Operator.ArrayOperation.apply(diff, val);
     } else if (valueType === 'object') {
-      val = ot.ObjectOperation.apply(diff, val);
+      val = Operator.ObjectOperation.apply(diff, val);
     } else {
       // Note: all other types are treated via TextOperation on the String representation
       val = val.toString();
-      val = ot.TextOperation.apply(diff, val);
+      val = Operator.TextOperation.apply(diff, val);
     }
     property.set(val);
 
@@ -835,7 +835,7 @@ Data.Graph.prototype = _.extend(new Data.Graph.__prototype__(), util.Events);
 Data.Graph.toObjectOperation = function(graph, command) {
 
   // TODO: would be great if Compound would match the instanceof check
-  if (command instanceof ot.ObjectOperation || command instanceof ot.Compound) return command;
+  if (command instanceof Operator.ObjectOperation || command instanceof Operator.Compound) return command;
 
   command = new Data.Command(command, Data.COMMANDS);
 
@@ -856,31 +856,31 @@ Data.Graph.toObjectOperation = function(graph, command) {
     id = args.id;
     // Note: in this case the path must be empty, as otherwise the property lookup
     // claims due to the missing data
-    op = ot.ObjectOperation.Create([id], args);
+    op = Operator.ObjectOperation.Create([id], args);
   }
   else if (command.type === "delete") {
     if (command.path.length === 0) {
       id = args.id;
       var node = graph.get(id);
-      op = ot.ObjectOperation.Delete([id], node);
+      op = Operator.ObjectOperation.Delete([id], node);
     } else if (propType === "array") {
-      op = ot.ObjectOperation.Update(command.path, Data.Array.Delete(prop.get(), args), propType);
+      op = Operator.ObjectOperation.Update(command.path, Data.Array.Delete(prop.get(), args), propType);
     } else if (propType === "object") {
-      op = ot.ObjectOperation.Delete(prop.path, prop.get());
+      op = Operator.ObjectOperation.Delete(prop.path, prop.get());
     }
   }
   else if (command.type === "update") {
-    op = ot.ObjectOperation.Update(command.path, args, propType);
+    op = Operator.ObjectOperation.Update(command.path, args, propType);
   }
   else if (command.type === "set") {
-    op = ot.ObjectOperation.Set(command.path, prop.get(), args);
+    op = Operator.ObjectOperation.Set(command.path, prop.get(), args);
   }
   // Convenience commands
   else if (command.type === "pop") {
-    op = ot.ObjectOperation.Update(command.path, Data.Array.Pop(prop.get()));
+    op = Operator.ObjectOperation.Update(command.path, Data.Array.Pop(prop.get()));
   }
   else if (command.type === "push") {
-    op = ot.ObjectOperation.Update(command.path, Data.Array.Push(prop.get(), args));
+    op = Operator.ObjectOperation.Update(command.path, Data.Array.Push(prop.get(), args));
   }
 
   return op;
@@ -889,7 +889,7 @@ Data.Graph.toObjectOperation = function(graph, command) {
 // ObjectOperation Adapter
 // ========
 //
-// This adapter delegates object changes as supported by ot.ObjectOperation
+// This adapter delegates object changes as supported by Operator.ObjectOperation
 // to graph methods
 
 Data.Graph.ObjectAdapter = function(graph) {
@@ -918,7 +918,7 @@ Data.Graph.ObjectAdapter.__prototype__ = function() {
     impl.delete.call(this.graph, value);
   };
 };
-Data.Graph.ObjectAdapter.__prototype__.prototype = ot.ObjectOperation.Object.prototype;
+Data.Graph.ObjectAdapter.__prototype__.prototype = Operator.ObjectOperation.Object.prototype;
 Data.Graph.ObjectAdapter.prototype = new Data.Graph.ObjectAdapter.__prototype__();
 
 
@@ -1101,7 +1101,7 @@ Data.Graph.Compound = function(graph, commands) {
     ops.push(Data.Graph.toObjectOperation(graph, commands[idx]));
   }
 
-  return ot.ObjectOperation.Compound(ops);
+  return Operator.ObjectOperation.Compound(ops);
 };
 
 // Array manipulation
@@ -1110,20 +1110,20 @@ Data.Graph.Compound = function(graph, commands) {
 Data.Array = {};
 
 Data.Array.Delete = function(arr, val) {
-  return ot.ArrayOperation.Delete(arr, val);
+  return Operator.ArrayOperation.Delete(arr, val);
 };
 
 Data.Array.Push = function(arr, val) {
-  return ot.ArrayOperation.Push(arr, val);
+  return Operator.ArrayOperation.Push(arr, val);
 };
 
 // Does not yet return a value
 Data.Array.Pop = function(arr) {
-  return ot.ArrayOperation.Pop(arr);
+  return Operator.ArrayOperation.Pop(arr);
 };
 
 Data.Array.Clear = function(arr) {
-  return ot.ArrayOperation.Clear(arr);
+  return Operator.ArrayOperation.Clear(arr);
 };
 
 
@@ -1163,7 +1163,7 @@ PersistenceAdapter.__prototype__ = function() {
     return false;
   };
 };
-PersistenceAdapter.__prototype__.prototype = ot.ObjectOperation.Object.prototype;
+PersistenceAdapter.__prototype__.prototype = Operator.ObjectOperation.Object.prototype;
 PersistenceAdapter.prototype = new PersistenceAdapter.__prototype__();
 
 var ChronicleAdapter = function(graph) {
@@ -1182,11 +1182,11 @@ ChronicleAdapter.__prototype__ = function() {
   };
 
   this.invert = function(change) {
-    return ot.ObjectOperation.fromJSON(change).invert();
+    return Operator.ObjectOperation.fromJSON(change).invert();
   };
 
   this.transform = function(a, b, options) {
-    return ot.ObjectOperation.transform(a, b, options);
+    return Operator.ObjectOperation.transform(a, b, options);
   };
 
   this.reset = function() {
@@ -1243,7 +1243,7 @@ PropertyChangeAdapter.__prototype__ = function() {
       if (_.isFunction(listener)) {
         listener(objOp);
       } else {
-        if (objOp.type === ot.ObjectOperation.UPDATE) {
+        if (objOp.type === Operator.ObjectOperation.UPDATE) {
           objOp.diff.apply(listener);
         } else {
           objOp.apply(listener);
@@ -1254,7 +1254,7 @@ PropertyChangeAdapter.__prototype__ = function() {
   }
 
   this.onGraphChange = function(objOp) {
-    if (objOp.type === ot.Compound.TYPE) {
+    if (objOp.type === Operator.Compound.TYPE) {
       for (var idx = 0; idx < objOp.ops.length; idx++) {
         propagateAtomicOp(this, objOp.ops[idx]);
       }
