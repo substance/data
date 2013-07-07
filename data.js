@@ -25,7 +25,7 @@ if (typeof exports !== 'undefined') {
   util = root.Substance.util;
   errors   = root.Substance.errors;
   Chronicle   = root.Substance.Chronicle;
-  Operator = Chronicle.Operator;
+  Operator = root.Substance.Operator;
 }
 
 
