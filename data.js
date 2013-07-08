@@ -1176,7 +1176,7 @@ ChronicleAdapter.__prototype__ = function() {
   this.apply = function(op) {
     // Note: we call the Graph.exec intentionally, as the chronicled change
     // should be an ObjectOperation
-    console.log("ChronicleAdapter.apply, op=", op);
+    //console.log("ChronicleAdapter.apply, op=", op);
     this.graph.__exec__(op);
     this.graph.updated_at = new Date(op.timestamp);
   };

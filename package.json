@@ -1,12 +1,27 @@
 {
-  "name"          : "data",
+  "name"          : "substance-data",
   "description"   : "A Javascript data representation library.",
-  "url"           : "http://github.com/michael/data/",
+  "url"           : "http://github.com/substance/data/",
   "keywords"      : ["util", "linked-data", "server", "client", "browser"],
   "author"        : "Michael Aufreiter",
   "contributors"  : ["Oliver Buchtala"],
-  "dependencies"  : ["underscore"],
+  "repository": {
+      "type": "git",
+      "url": "https://github.com/substance/data.git"
+  },
+  "dependencies": {
+    "underscore":   "1.4.x",
+    "mocha":        "1.12.x",
+    "substance-util": "https://github.com/substance/util/archive/master.tar.gz",
+    "substance-test": "https://github.com/substance/test/archive/master.tar.gz",
+    "substance-operator": "https://github.com/substance/operator/archive/master.tar.gz",
+    "substance-chronicle": "https://github.com/substance/chronicle/archive/master.tar.gz",
+    "substance-chronicle": "https://github.com/substance/store/archive/master.tar.gz"
+  },
   "lib"           : ".",
   "main"          : "index",
-  "version"       : "0.7.0"
+  "version"       : "0.7.0",
+  "scripts": {
+    "test": "mocha -R spec tests/tests.js"
+  }
 }

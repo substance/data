@@ -1,12 +1,28 @@
 (function(root) {
 
-// var _ = root._;
-var Substance = root.Substance;
-// var util = Substance.util;
-var assert = Substance.assert;
-var ot = root.Substance.Chronicle.ot;
-//var Data = root.Substance.Data;
-var MemoryStore = root.Substance.MemoryStore;
+var assert,
+    Operator,
+    Data,
+    Chronicle,
+    MemoryStore,
+    registerTest;
+
+if (typeof exports !== 'undefined') {
+  assert = require('substance-test/assert');
+  Operator = require('substance-operator');
+  Data = require('..');
+  Chronicle = require('substance-chronicle');
+  MemoryStore = require('substance-store').MemoryStore;
+  registerTest = require('substance-test').registerTest;
+} else {
+  assert = root.Substance.assert;
+  Operator = root.Substance.Operator;
+  Data = root.Substance.Data;
+  Chronicle = root.Substance.Chronicle;
+  MemoryStore = root.Substance.MemoryStore;
+  registerTest = root.Substance.registerTest;
+}
+
 
 var test = {};
 
@@ -43,7 +59,7 @@ var SCHEMA = {
 
 test.setup = function() {
   this.store = new MemoryStore();
-  this.graph = new Substance.Data.Graph(SCHEMA, {store: this.store});
+  this.graph = new Data.Graph(SCHEMA, {store: this.store});
   this.nodes = this.graph.__nodes__;
 };
 
@@ -64,10 +80,10 @@ test.actions = [
     this.graph.create(NODE2);
 
     var actual = this.nodes.get(NODE1.id);
-    assert.isObjectEqual(NODE1, actual);
+    assert.isDeepEqual(NODE1, actual);
 
     actual = this.nodes.get(NODE2.id);
-    assert.isObjectEqual(NODE2, actual);
+    assert.isDeepEqual(NODE2, actual);
   },
 
   "Deleted node should be removed from store", function() {
@@ -78,7 +94,7 @@ test.actions = [
   },
 
   "Update: property updates should be persisted", function() {
-    this.graph.update([NODE2.id, "category"], ot.TextOperation.fromOT("blupp", [2, -3, "a"]));
+    this.graph.update([NODE2.id, "category"], Operator.TextOperation.fromOT("blupp", [2, -3, "a"]));
 
     var actual = this.nodes.get(NODE2.id);
     assert.isEqual("bla", actual.category);
@@ -92,12 +108,12 @@ test.actions = [
   },
 
   "Import: persisted graph should be restored", function() {
-    var graph = new Substance.Data.Graph(SCHEMA, {store: this.store}).load();
+    var graph = new Data.Graph(SCHEMA, {store: this.store}).load();
     var actual = graph.get(NODE2.id);
-    assert.isObjectEqual(NODE2, actual);
+    assert.isDeepEqual(NODE2, actual);
   }
 ];
 
-root.Substance.registerTest(['Data', 'Persistent Graph'], test);
+registerTest(['Data', 'Persistent Graph'], test);
 
 })(this);

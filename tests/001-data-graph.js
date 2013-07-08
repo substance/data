@@ -3,18 +3,21 @@
 var _,
     assert,
     Operator,
-    Data;
+    Data,
+    registerTest;
 
 if (typeof exports !== 'undefined') {
   _    = require('underscore');
   assert = require('substance-test/assert');
   Operator = require('substance-operator');
-  Data = require('substance-data');
+  Data = require('..');
+  registerTest = require('substance-test').registerTest;
 } else {
   _ = root._;
   assert = root.Substance.assert;
   Operator = root.Substance.Operator;
   Data = root.Substance.Data;
+  registerTest = root.Substance.registerTest;
 }
 
 var test = {};
@@ -213,7 +216,7 @@ test.actions = [
 
   "Schema: defaultValue", function() {
 
-    assert.isObjectEqual({}, this.schema.defaultValue("object"));
+    assert.isDeepEqual({}, this.schema.defaultValue("object"));
     assert.isArrayEqual([], this.schema.defaultValue("array"));
     assert.isEqual("", this.schema.defaultValue("string"));
     assert.isEqual(0, this.schema.defaultValue("number"));
@@ -223,7 +226,7 @@ test.actions = [
   },
 
   "Schema: parseValue", function() {
-    assert.isObjectEqual({a: "bla"}, this.schema.parseValue("object", '{"a": "bla"}'));
+    assert.isDeepEqual({a: "bla"}, this.schema.parseValue("object", '{"a": "bla"}'));
     assert.isArrayEqual([1,2,3], this.schema.parseValue("array", '[1,2,3]'));
     assert.isEqual("bla", this.schema.parseValue("string", 'bla'));
     assert.isEqual(42, this.schema.parseValue("number", '42'));
@@ -235,7 +238,7 @@ test.actions = [
 
   "Schema: properties", function() {
     var props = this.schema.properties("elem");
-    assert.isObjectEqual(SCHEMA1.types.elem.properties, props);
+    assert.isDeepEqual(SCHEMA1.types.elem.properties, props);
     // props should be a copy
     props["ooooh"] = "aaaaahh";
     assert.isFalse(_.isEqual(SCHEMA1.types.elem.properties, props));
@@ -253,7 +256,7 @@ test.actions = [
   "Schema: inheritance - properties", function() {
     var expected = _.extend({}, SCHEMA2.types.node.properties, SCHEMA2.types.numbers.properties);
     var actual = this.schema.properties("numbers");
-    assert.isObjectEqual(expected, actual);
+    assert.isDeepEqual(expected, actual);
   },
 
   "Schema: composite types", function() {
@@ -488,7 +491,7 @@ test.actions = [
     path = ["t1", "items"];
     nodes = this.graph.query(path);
     ids = [getIds(nodes[0]), getIds(nodes[1])];
-    assert.isObjectEqual([["i1", "i3"], ["i2", "i3"]], ids);
+    assert.isDeepEqual([["i1", "i3"], ["i2", "i3"]], ids);
   },
 
   "Data.Array.Delete: ", function() {
@@ -591,6 +594,6 @@ test.actions = [
 
 ];
 
-root.Substance.registerTest(['Data', 'Graph'], test);
+registerTest(['Data', 'Graph'], test);
 
 })(this);

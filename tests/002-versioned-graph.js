@@ -6,15 +6,17 @@ var _,
     assert,
     Operator,
     Data,
-    Chronicle;
+    Chronicle,
+    registerTest;
 
 if (typeof exports !== 'undefined') {
   _    = require('underscore');
   util = require('substance-util');
   assert = require('substance-test/assert');
   Operator = require('substance-operator');
-  Data = require('substance-data');
+  Data = require('..');
   Chronicle = require('substance-chronicle');
+  registerTest = require('substance-test').registerTest;
 } else {
   _ = root._;
   util = root.Substance.util;
@@ -22,6 +24,7 @@ if (typeof exports !== 'undefined') {
   Operator = root.Substance.Operator;
   Data = root.Substance.Data;
   Chronicle = root.Substance.Chronicle;
+  registerTest = root.Substance.registerTest;
 }
 
 var test = {};
@@ -269,7 +272,6 @@ test.actions = [
     var sequence = ["1", "7", "5", "4", "3", "2", "6"];
 
     _.each(sequence, function(id) {
-      console.log("Checking out version: ", id);
       this.chronicle.open(id);
       this.CHECKS[id].call(this);
     }, this);
@@ -295,6 +297,6 @@ test.actions = [
 
 ];
 
-root.Substance.registerTest(['Data', 'Versioned Graph'], test);
+registerTest(['Data', 'Versioned Graph'], test);
 
 })(this);
