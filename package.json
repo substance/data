@@ -9,14 +9,17 @@
       "type": "git",
       "url": "https://github.com/substance/data.git"
   },
+  "engines": {
+    "node": "0.8.x"
+  },
   "dependencies": {
     "underscore":   "1.4.x",
     "mocha":        "1.12.x",
-    "substance-util": "https://github.com/substance/util/archive/master.tar.gz",
-    "substance-test": "https://github.com/substance/test/archive/master.tar.gz",
-    "substance-operator": "https://github.com/substance/operator/archive/master.tar.gz",
-    "substance-chronicle": "https://github.com/substance/chronicle/archive/master.tar.gz",
-    "substance-store": "https://github.com/substance/store/archive/master.tar.gz"
+    "substance-util": "0.1.0",
+    "substance-test": "0.1.0",
+    "substance-operator": "0.1.0",
+    "substance-chronicle": "0.1.0",
+    "substance-store": "0.1.0",
   },
   "lib"           : ".",
   "main"          : "index",
