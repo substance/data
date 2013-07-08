@@ -13,15 +13,14 @@
     "node": "0.8.x"
   },
   "dependencies": {
-    "underscore":   "1.4.x",
+    "underscore": "1.5.x",
     "mocha":        "1.12.x",
     "substance-util": "0.1.0",
     "substance-test": "0.1.0",
     "substance-operator": "0.1.0",
     "substance-chronicle": "0.1.0",
-    "substance-store": "0.1.0",
+    "substance-store": "0.1.0"
   },
-  "lib"           : ".",
   "main"          : "index",
   "version"       : "0.7.0",
   "scripts": {
