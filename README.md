@@ -45,6 +45,6 @@ sudo npm install -g mocha
 Run the tests
 
 ```bash
-sudo npm test
+npm test
 ```
 
