@@ -10,7 +10,7 @@
       "url": "https://github.com/substance/data.git"
   },
   "engines": {
-    "node": "0.8.x"
+    "node": ">=0.8.x"
   },
   "dependencies": {
     "underscore": "1.5.x",
