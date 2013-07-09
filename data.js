@@ -313,7 +313,7 @@ Data.Graph.__prototype__ = function() {
   // Only properties that are specified in the schema are taken.
 
   this.create = function(node) {
-    this.exec(Data.Graph.Create(node));
+    this.apply(Data.Graph.Create(node));
   };
 
   // Removes a node with given id
@@ -329,7 +329,7 @@ Data.Graph.__prototype__ = function() {
       fullPath = fullPath.concat(path).concat(key);
     }
 
-    return this.exec(fullPath);
+    return this.apply(fullPath);
   };
 
   // Updates the property with a given operation.
@@ -337,17 +337,17 @@ Data.Graph.__prototype__ = function() {
   // Note: the diff has to be given as an appropriate operation.
 
   this.update = function(path, diff) {
-    this.exec(Data.Graph.Update(path, diff));
+    this.apply(Data.Graph.Update(path, diff));
   };
 
   // Sets the property to a given value
   // --------
 
   this.set = function(path, value) {
-    this.exec(Data.Graph.Set(path, value));
+    this.apply(Data.Graph.Set(path, value));
   };
 
-  this.__exec__ = function(op) {
+  this.__apply__ = function(op) {
     op.apply(this.objectAdapter);
     this.updated_at = new Date();
 
@@ -357,10 +357,10 @@ Data.Graph.__prototype__ = function() {
     this.trigger('graph:changed', op, this);
   };
 
-  // Executes a graph command
+  // Applies a graph command
   // --------
 
-  this.exec = function(command) {
+  this.apply = function(command) {
 
     // Note: all Graph commands are converted to ObjectOperations
     // which get applied on this graph instance (via ObjectAdapter).
@@ -372,7 +372,7 @@ Data.Graph.__prototype__ = function() {
       op = command;
     }
 
-    this.__exec__(op);
+    this.__apply__(op);
 
     // do not record changes during initialization
     if (!this.__is_initializing__ && this.isVersioned) {
@@ -453,7 +453,7 @@ Data.Graph.__prototype__ = function() {
 
     if (this.__seed__) {
       for (var idx = 0; idx < this.__seed__.length; idx++) {
-        this.exec(this.__seed__[idx]);
+        this.apply(this.__seed__[idx]);
       }
     }
 
@@ -1174,10 +1174,10 @@ var ChronicleAdapter = function(graph) {
 ChronicleAdapter.__prototype__ = function() {
 
   this.apply = function(op) {
-    // Note: we call the Graph.exec intentionally, as the chronicled change
+    // Note: we call the Graph.apply intentionally, as the chronicled change
     // should be an ObjectOperation
     //console.log("ChronicleAdapter.apply, op=", op);
-    this.graph.__exec__(op);
+    this.graph.__apply__(op);
     this.graph.updated_at = new Date(op.timestamp);
   };
 

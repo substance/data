@@ -216,49 +216,49 @@ test.actions = [
 
     this.CHECKS["ROOT"]();
 
-    this.graph.exec(OP1);
+    this.graph.apply(OP1);
     this.ID.push(this.chronicle.getState());
     this.CHECKS[_.last(this.ID)] = check = function() {
       assert.isArrayEqual(["content", "figures"], self.graph.get("document").views);
     };
     check();
 
-    this.graph.exec(OP2);
+    this.graph.apply(OP2);
     this.ID.push(this.chronicle.getState());
     this.CHECKS[_.last(this.ID)] = check = function() {
       assert.isArrayEqual([], self.graph.get("content").nodes);
     };
     check();
 
-    this.graph.exec(OP3);
+    this.graph.apply(OP3);
     this.ID.push(this.chronicle.getState());
     this.CHECKS[_.last(this.ID)] = check = function() {
       assert.isEqual("Heading 1", self.graph.get("h1").content);
     };
     check();
 
-    this.graph.exec(OP4);
+    this.graph.apply(OP4);
     this.ID.push(this.chronicle.getState());
     this.CHECKS[_.last(this.ID)] = check = function() {
       assert.isArrayEqual(["h1"], self.graph.get("content").nodes);
     };
     check();
 
-    this.graph.exec(OP5);
+    this.graph.apply(OP5);
     this.ID.push(this.chronicle.getState());
     this.CHECKS[_.last(this.ID)] = check = function() {
       assert.isEqual("This is text1.", self.graph.get("text1").content);
     };
     check();
 
-    this.graph.exec(OP6);
+    this.graph.apply(OP6);
     this.ID.push(this.chronicle.getState());
     this.CHECKS[_.last(this.ID)] = check = function() {
       assert.isArrayEqual(["h1", "text1"], self.graph.get("content").nodes);
     };
     check();
 
-    this.graph.exec(OP7);
+    this.graph.apply(OP7);
     this.ID.push(this.chronicle.getState());
     this.CHECKS[_.last(this.ID)] = check = function() {
       assert.isArrayEqual(["text1", "h1"], self.graph.get("content").nodes);
@@ -279,9 +279,9 @@ test.actions = [
 
   "Merge", function() {
     this.chronicle.open(this.ID[4]);
-    this.graph.exec(OP8);
+    this.graph.apply(OP8);
     this.ID.push(this.chronicle.getState());
-    this.graph.exec(OP9);
+    this.graph.apply(OP9);
     this.ID.push(this.chronicle.getState());
 
     this.chronicle.open(this.ID[7]);
