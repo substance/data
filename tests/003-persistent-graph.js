@@ -13,14 +13,14 @@ if (typeof exports !== 'undefined') {
   Data = require('..');
   Chronicle = require('substance-chronicle');
   MemoryStore = require('substance-store').MemoryStore;
-  registerTest = require('substance-test').registerTest;
+  registerTest = require('substance-test').Test.registerTest;
 } else {
   assert = root.Substance.assert;
   Operator = root.Substance.Operator;
   Data = root.Substance.Data;
   Chronicle = root.Substance.Chronicle;
   MemoryStore = root.Substance.MemoryStore;
-  registerTest = root.Substance.registerTest;
+  registerTest = root.Substance.Test.registerTest;
 }
 
 

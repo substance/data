@@ -16,7 +16,7 @@ if (typeof exports !== 'undefined') {
   Operator = require('substance-operator');
   Data = require('..');
   Chronicle = require('substance-chronicle');
-  registerTest = require('substance-test').registerTest;
+  registerTest = require('substance-test').Test.registerTest;
 } else {
   _ = root._;
   util = root.Substance.util;
@@ -24,7 +24,7 @@ if (typeof exports !== 'undefined') {
   Operator = root.Substance.Operator;
   Data = root.Substance.Data;
   Chronicle = root.Substance.Chronicle;
-  registerTest = root.Substance.registerTest;
+  registerTest = root.Substance.Test.registerTest;
 }
 
 var test = {};

@@ -11,13 +11,13 @@ if (typeof exports !== 'undefined') {
   assert = require('substance-test/assert');
   Operator = require('substance-operator');
   Data = require('..');
-  registerTest = require('substance-test').registerTest;
+  registerTest = require('substance-test').Test.registerTest;
 } else {
   _ = root._;
   assert = root.Substance.assert;
   Operator = root.Substance.Operator;
   Data = root.Substance.Data;
-  registerTest = root.Substance.registerTest;
+  registerTest = root.Substance.Test.registerTest;
 }
 
 var test = {};
