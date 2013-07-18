@@ -414,6 +414,15 @@ Data.Graph.__prototype__ = function() {
     }
   };
 
+  // Serialize current state
+  // ---------
+
+  this.toJSON = function() {
+    return {
+      nodes: util.deepclone(this.nodes)
+    };
+  };
+
   // Checks if a node with given id exists
   // ---------
 
