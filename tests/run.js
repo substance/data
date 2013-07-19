@@ -1,5 +1,5 @@
-var test = require("substance-test");
+var Test = require("substance-test");
 
 require("./index");
 
-new test.MochaTestRunner().run();
+new Test.MochaRunner().run();
