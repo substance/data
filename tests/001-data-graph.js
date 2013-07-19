@@ -8,7 +8,7 @@ var Test = require('substance-test');
 var assert = Test.assert;
 var registerTest = Test.registerTest;
 var Operator = require('substance-operator');
-var Data = require('..');
+var Data = require('../index');
 
 
 // Test

@@ -10,7 +10,7 @@ var registerTest = Test.registerTest;
 var util = require('substance-util');
 
 var Operator = require('substance-operator');
-var Data = require('..');
+var Data = require('../index');
 var Chronicle = require('substance-chronicle');
 
 
