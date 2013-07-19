@@ -5,29 +5,13 @@
 //     For all details and documentation:
 //     http://github.com/michael/data
 
-(function(root){ "use strict";
+"use strict";
 
-var _,
-    util,
-    errors,
-    Operator,
-    Chronicle;
-
-if (typeof exports !== 'undefined') {
-  _    = require('underscore');
-  // Should be require('substance-util') in the future
-  util   = require('substance-util');
-  errors   = require('substance-util/errors');
-  Chronicle = require('substance-chronicle');
-  Operator = require('substance-operator');
-} else {
-  _ = root._;
-  util = root.Substance.util;
-  errors   = root.Substance.errors;
-  Chronicle   = root.Substance.Chronicle;
-  Operator = root.Substance.Operator;
-}
-
+var _ = require('underscore');
+var util = require('substance-util');
+var errors = util.errors;
+var Chronicle = require('substance-chronicle');
+var Operator = require('substance-operator');
 
 // Initial Setup
 // -------------
@@ -1300,10 +1284,4 @@ Data.Graph.PropertyChangeAdapter = PropertyChangeAdapter;
 // Exports
 // ========
 
-if (typeof exports !== 'undefined') {
-  module.exports = Data;
-} else {
-  root.Substance.Data = Data;
-}
-
-})(this);
+module.exports = Data;

@@ -24,6 +24,6 @@
   },
   "main"          : "index",
   "scripts": {
-    "test": "mocha -R spec tests/tests.js"
+    "test": "mocha -R spec tests/run.js"
   }
 }

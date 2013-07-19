@@ -1,31 +1,21 @@
-(function(root) {
+"use strict";
+
+// Import
+// ========
+
+var _    = require('underscore');
+var substance_test = require('substance-test');
+var assert = substance_test.assert;
+var registerTest = substance_test.registerTest;
+var util = require('substance-util');
+
+var Operator = require('substance-operator');
+var Data = require('..');
+var Chronicle = require('substance-chronicle');
 
 
-var _,
-    util,
-    assert,
-    Operator,
-    Data,
-    Chronicle,
-    registerTest;
-
-if (typeof exports !== 'undefined') {
-  _    = require('underscore');
-  util = require('substance-util');
-  assert = require('substance-test/assert');
-  Operator = require('substance-operator');
-  Data = require('..');
-  Chronicle = require('substance-chronicle');
-  registerTest = require('substance-test').Test.registerTest;
-} else {
-  _ = root._;
-  util = root.Substance.util;
-  assert = root.Substance.assert;
-  Operator = root.Substance.Operator;
-  Data = root.Substance.Data;
-  Chronicle = root.Substance.Chronicle;
-  registerTest = root.Substance.Test.registerTest;
-}
+// Test
+// ========
 
 var test = {};
 
@@ -298,5 +288,3 @@ test.actions = [
 ];
 
 registerTest(['Data', 'Versioned Graph'], test);
-
-})(this);

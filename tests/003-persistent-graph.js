@@ -1,28 +1,19 @@
-(function(root) {
+"use strict";
 
-var assert,
-    Operator,
-    Data,
-    Chronicle,
-    MemoryStore,
-    registerTest;
+// Import
+// ========
 
-if (typeof exports !== 'undefined') {
-  assert = require('substance-test/assert');
-  Operator = require('substance-operator');
-  Data = require('..');
-  Chronicle = require('substance-chronicle');
-  MemoryStore = require('substance-store').MemoryStore;
-  registerTest = require('substance-test').Test.registerTest;
-} else {
-  assert = root.Substance.assert;
-  Operator = root.Substance.Operator;
-  Data = root.Substance.Data;
-  Chronicle = root.Substance.Chronicle;
-  MemoryStore = root.Substance.MemoryStore;
-  registerTest = root.Substance.Test.registerTest;
-}
+var substance_test = require('substance-test');
+var assert = substance_test.assert;
+var registerTest = substance_test.registerTest;
 
+var Operator = require('substance-operator');
+var Data = require('..');
+var MemoryStore = require('substance-store').MemoryStore;
+
+
+// Test
+// ========
 
 var test = {};
 
@@ -115,5 +106,3 @@ test.actions = [
 ];
 
 registerTest(['Data', 'Persistent Graph'], test);
-
-})(this);
