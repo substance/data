@@ -9,18 +9,18 @@
       "type": "git",
       "url": "https://github.com/substance/data.git"
   },
-  "version"       : "0.8.0",
+  "version"       : "0.8.0-alpha",
   "engines": {
     "node": ">=0.8.x"
   },
   "dependencies": {
     "underscore": "1.5.x",
     "mocha":        "1.12.x",
-    "substance-util": "0.2.0",
-    "substance-test": "0.2.0",
-    "substance-operator": "0.2.0",
-    "substance-chronicle": "0.2.0",
-    "substance-store": "0.2.0"
+    "substance-util": "0.2.0-alpha",
+    "substance-test": "0.2.0-alpha",
+    "substance-operator": "0.2.0-alpha",
+    "substance-chronicle": "0.2.0-alpha",
+    "substance-store": "0.2.0-alpha"
   },
   "main"          : "index",
   "scripts": {
