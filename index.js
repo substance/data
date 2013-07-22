@@ -1,1 +1,3 @@
-module.exports = require('./data');
+"use strict";
+
+module.exports = require('./src/data');

@@ -1,24 +1,18 @@
-(function(root) {
+"use strict";
 
-var _,
-    assert,
-    Operator,
-    Data,
-    registerTest;
+// Import
+// ========
 
-if (typeof exports !== 'undefined') {
-  _    = require('underscore');
-  assert = require('substance-test/assert');
-  Operator = require('substance-operator');
-  Data = require('..');
-  registerTest = require('substance-test').Test.registerTest;
-} else {
-  _ = root._;
-  assert = root.Substance.assert;
-  Operator = root.Substance.Operator;
-  Data = root.Substance.Data;
-  registerTest = root.Substance.Test.registerTest;
-}
+var _    = require('underscore');
+var Test = require('substance-test');
+var assert = Test.assert;
+var registerTest = Test.registerTest;
+var Operator = require('substance-operator');
+var Data = require('../index');
+
+
+// Test
+// ========
 
 var test = {};
 
@@ -595,5 +589,3 @@ test.actions = [
 ];
 
 registerTest(['Data', 'Graph'], test);
-
-})(this);
