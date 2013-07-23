@@ -23,8 +23,9 @@ var Data = {};
 // Current version of the library. Keep in sync with `package.json`.
 Data.VERSION = '0.7.0';
 
-// Top Level API
-// -------
+// Data types registry
+// -------------------
+// Available data types for graph properties.
 
 Data.VALUE_TYPES = [
   'object',
@@ -36,8 +37,9 @@ Data.VALUE_TYPES = [
 ];
 
 
-// Command Registry
-// -------
+// Command registry
+// ----------------
+// Registry of graph operations.
 
 Data.COMMANDS = {
   "delete": {
@@ -70,7 +72,8 @@ Data.COMMANDS = {
   }
 };
 
-// Node: the actual type of a composite type is the first entry
+// Check if composite type is in types registry.
+// The actual type of a composite type is the first entry
 // I.e., ["array", "string"] is an array in first place
 Data.isValueType = function (type) {
   if (_.isArray(type)) {
@@ -80,20 +83,16 @@ Data.isValueType = function (type) {
 };
 
 // Data.Schema
-// ========
-//
-// Provides a schema inspection API
+// -----------
 
+// Provides a data schema inspection API
 Data.Schema = function(schema) {
   _.extend(this, schema);
 };
 
 Data.Schema.__prototype__ = function() {
 
-  // Return Default value for a given type
-  // --------
-  //
-
+  // Return default value for a given data type
   this.defaultValue = function(valueType) {
     if (valueType === "object") return {};
     if (valueType === "array") return [];
@@ -106,10 +105,13 @@ Data.Schema.__prototype__ = function() {
     // throw new Error("Unknown value type: " + valueType);
   };
 
-  // Return type object for a given type id
-  // --------
+  // Return parsed value of given data type
   //
-
+  //     var newDate = new Date(Date.parse("Jul 23, 1997"))
+  //     var parsedDate = this.schema.parseValue("date", newDate.toISOString());
+  //     parsedDate.getTime();
+  //     => 869598000000
+  //
   this.parseValue = function(valueType, value) {
     if (_.isString(value)) {
       if (valueType === "object") return JSON.parse(value);
@@ -164,19 +166,13 @@ Data.Schema.__prototype__ = function() {
     }
   };
 
-  // Return type object for a given type id
-  // --------
-  //
-
+  // Return type object for a given type id.
   this.type = function(typeId) {
     return this.types[typeId];
   };
 
-  // For a given type id return the type hierarchy
-  // --------
-  //
+  // For a given type id return the array with type hierarchy:
   // => ["base_type", "specific_type"]
-
   this.typeChain = function(typeId) {
     var type = this.types[typeId];
     if (!type) throw new Error('Type ' + typeId + ' not found in schema');
@@ -187,17 +183,11 @@ Data.Schema.__prototype__ = function() {
   };
 
   // Provides the top-most parent type of a given type.
-  // --------
-  //
-
   this.baseType = function(typeId) {
     return this.typeChain(typeId)[0];
   };
 
-  // Return all properties for a given type
-  // --------
-  //
-
+  // Returns all properties for a given data type.
   this.properties = function(type) {
     type = _.isObject(type) ? type : this.type(type);
     var result = (type.parent) ? this.properties(type.parent) : {};
@@ -205,11 +195,8 @@ Data.Schema.__prototype__ = function() {
     return result;
   };
 
-  // Returns the full type for a given property
-  // --------
-  //
+  // Returns the full type for a given property:
   // => ["array", "string"]
-
   this.propertyType = function(type, property) {
     var properties = this.properties(type);
     var propertyType = properties[property];
@@ -217,11 +204,9 @@ Data.Schema.__prototype__ = function() {
     return _.isArray(propertyType) ? propertyType : [propertyType];
   };
 
-  // Returns the base type for a given property
-  // --------
-  //
-  //  ["string"] => "string"
-  //  ["array", "string"] => "array"
+  // Returns the base type for a given property:
+  // ["string"] => "string"
+  // ["array", "string"] => "array"
 
   this.propertyBaseType = function(type, property) {
     return this.propertyType(type, property)[0];
@@ -231,7 +216,7 @@ Data.Schema.__prototype__ = function() {
 Data.Schema.prototype = new Data.Schema.__prototype__();
 
 // Data.Graph
-// ========
+// ----------
 
 // A `Data.Graph` can be used for representing arbitrary complex object
 // graphs. Relations between objects are expressed through links that
