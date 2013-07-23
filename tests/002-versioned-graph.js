@@ -194,7 +194,7 @@ test.setup = function() {
   this.CHECKS = {"ROOT": function() {
     assert.isTrue(_.isEmpty(self.graph.nodes));
   }};
-  this.chronicle.uuid = util.custom_uuid({id: 1});
+  this.chronicle.uuid = util.uuidGen("");
 
 };
 
