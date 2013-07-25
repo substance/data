@@ -416,7 +416,7 @@ Graph.__prototype__ = function() {
   };
 
   this.propertyChanges = function() {
-    this.__propertyChangeAdapter__ = this.__propertyChangeAdapter__ || new Graph.PropertyChangeAdapter();
+    this.__propertyChangeAdapter__ = this.__propertyChangeAdapter__ || new PropertyChangeAdapter(this);
     return this.__propertyChangeAdapter__;
   };
 

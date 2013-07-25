@@ -4,8 +4,9 @@ var Operator = require("substance-operator");
 
 // Dispatches 'graph:changed' events by on a property level
 // restricting updates by applying path based filters, for instance.
-var PropertyChangeAdapter = function() {
+var PropertyChangeAdapter = function(graph) {
   // for now a canonical implementation, all listeners flat in an array
+  this.graph = graph;
   this.listeners = [];
   this.filters = [];
 };
@@ -31,6 +32,10 @@ PropertyChangeAdapter.__prototype__ = function() {
       // check if the operation passes the filter
       if (filter.type && filter.type !== objOp.type) continue;
       if (filter.path && !matchPath(objOp.path, filter.path)) continue;
+      
+      if (filter.propertyType) {
+        if (objOp.propertyType === undefined || objOp.propertyType !== filter.propertyType) continue;
+      }
 
       // if the listener is given as function call it,
       // otherwise it is assumed that the listener implements an adequate
