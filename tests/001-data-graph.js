@@ -142,44 +142,44 @@ test.fixture2 = function() {
 test.fixture3 = function() {
   this.fixture2();
 
-  this.graph.apply(Data.Graph.Create({
+  this.graph.create({
     id: "the_strings",
     type: "strings",
     name: "Strings",
     val: "foo",
     arr: ["bla","blupp"]
-  }));
+  });
 
-  this.graph.apply(Data.Graph.Create({
+  this.graph.create({
     id: "the_numbers",
     type: "numbers",
     name: "Numbers",
     val: 11,
     arr: [1,2,3]
-  }));
+  });
 
-  this.graph.apply(Data.Graph.Create({
+  this.graph.create({
     id: "the_booleans",
     type: "booleans",
     name: "Booleans",
     val: true,
     arr: [false, true]
-  }));
+  });
 
-  this.graph.apply(Data.Graph.Create({
+  this.graph.create({
     id: "the_dates",
     type: "dates",
     name: "Dates",
     val: new Date(1000),
     arr: [new Date(1000),new Date(2000)]
-  }));
+  });
 
-  this.graph.apply(Data.Graph.Create({
+  this.graph.create({
     id: "the_custom",
     type: "custom",
     name: "Custom",
     val: { a: { foo: "bar"}, bla: "blupp" },
-  }));
+  });
 
 };
 
@@ -268,8 +268,7 @@ test.actions = [
       val: 11,
       arr: [1,2,3]
     };
-    var op = Data.Graph.Create(node);
-    this.graph.apply(op);
+    this.graph.create(node);
 
     // the node should be accessible via id now
     var newNode = this.graph.get(node.id);
@@ -292,16 +291,15 @@ test.actions = [
   },
 
   "Graph: create - 'id' and 'type' are mandatory", function() {
-    var op = Data.Graph.Create({});
     assert.exception(function() {
-      this.graph.apply(op);
+      this.graph.create({});
     }, this);
   },
 
   "Graph: create - 'type' must be defined in schema", function() {
-    var op = Data.Graph.Create({id: "aaa", type: "unknown_type"});
+    var node = {id: "aaa", type: "unknown_type"};
     assert.exception(function() {
-      this.graph.apply(op);
+      this.graph.create(node);
     }, this);
   },
 
@@ -310,8 +308,7 @@ test.actions = [
       id: "n2",
       type: "numbers",
     };
-    var op = Data.Graph.Create(node);
-    this.graph.apply(op);
+    this.graph.create(node);
 
     var newNode = this.graph.get(node.id);
 
@@ -322,8 +319,7 @@ test.actions = [
 
   "Graph: delete", function() {
     var id = "n1";
-    var op = Data.Graph.Delete(this.graph.get(id));
-    this.graph.apply(op);
+    this.graph.delete(id);
     assert.isUndefined(this.graph.get(id));
   },
 
@@ -332,10 +328,9 @@ test.actions = [
       id: "n2",
       type: "numbers",
     };
-    var op = Data.Graph.Create(node);
     assert.exception(function() {
-      this.graph.apply(op);
-      this.graph.apply(op);
+      this.graph.create(node);
+      this.graph.create(node);
     }, this);
   },
 
@@ -349,43 +344,36 @@ test.actions = [
     // to create node property updates more easily
 
     var valueUpdate = Operator.TextOperation.fromOT("bar", [1, -1, "e", 1, "ry"]);
-    var propertyUpdate = Operator.ObjectOperation.Update(["a", "foo"], valueUpdate);
-    var nodeUpdate = Data.Graph.Update(["the_custom", "val"], propertyUpdate);
-    this.graph.apply(nodeUpdate);
+    var propertyUpdate = Operator.ObjectOperation.Update(["a", "foo"], valueUpdate);    
+    this.graph.update(["the_custom", "val"], propertyUpdate);
 
     var custom = this.graph.get("the_custom");
     assert.isEqual("berry", custom.val.a.foo);
   },
 
   "Graph: update 'array'", function() {
-    var propertyUpdate = Operator.ArrayOperation.Insert(3, 4);
-    var nodeUpdate = Data.Graph.Update(["the_numbers", "arr"], propertyUpdate);
-    this.graph.apply(nodeUpdate);
+    this.graph.update(["the_numbers", "arr"], ["+", 3, 4]);
 
     var numbers = this.graph.get("the_numbers");
     assert.isArrayEqual([1,2,3,4], numbers.arr);
   },
 
   "Graph: update 'string'", function() {
-    var propertyUpdate = Operator.TextOperation.fromOT("foo", [3, "tball"]);
-    var nodeUpdate = Data.Graph.Update(["the_strings", "val"], propertyUpdate);
-    this.graph.apply(nodeUpdate);
+    this.graph.update(["the_strings", "val"], [3, "tball"]);
 
     var strings = this.graph.get("the_strings");
     assert.isEqual("football", strings.val);
   },
 
   "Graph: update 'number'", function() {
-    var nodeUpdate = Data.Graph.Set(["the_numbers", "val"], 42);
-    this.graph.apply(nodeUpdate);
+    this.graph.set(["the_numbers", "val"], 42);
 
     var numbers = this.graph.get("the_numbers");
     assert.isEqual(42, numbers.val);
   },
 
   "Graph: update 'boolean'", function() {
-    var nodeUpdate = Data.Graph.Set(["the_booleans", "val"], false);
-    this.graph.apply(nodeUpdate);
+    this.graph.set(["the_booleans", "val"], false);
 
     var booleans = this.graph.get("the_booleans");
     assert.isEqual(false, booleans.val);
@@ -393,8 +381,7 @@ test.actions = [
 
   "Graph: update 'date'", function() {
     var date = new Date(1111);
-    var nodeUpdate = Data.Graph.Set(["the_dates", "val"], date);
-    this.graph.apply(nodeUpdate);
+    this.graph.set(["the_dates", "val"], date);
 
     var dates = this.graph.get("the_dates");
     assert.isEqual(date.getTime(), dates.val.getTime());
@@ -405,16 +392,19 @@ test.actions = [
   },
 
   "Indexes: created nodes should be added to indexes", function() {
-    this.graph.apply(Data.Graph.Create({
+    var node = {
       id: "foo1",
       type: "foo",
       category: "bla"
-    }));
-    this.graph.apply(Data.Graph.Create({
+    };
+    this.graph.create(node);
+
+    node = {
       id: "bar1",
       type: "bar",
       category: "blupp"
-    }));
+    };
+    this.graph.create(node);
 
     var all = getIds(this.graph.find("all"));
     assert.isArrayEqual(["foo1", "bar1"], all);
@@ -433,7 +423,7 @@ test.actions = [
   },
 
   "Indexes: deleted nodes should be removed from indexes", function() {
-    this.graph.apply(Data.Graph.Delete(this.graph.get("foo1")));
+    this.graph.delete("foo1");
 
     var all = getIds(this.graph.find("all"));
     assert.isArrayEqual(["bar1"], all);
@@ -452,7 +442,7 @@ test.actions = [
   },
 
   "Indexes: updates of indexed properties should update indexes", function() {
-    this.graph.apply(Data.Graph.Set(["bar1", "category"], "bla"));
+    this.graph.set(["bar1", "category"], "bla");
     assert.isArrayEqual(["bar1"], this.graph.indexes.all);
     assert.isArrayEqual([], this.graph.indexes.foos);
     assert.isArrayEqual(["bar1"], this.graph.indexes.bars);
@@ -486,26 +476,6 @@ test.actions = [
     nodes = this.graph.query(path);
     ids = [getIds(nodes[0]), getIds(nodes[1])];
     assert.isDeepEqual([["i1", "i3"], ["i2", "i3"]], ids);
-  },
-
-  "Data.Array.Delete: ", function() {
-    var path = ["c1", "items"];
-    this.graph.delete(path, "i2");
-    assert.isArrayEqual(["i1", "i3"], this.graph.get(path));
-    this.graph.apply(["delete"].concat(path).concat("i3"));
-    assert.isArrayEqual(["i1"], this.graph.get(path));
-  },
-
-  "Data.Array.Push: ", function() {
-    var path = ["c1", "items"];
-    this.graph.apply(["push", "c1", "items", "i2"]);
-    assert.isArrayEqual(["i1", "i2"], this.graph.get(path));
-  },
-
-  "Data.Array.Pop: ", function() {
-    var path = ["c1", "items"];
-    this.graph.apply(["pop", "c1", "items"]);
-    assert.isArrayEqual(["i1"], this.graph.get(path));
   },
 
   "Load fixture 3", function() {
@@ -570,10 +540,12 @@ test.actions = [
     this.graph.propertyChanges().bind(update_listener, {type: "update", path: ["the_strings", "val"]});
 
     var ops = [
-      Data.Graph.Set(["the_strings", "val"], "bla"),
-      Data.Graph.Update(["the_strings", "val"], Operator.TextOperation.Insert(0, "bla")),
+      Operator.ObjectOperation.Set(["the_strings", "val"], "blupp", "bla"),
+      Operator.ObjectOperation.Update(["the_strings", "val"], Operator.TextOperation.Insert(0, "bla")),
     ];
-    this.graph.apply(Data.Graph.Compound(this.graph, ops));
+    var compound = Operator.ObjectOperation.Compound(ops);
+
+    this.graph.apply(compound);
 
     assert.isEqual(1, called_set);
     assert.isEqual(1, called_update);

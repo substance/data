@@ -160,15 +160,15 @@ var SCHEMA = {
 };
 
 
-var OP1 = ["create", { "id": "document", "type": "document", "views": ["content", "figures"]} ];
-var OP2 = ["create", { "id": "content", "type": "view", "nodes": []} ];
-var OP3 = ["create", { "id": "h1", "type": "heading", "content": "Heading 1" } ];
-var OP4 = ["update", "content", "nodes", Operator.ArrayOperation.Insert(0, "h1")];
-var OP5 = ["create", { "id": "text1", "type": "text", "content": "This is text1." } ];
-var OP6 = ["update", "content", "nodes", Operator.ArrayOperation.Insert(1, "text1") ];
-var OP7 = ["update", "content", "nodes", Operator.ArrayOperation.Move(1, 0) ];
-var OP8 = ["create", { "id": "text2", "type": "text", "content": "This is text2." } ];
-var OP9 = ["update", "content", "nodes", Operator.ArrayOperation.Insert(1, "text2") ];
+var OP1 = Operator.ObjectOperation.Create(["document"], { "id": "document", "type": "document", "views": ["content", "figures"]});
+var OP2 = Operator.ObjectOperation.Create(["content"], { "id": "content", "type": "view", "nodes": []} );
+var OP3 = Operator.ObjectOperation.Create(["h1"], { "id": "h1", "type": "heading", "content": "Heading 1" } );
+var OP4 = Operator.ObjectOperation.Update(["content", "nodes"], Operator.ArrayOperation.Insert(0, "h1"));
+var OP5 = Operator.ObjectOperation.Create(["text1"], { "id": "text1", "type": "text", "content": "This is text1." } );
+var OP6 = Operator.ObjectOperation.Update(["content", "nodes"], Operator.ArrayOperation.Insert(1, "text1") );
+var OP7 = Operator.ObjectOperation.Update(["content", "nodes"], Operator.ArrayOperation.Move(1, 0) );
+var OP8 = Operator.ObjectOperation.Create(["text2"], { "id": "text2", "type": "text", "content": "This is text2." } );
+var OP9 = Operator.ObjectOperation.Update(["content", "nodes"], Operator.ArrayOperation.Insert(1, "text2") );
 
 // Graph:
 //
