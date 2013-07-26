@@ -447,7 +447,7 @@ Graph.Private = function() {
 
     var type = schema.type(node.type);
     if (!type) {
-      throw new Error("Type not found in the schema");
+      throw new Error("Type '"+node.type+"' not found in the schema");
     }
 
     var properties = schema.properties(node.type);
