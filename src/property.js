@@ -32,7 +32,8 @@ Property.__prototype__ = function() {
         parent = this.graph.get(path[idx]);
 
         if (parent === undefined) {
-          throw new Error("Key error: could not find element for path " + JSON.stringify(path));
+          //throw new Error("Key error: could not find element for path " + JSON.stringify(path));
+          return undefined;
         }
 
         node = parent;
@@ -41,7 +42,8 @@ Property.__prototype__ = function() {
         key = undefined;
       } else {
         if (parent === undefined) {
-          throw new Error("Key error: could not find element for path " + JSON.stringify(path));
+          //throw new Error("Key error: could not find element for path " + JSON.stringify(path));
+          return undefined;
         }
         key = path[idx];
         var propName = path[idx];
