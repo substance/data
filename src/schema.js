@@ -104,7 +104,9 @@ Schema.__prototype__ = function() {
 
   this.typeChain = function(typeId) {
     var type = this.types[typeId];
-    if (!type) throw new Error('Type ' + typeId + ' not found in schema');
+    if (!type) {
+      throw new Error('Type ' + typeId + ' not found in schema');
+    }
 
     var chain = (type.parent) ? this.typeChain(type.parent) : [];
     chain.push(typeId);
