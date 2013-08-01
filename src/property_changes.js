@@ -33,7 +33,7 @@ PropertyChangeAdapter.__prototype__ = function() {
       // check if the operation passes the filter
       if (_.isFunction(filter)) {
         if (filter.call(context, objOp)) continue;
-      } else {
+      } else if (filter) {
         if (filter.type && filter.type !== objOp.type) continue;
         if (filter.path && !matchPath(objOp.path, filter.path)) continue;
         if (filter.propertyType) {
