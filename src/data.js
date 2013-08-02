@@ -406,6 +406,17 @@ Data.Graph.__prototype__ = function() {
   };
 
   // Perform smart querying on graph
+  //     graph.create({
+  //       id: "apple-tree",
+  //       type: "tree",
+  //       name: "Apple tree"
+  //     });
+  //     var apple = this.graph.get("apple");
+  //     apple.set({["apple","tree"], "apple-tree"});
+  // let's perform query:
+  //     var result = graph.query(["apple", "tree"]);
+  //     console.log(result);
+  //     => [{id: "apple-tree", type: "tree", name: "Apple tree"}]
   this.query = function(path) {
     var prop = this.resolve(path);
 
