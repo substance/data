@@ -73,8 +73,9 @@ var COMMANDS = {
 };
 */
 
-// Node: the actual type of a composite type is the first entry
-// I.e., ["array", "string"] is an array in first place
+// Check if composite type is in types registry.
+// The actual type of a composite type is the first entry
+// I.e., ["array", "string"] is an array in first place.
 var isValueType = function (type) {
   if (_.isArray(type)) {
     type = type[0];
@@ -83,7 +84,7 @@ var isValueType = function (type) {
 };
 
 // Graph
-// ========
+// =====
 
 // A `Graph` can be used for representing arbitrary complex object
 // graphs. Relations between objects are expressed through links that
