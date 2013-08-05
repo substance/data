@@ -178,6 +178,13 @@ Graph.__prototype__ = function() {
     if (node === undefined) {
       throw new GraphError("Could not resolve a node with id "+ id);
     }
+
+    // in case that the returned node is a rich object
+    // there should be a serialization method
+    if (node.toJSON) {
+      node = node.toJSON();
+    }
+
     var op = Operator.ObjectOperation.Delete([id], node);
     return this.apply(op);
   };
