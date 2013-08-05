@@ -1,30 +1,39 @@
 {
-  "name"          : "substance-data",
-  "description"   : "A Javascript data representation library.",
-  "url"           : "http://github.com/substance/data/",
-  "keywords"      : ["util", "linked-data", "server", "client", "browser"],
-  "author"        : "Michael Aufreiter",
-  "contributors"  : ["Oliver Buchtala"],
+  "name": "substance-data",
+  "description": "A Javascript data representation library.",
+  "url": "http://github.com/substance/data/",
+  "keywords": [
+    "util",
+    "linked-data",
+    "server",
+    "client",
+    "browser"
+  ],
+  "author": "Michael Aufreiter",
+  "contributors": [
+    "Oliver Buchtala"
+  ],
   "repository": {
-      "type": "git",
-      "url": "https://github.com/substance/data.git"
-  },
-  "version"       : "0.8.0-alpha",
-  "engines": {
-    "node": ">=0.8.x"
+    "type": "git",
+    "url": "https://github.com/substance/data.git"
   },
   "dependencies": {
     "underscore": "1.5.x",
-    "mocha":        "1.12.x",
-    "substance-util": "git+https://github.com/substance/util.git#master",
-    "substance-operator": "git+https://github.com/substance/operator.git#master",
-    "substance-chronicle": "git+https://github.com/substance/chronicle.git#master",
-    "substance-store": "git+https://github.com/substance/store.git#master"
+    "substance-util": "git+https://github.com/substance/util.git#0.2.1",
+    "substance-operator": "git+https://github.com/substance/operator.git#0.2.1",
+    "substance-chronicle": "git+https://github.com/substance/chronicle.git#0.2.1",
+    "substance-store": "git+https://github.com/substance/store.git#0.2.1"
   },
   "devDependencies": {
-    "substance-test": "git+https://github.com/substance/test.git#master"
+    "mocha": "1.12.x",
+    "substance-test": "git+https://github.com/substance/test.git#0.2.1"
   },
   "scripts": {
     "test": "mocha -R spec tests/run.js"
+  },
+  "version": "0.8.1",
+  "engines": {
+    "node": ">=0.8.x",
+    "npm": ">=1.1.x"
   }
 }
