@@ -73,8 +73,9 @@ var COMMANDS = {
 };
 */
 
-// Node: the actual type of a composite type is the first entry
-// I.e., ["array", "string"] is an array in first place
+// Check if composite type is in types registry.
+// The actual type of a composite type is the first entry
+// I.e., ["array", "string"] is an array in first place.
 var isValueType = function (type) {
   if (_.isArray(type)) {
     type = type[0];
@@ -83,7 +84,7 @@ var isValueType = function (type) {
 };
 
 // Graph
-// ========
+// =====
 
 // A `Graph` can be used for representing arbitrary complex object
 // graphs. Relations between objects are expressed through links that
@@ -162,6 +163,7 @@ Graph.__prototype__ = function() {
   // Create new node:
   //     Data.Graph.create(node);
   // Note: graph create operation should reject creation of duplicate nodes.
+
   this.create = function(node) {
     var op = Operator.ObjectOperation.Create([node.id], node);
     return this.apply(op);
@@ -170,7 +172,7 @@ Graph.__prototype__ = function() {
   // Remove a node
   // -------------
   // Removes a node with given id and key (optional):
-  // Data.Graph.delete(this.graph.get('apple'));
+  //     Data.Graph.delete(this.graph.get('apple'));
   this.delete = function(id) {
     var node = this.get(id);
     if (node === undefined) {
@@ -331,32 +333,36 @@ Graph.__prototype__ = function() {
   };
 
   // Serialize current state
-  // ---------
-
+  // -----------------------
+  // Convert current graph state to JSON object 
   this.toJSON = function() {
     return {
       nodes: util.deepclone(this.nodes)
     };
   };
 
+  // Check node existing
+  // -------------------
   // Checks if a node with given id exists
-  // ---------
-
+  //     this.graph.contains("apple");
+  //     => true
+  //     this.graph.contains("orange");
+  //     => false
   this.contains = function(id) {
     return (!!this.nodes[id]);
   };
 
+  // Resolve a property
+  // ------------------
   // Resolves a property with a given path
-  // ---------
-
   this.resolve = function(path) {
     return new Property(this, path);
   };
 
+  // Reset to initial state
+  // ----------------------
   // Resets the graph to its initial state.
-  // --------
   // Note: This clears all nodes and calls `init()` which may seed the graph.
-
   this.reset = function() {
     if (this.isPersistent) {
       if (this.__nodes__) this.__nodes__.clear();
@@ -369,6 +375,7 @@ Graph.__prototype__ = function() {
     }
   };
 
+  // Graph initialization.
   this.init = function() {
     this.__is_initializing__ = true;
 
@@ -391,10 +398,59 @@ Graph.__prototype__ = function() {
     delete this.__is_initializing__;
   };
 
-  // Merges this graph with another graph
-  // --------
-  //
-
+  // Merge graphs 
+  // ------------
+  // Merges this graph with another graph:
+  //     var folks = new Data.Graph(folks_schema);
+  //     var persons = new Data.Graph(persons_schema);
+  //     folks.create({
+  //       name: 'Bart',
+  //       surname: 'Simpson',
+  //       type: 'cartoon-actor',
+  //       century: 'XXI',
+  //       citizen: 'U.S.'
+  //     });
+  //     persons.create({
+  //       name: 'Alexander',
+  //       surname: 'Pushkin',
+  //       type: 'poet',
+  //       century: '19',
+  //       citizen: 'Russia'
+  //     });
+  //     persons.create({
+  //       name: 'Pelem Grenwill',
+  //       surname: 'Woodhouse',
+  //       type: 'poet',
+  //       century: '19',
+  //       citizen: 'Russia'
+  //     });
+  //     var merged = persons.merge(folks);
+  //     merged.toJSON();
+  //     => {
+  //       nodes: [
+  //         {
+  //           name: 'Alexander',
+  //           surname: 'Pushkin',
+  //           type: 'poet',
+  //           century: '19',
+  //           citizen: 'Russia'
+  //         },
+  //         {
+  //           name: 'Pelem Grenwill',
+  //           surname: 'Woodhouse',
+  //           type: 'poet',
+  //           century: '19',
+  //           citizen: 'Russia'
+  //         },
+  //         {
+  //           name: 'Bart',
+  //           surname: 'Simpson',
+  //           type: 'cartoon-actor',
+  //           century: 'XXI',
+  //           citizen: 'U.S.'
+  //         }
+  //       ]
+  //     }
   this.merge = function(graph) {
     _.each(graph.nodes, function(n) {
       this.create(n);
@@ -404,17 +460,16 @@ Graph.__prototype__ = function() {
   };
 
   // View Traversal
-  // --------
-
+  // --------------
   this.traverse = function(view) {
     return _.map(this.getView(view), function(node) {
       return this.get(node);
     }, this);
   };
 
+  // Find nodes
+  // ----------
   // Find data nodes based on index
-  // --------
-
   this.find = function(index, scope) {
     var indexes = this.indexes;
     var self = this;
@@ -431,7 +486,8 @@ Graph.__prototype__ = function() {
 
     return wrap(indexes[index][scope]);
   };
-
+  
+  // Return all properties of the given type
   this.properties = function(type) {
     var result = type.parent ? this.schema.types[type.parent].properties : {};
     _.extend(result, type.properties);
@@ -452,6 +508,7 @@ Graph.__prototype__ = function() {
     return _.isArray(type) ? type : [type];
   };
 
+  // Graph loading.
   // Note: currently this must be called explicitely by the app
   this.load = function() {
 
@@ -494,17 +551,17 @@ Graph.STRICT_INDEXING = 1 << 1;
 Graph.DEFAULT_MODE = Graph.STRICT_INDEXING;
 
 // Private Graph implementation
-// ========
-//
-
+// ============================
 Graph.Private = function() {
 
   var _private = this;
-
+  
+  // Node construction
+  // -----------------
   // Safely constructs a new node based on type information
   // Node needs to have a valid type
   // All properties that are not registered, are dropped
-  // All properties that don't have a value are
+  // All properties that don't have a value are replaced using default values for type
   this.createNode = function (schema, node) {
     if (!node.id || !node.type) {
       throw new Error("Can not create Node: 'id' and 'type' are mandatory.");
@@ -531,7 +588,11 @@ Graph.Private = function() {
     return freshNode;
   };
 
-
+  // Create a new node
+  // -----------------
+  // Safely constructs a new node
+  // Checks for node duplication
+  // Adds new node to indexes
   this.create = function(node) {
     var newNode = _private.createNode(this.schema, node);
     if (this.contains(newNode.id)) {
@@ -541,8 +602,11 @@ Graph.Private = function() {
     _private.addToIndex.call(this, newNode);
     return this;
   };
-
-  // Delete node by id, referenced nodes remain untouched
+  
+  // Remove a node
+  // -----------
+  // Deletes node by id, referenced nodes remain untouched
+  // Removes node from indexes
   this.delete = function(node) {
     _private.removeFromIndex.call(this, this.nodes[node.id]);
     delete this.nodes[node.id];
