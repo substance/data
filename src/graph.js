@@ -247,6 +247,17 @@ Graph.__prototype__ = function() {
     return this.apply(op);
   };
 
+  var _triggerGraphChange = function(objOp) {
+    if (objOp.type === Operator.Compound.TYPE) {
+      for (var idx = 0; idx < objOp.ops.length; idx++) {
+        _triggerGraphChange.call(this, objOp.ops[idx]);
+      }
+    } else {
+      this.trigger('operation:applied', objOp, this);
+    }
+  };
+
+
   // Pure graph manipulation
   // -----------------------
   // Only applies the graph operation without triggering e.g., the chronicle.
@@ -254,12 +265,7 @@ Graph.__prototype__ = function() {
     op.apply(this.objectAdapter);
     this.updated_at = new Date();
 
-    // feed the built-in observer adapter
-    if (this.__propertyChangeAdapter__) {
-      this.__propertyChangeAdapter__.onGraphChange(op);
-    }
-
-    this.trigger('graph:changed', op, this);
+    _triggerGraphChange.call(this, op);
   };
 
   // Apply a command
@@ -607,6 +613,8 @@ Graph.Private = function() {
     }
     this.nodes[newNode.id] = newNode;
     _private.addToIndex.call(this, newNode);
+
+    this.trigger("node:created", newNode);
     return this;
   };
   
@@ -617,6 +625,8 @@ Graph.Private = function() {
   this.delete = function(node) {
     _private.removeFromIndex.call(this, this.nodes[node.id]);
     delete this.nodes[node.id];
+
+    this.trigger("node:deleted", node.id);
   };
 
   this.set = function(path, value) {
@@ -625,29 +635,18 @@ Graph.Private = function() {
     property.set(value);
 
     _private.updateIndex.call(this, property, oldValue);
+
+    this.trigger("property:set", path, oldValue, value);
   };
 
-  this.update = function(path, diff) {
+  this.update = function(path, value, diff) {
     var property = this.resolve(path);
     var oldValue = util.deepclone(property.get());
-    var val = property.get();
-
-    var valueType = property.baseType;
-
-    if (valueType === 'string') {
-      val = Operator.TextOperation.apply(diff, val);
-    } else if (valueType === 'array') {
-      val = Operator.ArrayOperation.apply(diff, val);
-    } else if (valueType === 'object') {
-      val = Operator.ObjectOperation.apply(diff, val);
-    } else {
-      // Note: all other types are treated via TextOperation on the String representation
-      val = val.toString();
-      val = Operator.TextOperation.apply(diff, val);
-    }
-    property.set(val);
+    property.set(value);
 
     _private.updateIndex.call(this, property, oldValue);
+
+    this.trigger("property:updated", path, diff);
   };
 
   this.queryArray = function(arr, type) {
@@ -856,11 +855,18 @@ Graph.ObjectAdapter.__prototype__ = function() {
     impl.set.call(this.graph, path, value);
   };
 
+  this.update = function(path, value, diff) {
+    impl.update.call(this.graph, path, value, diff);
+  };
+
   this.delete = function(__, value) {
     // Note: only nodes (top-level) can be deleted
     impl.delete.call(this.graph, value);
   };
+
+  this.inplace = function() { return false; };
 };
+
 Graph.ObjectAdapter.__prototype__.prototype = Operator.ObjectOperation.Object.prototype;
 Graph.ObjectAdapter.prototype = new Graph.ObjectAdapter.__prototype__();
 
