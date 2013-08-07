@@ -397,9 +397,10 @@ Graph.__prototype__ = function() {
     _private.initIndexes.call(this);
 
     if (this.__seed__) {
-      for (var idx = 0; idx < this.__seed__.length; idx++) {
-        this.apply(this.__seed__[idx]);
-      }
+      this.nodes = util.clone(this.__seed__.nodes);
+      _.each(this.nodes, function(n) {
+        _private.addToIndex.call(this, n);
+      }, this);
     }
 
     if (this.isPersistent) {
