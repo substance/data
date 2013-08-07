@@ -386,6 +386,8 @@ Graph.__prototype__ = function() {
     if (this.isVersioned) {
       this.state = Chronicle.ROOT;
     }
+
+    this.trigger("graph:reset");
   };
 
   // Graph initialization.
