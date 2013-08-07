@@ -262,6 +262,7 @@ Graph.__prototype__ = function() {
   // -----------------------
   // Only applies the graph operation without triggering e.g., the chronicle.
   this.__apply__ = function(op) {
+    //console.log("Graph.__apply__", op);
     op.apply(this.objectAdapter);
     this.updated_at = new Date();
 
