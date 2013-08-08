@@ -23,7 +23,6 @@ var PropertyChangeAdapter = require('./property_changes');
 
 var GraphError = errors.define("GraphError");
 
-
 // Data types registry
 // -------------------
 // Available data types for graph properties.
@@ -305,7 +304,7 @@ Graph.__prototype__ = function() {
   //     => 'red'
   this.get = function(path) {
     if (!_.isArray(path) && !_.isString(path)) {
-      throw new Error("Invalid argument path. Must be String or Array");
+      throw new GraphError("Invalid argument path. Must be String or Array");
     }
 
     if (arguments.length > 1) path = _.toArray(arguments);
@@ -519,7 +518,7 @@ Graph.__prototype__ = function() {
       var types = this.properties(this.schema.types[type]);
       type = types[path[idx]];
       if (type === undefined) {
-        throw new Error("Can not resolve type for path " + JSON.stringify(path));
+        throw new GraphError("Can not resolve type for path " + JSON.stringify(path));
       }
     }
     return _.isArray(type) ? type : [type];
@@ -581,12 +580,12 @@ Graph.Private = function() {
   // All properties that don't have a value are replaced using default values for type
   this.createNode = function (schema, node) {
     if (!node.id || !node.type) {
-      throw new Error("Can not create Node: 'id' and 'type' are mandatory.");
+      throw new GraphError("Can not create Node: 'id' and 'type' are mandatory.");
     }
 
     var type = schema.type(node.type);
     if (!type) {
-      throw new Error("Type '"+node.type+"' not found in the schema");
+      throw new GraphError("Type '"+node.type+"' not found in the schema");
     }
 
     var properties = schema.properties(node.type);
@@ -613,7 +612,7 @@ Graph.Private = function() {
   this.create = function(node) {
     var newNode = _private.createNode(this.schema, node);
     if (this.contains(newNode.id)) {
-      throw new Error("Node already exists: " + newNode.id);
+      throw new GraphError("Node already exists: " + newNode.id);
     }
     this.nodes[newNode.id] = newNode;
     _private.addToIndex.call(this, newNode);
@@ -655,7 +654,7 @@ Graph.Private = function() {
 
   this.queryArray = function(arr, type) {
     if (!_.isArray(type)) {
-      throw new Error("Illegal argument: array types must be specified as ['array'(, 'array')*, <type>]");
+      throw new GraphError("Illegal argument: array types must be specified as ['array'(, 'array')*, <type>]");
     }
     var result, idx;
     if (type[1] === "array") {
@@ -687,7 +686,7 @@ Graph.Private = function() {
         this.indexes[key] = {};
       } else {
         // index.properties.length > 1
-        throw new Error('No multi-property indexes supported yet');
+        throw new GraphError('No multi-property indexes supported yet');
       }
     }, this);
   };
@@ -710,7 +709,7 @@ Graph.Private = function() {
 
         if (groupVal === undefined) {
           if (this.__mode__ & Graph.STRICT_INDEXING) {
-            throw new Error("Illegal node: missing property for indexing " + groupKey);
+            throw new GraphError("Illegal node: missing property for indexing " + groupKey);
           } else {
             continue;
           }
@@ -750,7 +749,7 @@ Graph.Private = function() {
         // Note: grouping is only supported for first level properties
         var groupVal = node[groupKey];
         if (groupVal === undefined) {
-          throw new Error("Illegal node: missing property for indexing " + groupKey);
+          throw new GraphError("Illegal node: missing property for indexing " + groupKey);
         }
         pos = index[groupVal].indexOf(node.id);
         if (pos >= 0) index[groupVal].splice(pos, 1);
