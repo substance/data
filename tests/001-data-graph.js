@@ -18,6 +18,8 @@ var test = {};
 
 // TODO: maybe we should test the graph more thoroughly with a dedicated schema
 var SCHEMA1 = {
+  id: "schema-1",
+  version: "1.0.0",
   types: {
     elem: {
       properties: {
@@ -28,11 +30,13 @@ var SCHEMA1 = {
         flag: "boolean",
         time: "date",
       }
-    },
-  },
+    }
+  }
 };
 
 var SCHEMA2 = {
+  id: "schema-2",
+  version: "1.0.0",
   types: {
     node: {
       properties: {
@@ -77,6 +81,8 @@ var SCHEMA2 = {
 };
 
 var SCHEMA3 = {
+  id: "schema-3",
+  version: "1.0.0",
   indexes : {
     "all": {
       "type": "node",
@@ -108,6 +114,8 @@ var SCHEMA3 = {
 };
 
 var SCHEMA4 = {
+  id: "schema-4",
+  version: "1.0.0",
   types: {
     item: {},
     linked_item: {
@@ -232,6 +240,7 @@ test.actions = [
 
   "Schema: properties", function() {
     var props = this.schema.properties("elem");
+
     assert.isDeepEqual(SCHEMA1.types.elem.properties, props);
     // props should be a copy
     props["ooooh"] = "aaaaahh";

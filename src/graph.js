@@ -26,6 +26,7 @@ var GraphError = errors.define("GraphError");
 // Data types registry
 // -------------------
 // Available data types for graph properties.
+
 var VALUE_TYPES = [
   'object',
   'array',
@@ -35,42 +36,6 @@ var VALUE_TYPES = [
   'date'
 ];
 
-
-// Command Registry
-// -------
-
-/*
-var COMMANDS = {
-  "delete": {
-    "types": ["graph", "array"],
-    "arguments": 1
-  },
-  "create": {
-    "types": ["graph"],
-    "arguments": 1
-  },
-  "update": {
-    "types": VALUE_TYPES,
-    "arguments": 1
-  },
-  "set": {
-    "types": "ALL",
-    "arguments": 1
-  },
-  "push": {
-    "types": ["array"],
-    "arguments": 1
-  },
-  "pop": {
-    "types": ["array"],
-    "arguments": 0
-  },
-  "clear": {
-    "types": ["array", "graph"],
-    "arguments": 0
-  }
-};
-*/
 
 // Check if composite type is in types registry.
 // The actual type of a composite type is the first entry
@@ -97,6 +62,21 @@ var Graph = function(schema, options) {
 
   // Initialization
   this.schema = new Schema(schema);
+
+  // Check if provided seed conforms to the given schema
+  // Only when schema has an id and seed is provided
+
+  if (this.schema.id && options.seed && options.seed.schema) {
+    if (!_.isEqual(options.seed.schema, [this.schema.id, this.schema.version])) {
+      throw new GraphError([
+        "Graph does not conform to schema. Expected: ",
+        this.schema.id+"@"+this.schema.version,
+        " Actual: ",
+        options.seed.schema[0]+"@"+options.seed.schema[1]
+      ].join(''));
+    }
+  }
+
   this.objectAdapter = new Graph.ObjectAdapter(this);
 
   this.nodes = {};
@@ -190,24 +170,26 @@ Graph.__prototype__ = function() {
 
   // Update the property
   // -------------------
+  // 
   // Updates the property with a given operation.
   // Note: the diff has to be given as an appropriate operation.
   // E.g., for string properties diff would be Operator.TextOperation,
   // for arrays it would be Operator.ArrayOperation, etc.
   // For example Substance.Operator:
-  //     Data.Graph.create({
-  //  	  id: "fruit_2",
-  //      type: "fruit",
-  //      name: "Blueberry",
-  //      val: { form: { kind: "bar", color: "blue" }, size: "small" },
-  //     })
-  //     var valueUpdate = Operator.TextOperation.fromOT("bar", [1, -1, "e", 1, "ry"]);
-  //     var propertyUpdate = Operator.ObjectOperation.Update(["form", "kind"], valueUpdate);
-  //     var nodeUpdate = Data.Graph.update(["fruit_2", "val"], propertyUpdate);
+  //   Data.Graph.create({
+  //     id: "fruit_2",
+  //     type: "fruit",
+  //     name: "Blueberry",
+  //     val: { form: { kind: "bar", color: "blue" }, size: "small" },
+  //   })
+  //   var valueUpdate = Operator.TextOperation.fromOT("bar", [1, -1, "e", 1, "ry"]);
+  //   var propertyUpdate = Operator.ObjectOperation.Update(["form", "kind"], valueUpdate);
+  //   var nodeUpdate = Data.Graph.update(["fruit_2", "val"], propertyUpdate);
   // Let's get it now: 
-  //     var blueberry = this.graph.get("fruit_2");
-  //     console.log(blueberry.val.form.kind);
-  //     = > 'berry'
+  //   var blueberry = this.graph.get("fruit_2");
+  //   console.log(blueberry.val.form.kind);
+  //   = > 'berry'
+
   this.update = function(path, diff) {
     var prop = this.resolve(path);
     if (!prop) {
@@ -230,12 +212,14 @@ Graph.__prototype__ = function() {
 
   // Set the property
   // ----------------
+  // 
   // Sets the property to a given value:
   // Data.Graph.set(["fruit_2", "val", "size"], "too small");
   // Let's see what happened with node:
   //     var blueberry = this.graph.get("fruit_2");
   //     console.log(blueberry.val.size);
   //     = > 'too small'
+
   this.set = function(path, newValue) {
     var prop = this.resolve(path);
     if (!prop) {
@@ -259,7 +243,9 @@ Graph.__prototype__ = function() {
 
   // Pure graph manipulation
   // -----------------------
+  // 
   // Only applies the graph operation without triggering e.g., the chronicle.
+
   this.__apply__ = function(op) {
     //console.log("Graph.__apply__", op);
     op.apply(this.objectAdapter);
@@ -270,8 +256,10 @@ Graph.__prototype__ = function() {
 
   // Apply a command
   // ---------------
+  // 
   // Applies a graph command
   // All commands call this function internally to apply an operation to the graph
+
   this.apply = function(op) {
 
     this.__apply__(op);
@@ -287,21 +275,23 @@ Graph.__prototype__ = function() {
 
   // Get the node [property]
   // -----------------------
+  // 
   // Gets specified graph node using id:
-  //     var apple = this.graph.get("apple");
-  //     console.log(apple);
-  //     =>
-  //     {
-  //       id: "apple",
-  //       type: "fruit",
-  //       name: "My Apple",
-  //       color: "red",
-  //       val: { size: "big" }
-  //     }
+  //  var apple = this.graph.get("apple");
+  //  console.log(apple);
+  //  =>
+  //  {
+  //    id: "apple",
+  //    type: "fruit",
+  //    name: "My Apple",
+  //    color: "red",
+  //    val: { size: "big" }
+  //  }
   // or get node's property:
-  //     var apple = this.graph.get(["apple","color"]);
-  //     console.log(apple);
-  //     => 'red'
+  //  var apple = this.graph.get(["apple","color"]);
+  //  console.log(apple);
+  //  => 'red'
+
   this.get = function(path) {
     if (!_.isArray(path) && !_.isString(path)) {
       throw new GraphError("Invalid argument path. Must be String or Array");
@@ -316,6 +306,7 @@ Graph.__prototype__ = function() {
 
   // Query graph data
   // ----------------
+  // 
   // Perform smart querying on graph
   //     graph.create({
   //       id: "apple-tree",
@@ -328,6 +319,7 @@ Graph.__prototype__ = function() {
   //     var result = graph.query(["apple", "tree"]);
   //     console.log(result);
   //     => [{id: "apple-tree", type: "tree", name: "Apple tree"}]
+
   this.query = function(path) {
     var prop = this.resolve(path);
 
@@ -347,20 +339,26 @@ Graph.__prototype__ = function() {
 
   // Serialize current state
   // -----------------------
-  // Convert current graph state to JSON object 
+  // 
+  // Convert current graph state to JSON object
+
   this.toJSON = function() {
     return {
+      id: this.id,
+      // schema: [this.schema.id, this.schema.version],
       nodes: util.deepclone(this.nodes)
     };
   };
 
   // Check node existing
   // -------------------
+  // 
   // Checks if a node with given id exists
   //     this.graph.contains("apple");
   //     => true
   //     this.graph.contains("orange");
   //     => false
+
   this.contains = function(id) {
     return (!!this.nodes[id]);
   };
@@ -368,6 +366,7 @@ Graph.__prototype__ = function() {
   // Resolve a property
   // ------------------
   // Resolves a property with a given path
+
   this.resolve = function(path) {
     return new Property(this, path);
   };
@@ -376,6 +375,7 @@ Graph.__prototype__ = function() {
   // ----------------------
   // Resets the graph to its initial state.
   // Note: This clears all nodes and calls `init()` which may seed the graph.
+
   this.reset = function() {
     if (this.isPersistent) {
       if (this.__nodes__) this.__nodes__.clear();
@@ -416,6 +416,7 @@ Graph.__prototype__ = function() {
 
   // Merge graphs 
   // ------------
+  // 
   // Merges this graph with another graph:
   //     var folks = new Data.Graph(folks_schema);
   //     var persons = new Data.Graph(persons_schema);
@@ -467,6 +468,7 @@ Graph.__prototype__ = function() {
   //         }
   //       ]
   //     }
+
   this.merge = function(graph) {
     _.each(graph.nodes, function(n) {
       this.create(n);
@@ -477,6 +479,7 @@ Graph.__prototype__ = function() {
 
   // View Traversal
   // --------------
+
   this.traverse = function(view) {
     return _.map(this.getView(view), function(node) {
       return this.get(node);
@@ -485,7 +488,9 @@ Graph.__prototype__ = function() {
 
   // Find nodes
   // ----------
+  // 
   // Find data nodes based on index
+
   this.find = function(index, scope) {
     var indexes = this.indexes;
     var self = this;
@@ -525,7 +530,10 @@ Graph.__prototype__ = function() {
   };
 
   // Graph loading.
+  // ----------
+  // 
   // Note: currently this must be called explicitely by the app
+
   this.load = function() {
 
     if (!this.isPersistent) {
@@ -559,25 +567,30 @@ Graph.__prototype__ = function() {
     this.__propertyChangeAdapter__ = this.__propertyChangeAdapter__ || new PropertyChangeAdapter(this);
     return this.__propertyChangeAdapter__;
   };
-
 };
 
-// modes
+// Index Modes
+// ----------
+
 Graph.STRICT_INDEXING = 1 << 1;
 Graph.DEFAULT_MODE = Graph.STRICT_INDEXING;
 
+
 // Private Graph implementation
 // ============================
+
 Graph.Private = function() {
 
   var _private = this;
   
   // Node construction
   // -----------------
+  // 
   // Safely constructs a new node based on type information
   // Node needs to have a valid type
   // All properties that are not registered, are dropped
   // All properties that don't have a value are replaced using default values for type
+
   this.createNode = function (schema, node) {
     if (!node.id || !node.type) {
       throw new GraphError("Can not create Node: 'id' and 'type' are mandatory.");
@@ -825,11 +838,9 @@ Graph.Private = function() {
 
     }, this);
   };
-
 };
 
 Graph.prototype = _.extend(new Graph.__prototype__(), util.Events);
-
 
 // ObjectOperation Adapter
 // ========
