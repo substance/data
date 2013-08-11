@@ -206,6 +206,11 @@ Graph.__prototype__ = function() {
       }
     }
 
+    if (!diff) {
+      // if the diff turns out to be empty there will be no operation.
+      return;
+    }
+
     var op = Operator.ObjectOperation.Update(path, diff, prop.baseType);
     return this.apply(op);
   };
