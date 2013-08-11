@@ -97,7 +97,7 @@ var Graph = function(schema, options) {
     this.chronicle = options.chronicle;
     this.chronicle.manage(new Graph.ChronicleAdapter(this));
   }
-  
+
   // Make persistent graph
   if (this.isPersistent) {
     var nodes = options.store.hash("nodes");
@@ -170,7 +170,7 @@ Graph.__prototype__ = function() {
 
   // Update the property
   // -------------------
-  // 
+  //
   // Updates the property with a given operation.
   // Note: the diff has to be given as an appropriate operation.
   // E.g., for string properties diff would be Operator.TextOperation,
@@ -185,7 +185,7 @@ Graph.__prototype__ = function() {
   //   var valueUpdate = Operator.TextOperation.fromOT("bar", [1, -1, "e", 1, "ry"]);
   //   var propertyUpdate = Operator.ObjectOperation.Update(["form", "kind"], valueUpdate);
   //   var nodeUpdate = Data.Graph.update(["fruit_2", "val"], propertyUpdate);
-  // Let's get it now: 
+  // Let's get it now:
   //   var blueberry = this.graph.get("fruit_2");
   //   console.log(blueberry.val.form.kind);
   //   = > 'berry'
@@ -217,7 +217,7 @@ Graph.__prototype__ = function() {
 
   // Set the property
   // ----------------
-  // 
+  //
   // Sets the property to a given value:
   // Data.Graph.set(["fruit_2", "val", "size"], "too small");
   // Let's see what happened with node:
@@ -230,7 +230,7 @@ Graph.__prototype__ = function() {
     if (!prop) {
       throw new GraphError("Could not resolve property with path "+JSON.stringify(path));
     }
-    var oldValue = prop.get(); 
+    var oldValue = prop.get();
     var op = Operator.ObjectOperation.Set(path, oldValue, newValue);
     return this.apply(op);
   };
@@ -248,7 +248,7 @@ Graph.__prototype__ = function() {
 
   // Pure graph manipulation
   // -----------------------
-  // 
+  //
   // Only applies the graph operation without triggering e.g., the chronicle.
 
   this.__apply__ = function(op) {
@@ -261,7 +261,7 @@ Graph.__prototype__ = function() {
 
   // Apply a command
   // ---------------
-  // 
+  //
   // Applies a graph command
   // All commands call this function internally to apply an operation to the graph
 
@@ -280,7 +280,7 @@ Graph.__prototype__ = function() {
 
   // Get the node [property]
   // -----------------------
-  // 
+  //
   // Gets specified graph node using id:
   //  var apple = this.graph.get("apple");
   //  console.log(apple);
@@ -311,7 +311,7 @@ Graph.__prototype__ = function() {
 
   // Query graph data
   // ----------------
-  // 
+  //
   // Perform smart querying on graph
   //     graph.create({
   //       id: "apple-tree",
@@ -344,7 +344,7 @@ Graph.__prototype__ = function() {
 
   // Serialize current state
   // -----------------------
-  // 
+  //
   // Convert current graph state to JSON object
 
   this.toJSON = function() {
@@ -357,7 +357,7 @@ Graph.__prototype__ = function() {
 
   // Check node existing
   // -------------------
-  // 
+  //
   // Checks if a node with given id exists
   //     this.graph.contains("apple");
   //     => true
@@ -419,9 +419,9 @@ Graph.__prototype__ = function() {
     delete this.__is_initializing__;
   };
 
-  // Merge graphs 
+  // Merge graphs
   // ------------
-  // 
+  //
   // Merges this graph with another graph:
   //     var folks = new Data.Graph(folks_schema);
   //     var persons = new Data.Graph(persons_schema);
@@ -493,7 +493,7 @@ Graph.__prototype__ = function() {
 
   // Find nodes
   // ----------
-  // 
+  //
   // Find data nodes based on index
 
   this.find = function(index, scope) {
@@ -512,7 +512,7 @@ Graph.__prototype__ = function() {
 
     return wrap(indexes[index][scope]);
   };
-  
+
   // Return all properties of the given type
   this.properties = function(type) {
     var result = type.parent ? this.schema.types[type.parent].properties : {};
@@ -536,7 +536,7 @@ Graph.__prototype__ = function() {
 
   // Graph loading.
   // ----------
-  // 
+  //
   // Note: currently this must be called explicitely by the app
 
   this.load = function() {
@@ -587,10 +587,10 @@ Graph.DEFAULT_MODE = Graph.STRICT_INDEXING;
 Graph.Private = function() {
 
   var _private = this;
-  
+
   // Node construction
   // -----------------
-  // 
+  //
   // Safely constructs a new node based on type information
   // Node needs to have a valid type
   // All properties that are not registered, are dropped
@@ -638,7 +638,7 @@ Graph.Private = function() {
     this.trigger("node:created", newNode);
     return this;
   };
-  
+
   // Remove a node
   // -----------
   // Deletes node by id, referenced nodes remain untouched
