@@ -245,7 +245,6 @@ Graph.__prototype__ = function() {
     }
   };
 
-
   // Pure graph manipulation
   // -----------------------
   //
@@ -631,10 +630,21 @@ Graph.Private = function() {
     this.trigger("property:set", path, oldValue, value);
   };
 
+  var _triggerPropertyUpdate = function(path, diff) {
+    if (diff.type === Operator.Compound.TYPE) {
+      var compound = diff;
+      for (var idx = 0; idx < compound.ops.length; idx++) {
+        _triggerPropertyUpdate.call(this, path, compound.ops[idx]);
+      }
+    } else {
+      this.trigger('property:updated', path, diff, this);
+    }
+  };
+
   this.update = function(path, value, diff) {
     var property = this.resolve(path);
     property.set(value);
-    this.trigger("property:updated", path, diff);
+    _triggerPropertyUpdate.call(this, path, diff);
   };
 
   this.queryArray = function(arr, type) {
