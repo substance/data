@@ -490,22 +490,6 @@ Graph.__prototype__ = function() {
     }, this);
   };
 
-  this.addIndex = function(name, index) {
-    this.indexes[name] = index;
-  };
-
-  // Find nodes
-  // ----------
-  //
-  // Find data nodes based on index
-
-  this.find = function(index, scope, shallow) {
-    if (this.indexes[index] === undefined) {
-      throw new GraphError("No index available with name: "+ index);
-    }
-    return this.indexes[index].find(scope, shallow);
-  };
-
   // Graph loading.
   // ----------
   //
@@ -673,6 +657,7 @@ Graph.Private = function() {
     }
     return result;
   };
+
 };
 
 Graph.prototype = _.extend(new Graph.__prototype__(), util.Events);
