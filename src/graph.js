@@ -19,7 +19,6 @@ var Operator = require('substance-operator');
 
 var PersistenceAdapter = require('./persistence_adapter');
 var ChronicleAdapter = require('./chronicle_adapter');
-var PropertyChangeAdapter = require('./property_changes');
 var Index = require('./graph_index');
 
 var GraphError = errors.define("GraphError");
@@ -539,9 +538,6 @@ Graph.__prototype__ = function() {
     return this;
   };
 
-  this.propertyChanges = function() {
-    this.__propertyChangeAdapter__ = this.__propertyChangeAdapter__ || new PropertyChangeAdapter(this);
-    return this.__propertyChangeAdapter__;
   };
 };
 
@@ -626,7 +622,6 @@ Graph.Private = function() {
 
   this.update = function(path, value, diff) {
     var property = this.resolve(path);
-    var oldValue = util.deepclone(property.get());
     property.set(value);
     this.trigger("property:updated", path, diff);
   };
@@ -702,7 +697,6 @@ Graph.Property = Property;
 
 Graph.PersistenceAdapter = PersistenceAdapter;
 Graph.ChronicleAdapter = ChronicleAdapter;
-Graph.PropertyChangeAdapter = PropertyChangeAdapter;
 Graph.Index = Index;
 
 // Exports
