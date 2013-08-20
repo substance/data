@@ -538,7 +538,34 @@ Graph.__prototype__ = function() {
     return this;
   };
 
+  // A helper to apply co-transformations
+  // --------
+  //
+  // The provided adapter must conform to the interface:
+  //
+  //    {
+  //      create: function(node) {},
+  //      delete: function(node) {},
+  //      update: function(node, property, newValue, oldValue) {},
+  //    }
+  //
+
+  this.cotransform = function(adapter, op) {
+    if (op.type === "create") {
+      adapter.create(op.val);
+    } else if (op.type === "delete") {
+      adapter.delete(op.val);
+    } else if (op.type === "set") {
+      var prop = this.resolve(op.path);
+      adapter.update(prop.node, prop.key, prop.value, op.original);
+    } else if (op.type === "update") {
+      var prop = this.resolve(op.path);
+      var val = _.clone(prop.value);
+      var original = op.diff.invert().apply(val);
+      adapter.update(prop.node, prop.key, prop.value, original);
+    }
   };
+
 };
 
 // Index Modes
