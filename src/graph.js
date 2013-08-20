@@ -536,19 +536,37 @@ Graph.__prototype__ = function() {
   this.cotransform = function(adapter, op) {
     if (op.type === "create") {
       adapter.create(op.val);
-    } else if (op.type === "delete") {
+    }
+    else if (op.type === "delete") {
       adapter.delete(op.val);
-    } else if (op.type === "set") {
+    }
+    // type = 'update' or 'set'
+    else {
+
       var prop = this.resolve(op.path);
-      adapter.update(prop.node, prop.key, prop.value, op.original);
-    } else if (op.type === "update") {
-      var prop = this.resolve(op.path);
-      var val = _.clone(prop.value);
-      var original = op.diff.invert().apply(val);
-      adapter.update(prop.node, prop.key, prop.value, original);
+      var value = prop.get();
+
+      var oldValue;
+
+      // Attention: this happens when updates and deletions are within one compound
+      // The operation gets applied, finally the node is deleted.
+      // Listeners are triggered afterwards, so they can not rely on the node being there
+      // anymore.
+      // However, this is not a problem. We can ignore this update as there will come
+      // a deletion anyways.
+      if (value === undefined) {
+        return;
+      }
+
+      if (op.type === "set") {
+        oldValue = op.original;
+      } else {
+        oldValue = op.diff.invert().apply(_.clone(value));
+      }
+
+      adapter.update(prop.node, prop.key, value, oldValue);
     }
   };
-
 };
 
 // Index Modes
