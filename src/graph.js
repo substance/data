@@ -20,6 +20,7 @@ var Operator = require('substance-operator');
 var PersistenceAdapter = require('./persistence_adapter');
 var ChronicleAdapter = require('./chronicle_adapter');
 var PropertyChangeAdapter = require('./property_changes');
+var Index = require('./graph_index');
 
 var GraphError = errors.define("GraphError");
 
@@ -399,16 +400,15 @@ Graph.__prototype__ = function() {
   this.init = function() {
     this.__is_initializing__ = true;
 
-    this.nodes = {};
-    this.indexes = {};
-    _private.initIndexes.call(this);
-
     if (this.__seed__) {
       this.nodes = util.clone(this.__seed__.nodes);
-      _.each(this.nodes, function(n) {
-        _private.addToIndex.call(this, n);
-      }, this);
+    } else {
+      this.nodes = {};
     }
+
+    _.each(this.indexes, function(index) {
+      index.reset();
+    });
 
     if (this.isPersistent) {
       _.each(this.nodes, function(node, id) {
@@ -491,47 +491,20 @@ Graph.__prototype__ = function() {
     }, this);
   };
 
+  this.addIndex = function(name, index) {
+    this.indexes[name] = index;
+  };
+
   // Find nodes
   // ----------
   //
   // Find data nodes based on index
 
-  this.find = function(index, scope) {
-    var indexes = this.indexes;
-    var self = this;
-
-    function wrap(nodeIds) {
-      return _.map(nodeIds, function(n) {
-        return self.get(n);
-      });
+  this.find = function(index, scope, shallow) {
+    if (this.indexes[index] === undefined) {
+      throw new GraphError("No index available with name: "+ index);
     }
-
-    if (!indexes[index]) return []; // throw index-not-found error instead?
-    if (_.isArray(indexes[index])) return wrap(indexes[index]);
-    if (!indexes[index][scope]) return [];
-
-    return wrap(indexes[index][scope]);
-  };
-
-  // Return all properties of the given type
-  this.properties = function(type) {
-    var result = type.parent ? this.schema.types[type.parent].properties : {};
-    _.extend(result, type.properties);
-    return result;
-  };
-
-  // Returns the property type
-  // TODO: should take typename, key instead of node object, key
-  this.propertyType = function(node, path) {
-    var type = node.type;
-    for (var idx = 0; idx < path.length; idx++) {
-      var types = this.properties(this.schema.types[type]);
-      type = types[path[idx]];
-      if (type === undefined) {
-        throw new GraphError("Can not resolve type for path " + JSON.stringify(path));
-      }
-    }
-    return _.isArray(type) ? type : [type];
+    return this.indexes[index].find(scope, shallow);
   };
 
   // Graph loading.
@@ -550,8 +523,6 @@ Graph.__prototype__ = function() {
 
     this.nodes = {};
     this.indexes = {};
-    _private.initIndexes.call(this);
-
 
     // import persistet nodes
     var keys = this.__nodes__.keys();
@@ -633,8 +604,6 @@ Graph.Private = function() {
       throw new GraphError("Node already exists: " + newNode.id);
     }
     this.nodes[newNode.id] = newNode;
-    _private.addToIndex.call(this, newNode);
-
     this.trigger("node:created", newNode);
     return this;
   };
@@ -644,9 +613,7 @@ Graph.Private = function() {
   // Deletes node by id, referenced nodes remain untouched
   // Removes node from indexes
   this.delete = function(node) {
-    _private.removeFromIndex.call(this, this.nodes[node.id]);
     delete this.nodes[node.id];
-
     this.trigger("node:deleted", node.id);
   };
 
@@ -654,9 +621,6 @@ Graph.Private = function() {
     var property = this.resolve(path);
     var oldValue = util.deepclone(property.get());
     property.set(value);
-
-    _private.updateIndex.call(this, property, oldValue);
-
     this.trigger("property:set", path, oldValue, value);
   };
 
@@ -664,9 +628,6 @@ Graph.Private = function() {
     var property = this.resolve(path);
     var oldValue = util.deepclone(property.get());
     property.set(value);
-
-    _private.updateIndex.call(this, property, oldValue);
-
     this.trigger("property:updated", path, diff);
   };
 
@@ -689,159 +650,6 @@ Graph.Private = function() {
       result = arr;
     }
     return result;
-  };
-
-  // Setup indexes data-structure based on schema information
-  // --------
-  //
-
-  this.initIndexes = function() {
-    this.indexes = {};
-    _.each(this.schema.indexes, function(index, key) {
-      if (index.properties === undefined || index.properties.length === 0) {
-        this.indexes[key] = [];
-      } else if (index.properties.length === 1) {
-        this.indexes[key] = {};
-      } else {
-        // index.properties.length > 1
-        throw new GraphError('No multi-property indexes supported yet');
-      }
-    }, this);
-  };
-
-  this.matchIndex = function(schema, nodeType, indexType) {
-    var typeChain = schema.typeChain(nodeType);
-    return (typeChain.indexOf(indexType) >= 0);
-  };
-
-  this.addToSingleIndex = function(indexSpec, index, node) {
-
-    // Note: it is not necessary to create index containers as
-    // it is already done by initIndexes
-    var groups = indexSpec.properties;
-    if (groups) {
-      for (var i = 0; i < groups.length; i++) {
-        var groupKey = groups[i];
-        // Note: grouping is only supported for first level properties
-        var groupVal = node[groupKey];
-
-        if (groupVal === undefined) {
-          if (this.__mode__ & Graph.STRICT_INDEXING) {
-            throw new GraphError("Illegal node: missing property for indexing " + groupKey);
-          } else {
-            continue;
-          }
-        }
-
-        index[groupVal] = index[groupVal] || [];
-        index[groupVal].push(node.id);
-      }
-    } else {
-      index.push(node.id);
-    }
-  };
-
-  // Adds a node to indexes
-  // --------
-  //
-
-  this.addToIndex = function(node) {
-    _.each(this.schema.indexes, function(indexSpec, key) {
-      // skip irrelevant indexes
-      if (_private.matchIndex(this.schema, node.type, indexSpec.type)) {
-        _private.addToSingleIndex(indexSpec, this.indexes[key], node);
-      }
-    }, this);
-  };
-
-  // Silently remove node from index
-  // --------
-
-  this.removeFromSingleIndex = function(indexSpec, index, node) {
-    var groups = indexSpec.properties;
-    var pos;
-    if (groups) {
-      // remove the node from every group
-      for (var i = 0; i < groups.length; i++) {
-        var groupKey = groups[i];
-        // Note: grouping is only supported for first level properties
-        var groupVal = node[groupKey];
-        if (groupVal === undefined) {
-          throw new GraphError("Illegal node: missing property for indexing " + groupKey);
-        }
-        pos = index[groupVal].indexOf(node.id);
-        if (pos >= 0) index[groupVal].splice(pos, 1);
-        // prune empty groups
-        if (index[groupVal].length === 0) delete index[groupVal];
-      }
-    } else {
-      pos = index.indexOf(node.id);
-      if (pos >= 0) index.splice(pos, 1);
-    }
-  };
-
-  // Removes a node from indexes
-  // --------
-  //
-
-  this.removeFromIndex = function(node) {
-    _.each(this.schema.indexes, function(indexSpec, key) {
-      var index = this.indexes[key];
-
-      // Remove all indexed entries that have been registered for
-      // a given node itself
-      if (index[node.id]) delete index[node.id];
-
-      // skip irrelevant indexes
-      if (_private.matchIndex(this.schema, node.type, indexSpec.type)) {
-        _private.removeFromSingleIndex(indexSpec, index, node);
-      }
-
-    }, this);
-  };
-
-  this.updateSingleIndex = function(indexSpec, index, property, oldValue) {
-    // Note: intentionally, this is not implemented by delegating to removeFromIndex
-    //  and addToIndex. The reason, removeFromIndex erases every occurance of the
-    //  modified property. Instead we have to update only the affected indexes,
-    //  i.e., those which are registered to the property key
-
-    if (!indexSpec.properties) return;
-
-    var groups = indexSpec.properties;
-    var groupIdx = groups.indexOf(property.key);
-
-    // only indexes with groupBy semantic have to be handled
-    if (!groups || groupIdx < 0) return;
-
-    var nodeId = property.node.id;
-    var newValue = property.get();
-
-    // remove the changed node from the old group
-    // and prune the group if it would be empty
-    index[oldValue] = _.without(index[oldValue], nodeId);
-    if (index[oldValue].length === 0) delete index[oldValue];
-
-    // add the node to the new group
-    index[newValue] = index[newValue] || [];
-    index[newValue].push(nodeId);
-
-  };
-
-  // Updates all indexes affected by the change of a given property
-  // --------
-  //
-
-  this.updateIndex = function(property, oldValue) {
-    if (oldValue === property.get()) return;
-
-    _.each(this.schema.indexes, function(indexSpec, key) {
-      // skip unrelated indexes
-      if (_private.matchIndex(this.schema, property.node.type, indexSpec.type)) {
-        _private.updateSingleIndex(indexSpec, this.indexes[key], property, oldValue);
-      }
-
-    }, this);
   };
 };
 
@@ -895,6 +703,7 @@ Graph.Property = Property;
 Graph.PersistenceAdapter = PersistenceAdapter;
 Graph.ChronicleAdapter = ChronicleAdapter;
 Graph.PropertyChangeAdapter = PropertyChangeAdapter;
+Graph.Index = Index;
 
 // Exports
 // ========
