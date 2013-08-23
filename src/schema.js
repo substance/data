@@ -36,6 +36,10 @@ Schema.__prototype__ = function() {
   //
 
   this.parseValue = function(valueType, value) {
+    if (value === null) {
+      return value;
+    }
+
     if (_.isString(value)) {
       if (valueType === "object") return JSON.parse(value);
       if (valueType === "array") return JSON.parse(value);
