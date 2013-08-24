@@ -70,7 +70,7 @@ Index.Prototype = function() {
 
   var _add = function(key, node) {
     var index = _resolve.call(this, key);
-    index.nodes[node.id] = node;
+    index.nodes[node.id] = node.id;
   };
 
   var _remove = function(key, node) {
@@ -152,6 +152,11 @@ Index.Prototype = function() {
     //       result = index.nodes;
     //     }
     result = _collect(index);
+
+    _.each(result, function(id) {
+      result[id] = this.graph.get(id);
+    }, this);
+
     return result;
   };
 
