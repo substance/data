@@ -8,6 +8,7 @@ var Test = require('substance-test');
 var assert = Test.assert;
 var registerTest = Test.registerTest;
 var Data = require('../index');
+var Chronicle = require("substance-chronicle");
 
 
 // Test
@@ -35,7 +36,7 @@ var SCHEMA = {
 var GraphIndexTest = function() {
 
   this.setup = function() {
-    this.graph = new Data.Graph(SCHEMA);
+    this.graph = new Data.Graph(SCHEMA, {chronicle: Chronicle.create({mode: Chronicle.HYSTERICAL})});
     this.schema = this.graph.schema;
     this.all = this.graph.addIndex("all", {
       types: ["foo", "bar"]
