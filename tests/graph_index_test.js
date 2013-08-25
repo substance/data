@@ -8,7 +8,6 @@ var Test = require('substance-test');
 var assert = Test.assert;
 var registerTest = Test.registerTest;
 var Data = require('../index');
-var Index = Data.Graph.Index;
 
 
 // Test
@@ -38,16 +37,16 @@ var GraphIndexTest = function() {
   this.setup = function() {
     this.graph = new Data.Graph(SCHEMA);
     this.schema = this.graph.schema;
-    this.all = new Index(this.graph, {
+    this.all = this.graph.addIndex("all", {
       types: ["foo", "bar"]
     });
-    this.foos = new Index(this.graph, {
+    this.foos = this.graph.addIndex( "foos", {
       types: ["foo"]
     });
-    this.bars = new Index(this.graph, {
+    this.bars = this.graph.addIndex( "bars", {
       types: ["bar"]
     });
-    this.byCategory = new Index(this.graph, {
+    this.byCategory = this.graph.addIndex( "by_category", {
       types: ["foo", "bar"],
       property: "category"
     });

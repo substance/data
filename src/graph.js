@@ -248,6 +248,10 @@ Graph.__prototype__ = function() {
     Operator.Helpers.each(op, function(_op) {
       _.each(this.indexes, function(index) {
 
+        // Treating indexes as first class listeners for graph changes
+        index.onGraphChange(_op);
+
+        // And all regular listeners in second line
         this.trigger('operation:applied', _op, this);
 
       }, this);
@@ -562,6 +566,20 @@ Graph.__prototype__ = function() {
 
       adapter.update(prop.node, prop.key, value, oldValue);
     }
+  };
+
+  this.addIndex = function(name, options) {
+    if (this.indexes[name]) {
+      throw new GraphError("Index with name " + name + "already exists.");
+    }
+    var index = new Index(this, options);
+    this.indexes[name] = index;
+
+    return index;
+  };
+
+  this.removeIndex = function(name) {
+    delete this.indexes[name];
   };
 };
 

@@ -28,8 +28,6 @@ var Index = function(graph, options) {
     this.property = options.property;
   }
 
-  this.listenTo(graph, "operation:applied", this.onGraphChange);
-
   this.createIndex();
 };
 
