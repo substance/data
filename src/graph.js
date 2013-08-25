@@ -245,15 +245,24 @@ Graph.__prototype__ = function() {
     op.apply(this.objectAdapter);
     this.updated_at = new Date();
 
+    this._internalUpdates(op);
+
     Operator.Helpers.each(op, function(_op) {
       _.each(this.indexes, function(index) {
-
         // Treating indexes as first class listeners for graph changes
         index.onGraphChange(_op);
+      }, this);
 
-        // And all regular listeners in second line
-        this.trigger('operation:applied', _op, this);
+      // And all regular listeners in second line
+      this.trigger('operation:applied', _op, this);
+    }, this);
+  };
 
+  this._internalUpdates = function(op) {
+    // Treating indexes as first class listeners for graph changes
+    Operator.Helpers.each(op, function(_op) {
+      _.each(this.indexes, function(index) {
+        index.onGraphChange(_op);
       }, this);
     }, this);
   };
