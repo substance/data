@@ -235,16 +235,6 @@ Graph.__prototype__ = function() {
     return this.apply(op);
   };
 
-  var _triggerGraphChange = function(objOp) {
-    if (objOp.type === Operator.Compound.TYPE) {
-      for (var idx = 0; idx < objOp.ops.length; idx++) {
-        _triggerGraphChange.call(this, objOp.ops[idx]);
-      }
-    } else {
-      this.trigger('operation:applied', objOp, this);
-    }
-  };
-
   // Pure graph manipulation
   // -----------------------
   //
@@ -255,7 +245,13 @@ Graph.__prototype__ = function() {
     op.apply(this.objectAdapter);
     this.updated_at = new Date();
 
-    _triggerGraphChange.call(this, op);
+    Operator.Helpers.each(op, function(_op) {
+      _.each(this.indexes, function(index) {
+
+        this.trigger('operation:applied', _op, this);
+
+      }, this);
+    }, this);
   };
 
   // Apply a command
@@ -649,14 +645,9 @@ Graph.Private = function() {
   };
 
   var _triggerPropertyUpdate = function(path, diff) {
-    if (diff.type === Operator.Compound.TYPE) {
-      var compound = diff;
-      for (var idx = 0; idx < compound.ops.length; idx++) {
-        _triggerPropertyUpdate.call(this, path, compound.ops[idx]);
-      }
-    } else {
-      this.trigger('property:updated', path, diff, this);
-    }
+    Operator.Helpers.each(diff, function(op) {
+      this.trigger('property:updated', path, op, this);
+    }, this);
   };
 
   this.update = function(path, value, diff) {
