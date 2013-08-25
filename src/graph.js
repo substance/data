@@ -240,22 +240,27 @@ Graph.__prototype__ = function() {
   //
   // Only applies the graph operation without triggering e.g., the chronicle.
 
-  this.__apply__ = function(op) {
+  this.__apply__ = function(_op) {
     //console.log("Graph.__apply__", op);
-    op.apply(this.objectAdapter);
-    this.updated_at = new Date();
 
-    this._internalUpdates(op);
+    // Note: we apply compounds eagerly... i.e., all listeners will be updated after
+    // each atomic change.
 
-    Operator.Helpers.each(op, function(_op) {
+    Operator.Helpers.each(_op, function(op) {
+      op.apply(this.objectAdapter);
+      this.updated_at = new Date();
+
+      this._internalUpdates(op);
+
       _.each(this.indexes, function(index) {
         // Treating indexes as first class listeners for graph changes
-        index.onGraphChange(_op);
+        index.onGraphChange(op);
       }, this);
 
       // And all regular listeners in second line
-      this.trigger('operation:applied', _op, this);
+      this.trigger('operation:applied', op, this);
     }, this);
+
   };
 
   this._internalUpdates = function(op) {
