@@ -13,7 +13,7 @@ var Schema = function(schema) {
   _.extend(this, schema);
 };
 
-Schema.__prototype__ = function() {
+Schema.Prototype = function() {
 
   // Return Default value for a given type
   // --------
@@ -168,6 +168,6 @@ Schema.__prototype__ = function() {
   };
 };
 
-Schema.prototype = new Schema.__prototype__();
+Schema.prototype = new Schema.Prototype();
 
 module.exports = Schema;
