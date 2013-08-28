@@ -8,7 +8,7 @@ var ChronicleAdapter = function(graph) {
   this.graph.state = "ROOT";
 };
 
-ChronicleAdapter.__prototype__ = function() {
+ChronicleAdapter.Prototype = function() {
 
   this.apply = function(op) {
     // Note: we call the Graph.apply intentionally, as the chronicled change
@@ -39,7 +39,7 @@ ChronicleAdapter.__prototype__ = function() {
   };
 };
 
-ChronicleAdapter.__prototype__.prototype = Chronicle.Versioned.prototype;
-ChronicleAdapter.prototype = new ChronicleAdapter.__prototype__();
+ChronicleAdapter.Prototype.prototype = Chronicle.Versioned.prototype;
+ChronicleAdapter.prototype = new ChronicleAdapter.Prototype();
 
 module.exports = ChronicleAdapter;

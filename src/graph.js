@@ -121,7 +121,7 @@ var Graph = function(schema, options) {
   if (options.graph) this.merge(options.graph);
 };
 
-Graph.__prototype__ = function() {
+Graph.Prototype = function() {
 
   var _private = new Graph.Private();
 
@@ -711,7 +711,7 @@ Graph.Private = function() {
 
 };
 
-Graph.prototype = _.extend(new Graph.__prototype__(), util.Events);
+Graph.prototype = _.extend(new Graph.Prototype(), util.Events);
 
 // ObjectOperation Adapter
 // ========
@@ -723,7 +723,7 @@ Graph.ObjectAdapter = function(graph) {
   this.graph = graph;
 };
 
-Graph.ObjectAdapter.__prototype__ = function() {
+Graph.ObjectAdapter.Prototype = function() {
   var impl = new Graph.Private();
 
   this.get = function(path) {
@@ -752,8 +752,8 @@ Graph.ObjectAdapter.__prototype__ = function() {
   this.inplace = function() { return false; };
 };
 
-Graph.ObjectAdapter.__prototype__.prototype = Operator.ObjectOperation.Object.prototype;
-Graph.ObjectAdapter.prototype = new Graph.ObjectAdapter.__prototype__();
+Graph.ObjectAdapter.Prototype.prototype = Operator.ObjectOperation.Object.prototype;
+Graph.ObjectAdapter.prototype = new Graph.ObjectAdapter.Prototype();
 
 Graph.Schema = Schema;
 Graph.Property = Property;
