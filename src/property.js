@@ -13,7 +13,7 @@ var Property = function(graph, path) {
   _.extend(this, this.resolve(path));
 };
 
-Property.__prototype__ = function() {
+Property.Prototype = function() {
 
   this.resolve = function(path) {
     var node = this.graph;
@@ -83,7 +83,7 @@ Property.__prototype__ = function() {
   };
 
 };
-Property.prototype = new Property.__prototype__();
+Property.prototype = new Property.Prototype();
 Object.defineProperties(Property.prototype, {
   baseType: {
     get: function() {

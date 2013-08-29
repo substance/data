@@ -13,7 +13,7 @@ var Schema = function(schema) {
   _.extend(this, schema);
 };
 
-Schema.__prototype__ = function() {
+Schema.Prototype = function() {
 
   // Return Default value for a given type
   // --------
@@ -36,6 +36,10 @@ Schema.__prototype__ = function() {
   //
 
   this.parseValue = function(valueType, value) {
+    if (value === null) {
+      return value;
+    }
+
     if (_.isString(value)) {
       if (valueType === "object") return JSON.parse(value);
       if (valueType === "array") return JSON.parse(value);
@@ -113,6 +117,15 @@ Schema.__prototype__ = function() {
     return chain;
   };
 
+  this.isInstanceOf = function(type, parentType) {
+    var typeChain = this.typeChain(type);
+    if (typeChain && typeChain.indexOf(parentType) >= 0) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
   // Provides the top-most parent type of a given type.
   // --------
   //
@@ -155,6 +168,6 @@ Schema.__prototype__ = function() {
   };
 };
 
-Schema.prototype = new Schema.__prototype__();
+Schema.prototype = new Schema.Prototype();
 
 module.exports = Schema;

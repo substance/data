@@ -7,7 +7,7 @@ var PersistenceAdapter = function(delegate, nodes) {
   this.nodes = nodes;
 };
 
-PersistenceAdapter.__prototype__ = function() {
+PersistenceAdapter.Prototype = function() {
 
   this.get = function(path) {
     return this.delegate.get(path);
@@ -35,7 +35,7 @@ PersistenceAdapter.__prototype__ = function() {
     return false;
   };
 };
-PersistenceAdapter.__prototype__.prototype = Operator.ObjectOperation.Object.prototype;
-PersistenceAdapter.prototype = new PersistenceAdapter.__prototype__();
+PersistenceAdapter.Prototype.prototype = Operator.ObjectOperation.Object.prototype;
+PersistenceAdapter.prototype = new PersistenceAdapter.Prototype();
 
 module.exports = PersistenceAdapter;

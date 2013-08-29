@@ -108,9 +108,11 @@ var GraphEventsTest = function() {
       var listener = _listener();
       this.listenTo(this.graph, "property:updated", listener);
 
+      // Attention: these are actuall two atomic operations: Delete + Insert
+      // Thus the listener is called twice
       this.graph.update(["foo", "val"], [-3, "bla"]);
 
-      assert.isEqual(1, listener.called);
+      assert.isEqual(2, listener.called);
       assert.isArrayEqual(["foo", "val"],listener.args[0]);
       assert.isTrue(listener.args[1] instanceof Operator.Operation);
 
