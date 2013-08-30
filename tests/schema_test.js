@@ -101,4 +101,4 @@ var SchemaTest = function() {
   ];
 };
 
-registerTest(['Data', 'Schema'], new SchemaTest());
+registerTest(['Substance.Data', 'Schema'], new SchemaTest());

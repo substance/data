@@ -130,4 +130,4 @@ var GraphIndexTest = function() {
   ];
 };
 
-registerTest(['Data', 'Graph Indexes'], new GraphIndexTest());
+registerTest(['Substance.Data', 'Graph Indexes'], new GraphIndexTest());

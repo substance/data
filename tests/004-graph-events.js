@@ -181,4 +181,4 @@ var GraphEventsTest = function() {
 _.extend(GraphEventsTest.prototype, util.Events.Listener);
 
 
-registerTest(['Data', 'Graph Events'], new GraphEventsTest());
+registerTest(['Substance.Data', 'Graph Events'], new GraphEventsTest());

@@ -289,4 +289,4 @@ var GraphManipulationTest = function() {
   ];
 };
 
-registerTest(['Data', 'Graph Manipulation'], new GraphManipulationTest());
+registerTest(['Substance.Data', 'Graph Manipulation'], new GraphManipulationTest());

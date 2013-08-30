@@ -105,4 +105,4 @@ test.actions = [
   }
 ];
 
-registerTest(['Data', 'Persistent Graph'], test);
+registerTest(['Substance.Data', 'Persistent Graph'], test);

@@ -287,4 +287,4 @@ test.actions = [
 
 ];
 
-registerTest(['Data', 'Versioned Graph'], test);
+registerTest(['Substance.Data', 'Versioned Graph'], test);
