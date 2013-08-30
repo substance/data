@@ -143,6 +143,9 @@ Graph.Prototype = function() {
   //     Data.Graph.create(node);
   // Note: graph create operation should reject creation of duplicate nodes.
 
+
+  _.extend(this, util.Events);
+
   this.create = function(node) {
     var op = Operator.ObjectOperation.Create([node.id], node);
     return this.apply(op);
@@ -711,7 +714,7 @@ Graph.Private = function() {
 
 };
 
-Graph.prototype = _.extend(new Graph.Prototype(), util.Events);
+Graph.prototype = new Graph.Prototype();
 
 // ObjectOperation Adapter
 // ========
