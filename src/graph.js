@@ -489,7 +489,7 @@ Graph.Prototype = function() {
   this.merge = function(graph) {
     _.each(graph.nodes, function(n) {
       this.create(n);
-    });
+    }, this);
 
     return this;
   };
