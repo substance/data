@@ -14,7 +14,6 @@ var Chronicle = require("substance-chronicle");
 // Test
 // ========
 
-
 var SCHEMA = {
   id: "test_schema",
   version: "1.0.0",
@@ -127,6 +126,21 @@ var GraphIndexTest = function() {
       var by_blupp = getIds(this.byCategory.get("blupp"));
       assert.isArrayEqual([], by_blupp);
     },
+
+    "Be smart about missing properties on nodes", function() {
+      // Missing the category property
+      var node = {
+        id: "foo2",
+        type: "foo"
+      };
+      this.graph.create(node);
+
+      // Index remains untouched
+      var by_bla = getIds(this.byCategory.get("bla"));
+      assert.isArrayEqual(["bar1"], by_bla);
+      var by_blupp = getIds(this.byCategory.get("blupp"));
+      assert.isArrayEqual([], by_blupp);
+    }
   ];
 };
 

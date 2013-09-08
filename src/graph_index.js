@@ -50,7 +50,8 @@ Index.Prototype = function() {
   };
 
   var _getKey = function(node) {
-    var key = this.property ? node[this.property] : null;
+    if (!this.property) return null;
+    var key = node[this.property] ? node[this.property] : null;
     if (_.isString(key)) key = [key];
     return key;
   };
