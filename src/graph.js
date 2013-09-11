@@ -366,7 +366,7 @@ Graph.Prototype = function() {
   this.toJSON = function() {
     return {
       id: this.id,
-      // schema: [this.schema.id, this.schema.version],
+      schema: [this.schema.id, this.schema.version],
       nodes: util.deepclone(this.nodes)
     };
   };
