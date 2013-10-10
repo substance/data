@@ -2,7 +2,7 @@
   "name"          : "substance-data",
   "description"   : "A Javascript data representation library.",
   "url"           : "http://github.com/substance/data/",
-  "keywords"      : ["util", "linked-data", "server", "client", "browser"],
+  "keywords"      : ["data", "linked-data", "graph"],
   "author"        : "Michael Aufreiter",
   "contributors"  : ["Oliver Buchtala"],
   "repository": {
