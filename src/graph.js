@@ -1,8 +1,3 @@
-//     (c) 2013 Michael Aufreiter, Oliver Buchtala
-//     Data.js is freely distributable under the MIT license.
-//     For all details and documentation:
-//     http://github.com/michael/data
-
 "use strict";
 
 var _ = require('underscore');
