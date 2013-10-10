@@ -17,13 +17,13 @@
   },
   "dependencies": {
     "underscore": "1.5.x",
-    "substance-util": "master",
-    "substance-operator": "master",
-    "substance-chronicle": "master"
+    "substance-util": "0.2.0",
+    "substance-operator": "0.2.0",
+    "substance-chronicle": "0.2.0"
   },
   "devDependencies": {
     "mocha": "1.12.x",
-    "substance-test": "0.2.x"
+    "substance-test": "0.2.0"
   },
   "scripts": {
     "test": "mocha -R spec tests/run.js"
