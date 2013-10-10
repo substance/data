@@ -1,3 +1,9 @@
+0.8.0
+=============
+  * General improvements
+  * API stabilizations
+  * Tests
+
 0.7.0
 =============
   * Switched to operations for graph manipulation
