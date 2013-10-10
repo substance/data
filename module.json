@@ -13,8 +13,7 @@
     "underscore": "",
     "substance-util": "",
     "substance-operator": "",
-    "substance-chronicle": "",
-    "substance-store": ""
+    "substance-chronicle": ""
   },
   "devDependencies": {
     "mocha":        "",
