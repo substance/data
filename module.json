@@ -17,7 +17,8 @@
   },
   "devDependencies": {
     "mocha":        "",
-    "substance-test": ""
+    "substance-test": "",
+    "substance-store": ""
   },
   "scripts": {
     "test": "mocha -R spec tests/run.js"
