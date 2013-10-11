@@ -3,11 +3,9 @@
   "description": "A Javascript data representation library.",
   "url": "http://github.com/substance/data/",
   "keywords": [
-    "util",
+    "data",
     "linked-data",
-    "server",
-    "client",
-    "browser"
+    "graph"
   ],
   "author": "Michael Aufreiter",
   "contributors": [
@@ -21,8 +19,7 @@
     "underscore": "1.5.x",
     "substance-util": "git+https://github.com/substance/util.git#0.2.x",
     "substance-operator": "git+https://github.com/substance/operator.git#0.2.x",
-    "substance-chronicle": "git+https://github.com/substance/chronicle.git#0.2.x",
-    "substance-store": "git+https://github.com/substance/store.git#0.1.x"
+    "substance-chronicle": "git+https://github.com/substance/chronicle.git#0.2.x"
   },
   "devDependencies": {
     "mocha": "1.12.x",
