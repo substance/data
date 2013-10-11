@@ -17,13 +17,13 @@
   },
   "dependencies": {
     "underscore": "1.5.x",
-    "substance-util": "0.2.0",
-    "substance-operator": "0.2.0",
-    "substance-chronicle": "0.2.0"
+    "substance-util": "git+https://github.com/substance/util.git#0.3.x",
+    "substance-operator": "git+https://github.com/substance/operator.git#0.3.x",
+    "substance-chronicle": "git+https://github.com/substance/chronicle.git#0.3.x"
   },
   "devDependencies": {
     "mocha": "1.12.x",
-    "substance-test": "0.2.0",
+    "substance-test": "git+https://github.com/substance/test.git#0.3.x",
     "substance-store": "0.1.x"
   },
   "scripts": {
