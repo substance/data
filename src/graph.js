@@ -116,6 +116,16 @@ var Graph = function(schema, options) {
 
 Graph.Prototype = function() {
 
+  this.enableVersioning = function(chronicle) {
+    if (this.isVersioned) return;
+    if (!chronicle) {
+      chronicle = Chronicle.create();
+    }
+    this.chronicle = chronicle;
+    this.chronicle.manage(new Graph.ChronicleAdapter(this));
+    this.isVersioned = true;
+  };
+
   var _private = new Graph.Private();
 
   // Graph manipulation API
@@ -590,6 +600,10 @@ Graph.Prototype = function() {
 
   this.removeIndex = function(name) {
     delete this.indexes[name];
+  };
+
+  this.activateVersioning = function() {
+
   };
 };
 
