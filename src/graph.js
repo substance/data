@@ -116,15 +116,7 @@ var Graph = function(schema, options) {
 
 Graph.Prototype = function() {
 
-  this.enableVersioning = function(chronicle) {
-    if (this.isVersioned) return;
-    if (!chronicle) {
-      chronicle = Chronicle.create();
-    }
-    this.chronicle = chronicle;
-    this.chronicle.manage(new Graph.ChronicleAdapter(this));
-    this.isVersioned = true;
-  };
+  _.extend(this, util.Events);
 
   var _private = new Graph.Private();
 
@@ -145,10 +137,10 @@ Graph.Prototype = function() {
   // Create new node:
   //     Data.Graph.create(node);
   // Note: graph create operation should reject creation of duplicate nodes.
-
-
-  _.extend(this, util.Events);
-
+  //
+  // Arguments:
+  //   - node: the new node
+  //
   this.create = function(node) {
     var op = Operator.ObjectOperation.Create([node.id], node);
     return this.apply(op);
@@ -158,6 +150,10 @@ Graph.Prototype = function() {
   // -------------
   // Removes a node with given id and key (optional):
   //     Data.Graph.delete(this.graph.get('apple'));
+  //
+  // Arguments:
+  //   - id: the node id
+  //
   this.delete = function(id) {
     var node = this.get(id);
     if (node === undefined) {
@@ -195,6 +191,10 @@ Graph.Prototype = function() {
   //   var blueberry = this.graph.get("fruit_2");
   //   console.log(blueberry.val.form.kind);
   //   = > 'berry'
+  //
+  // Arguments:
+  //   - path: an array used to resolve the property to be updated
+  //   - diff: an (incremental) operation that should be applied to the property
 
   this.update = function(path, diff) {
     var prop = this.resolve(path);
@@ -230,7 +230,11 @@ Graph.Prototype = function() {
   //     var blueberry = this.graph.get("fruit_2");
   //     console.log(blueberry.val.size);
   //     = > 'too small'
-
+  //
+  // Arguments:
+  //   - path: an array used to resolve the property to be updated
+  //   - diff: an (incremental) operation that should be applied to the property
+  //
   this.set = function(path, newValue) {
     var prop = this.resolve(path);
     if (!prop) {
@@ -283,9 +287,11 @@ Graph.Prototype = function() {
   //
   // Applies a graph command
   // All commands call this function internally to apply an operation to the graph
+  //
+  // Arguments:
+  //   - op: the operation to be applied,
 
   this.apply = function(op) {
-
     this.__apply__(op);
 
     // do not record changes during initialization
@@ -602,9 +608,16 @@ Graph.Prototype = function() {
     delete this.indexes[name];
   };
 
-  this.activateVersioning = function() {
-
+  this.enableVersioning = function(chronicle) {
+    if (this.isVersioned) return;
+    if (!chronicle) {
+      chronicle = Chronicle.create();
+    }
+    this.chronicle = chronicle;
+    this.chronicle.manage(new Graph.ChronicleAdapter(this));
+    this.isVersioned = true;
   };
+
 };
 
 // Index Modes
