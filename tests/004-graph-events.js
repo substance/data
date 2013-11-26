@@ -92,12 +92,12 @@ var GraphEventsTest = function() {
       this.setup();
 
       var listener = _listener();
-      this.listenTo(this.graph, "property:set", listener);
+      this.listenTo(this.graph, "property:updated", listener);
 
       this.graph.set(["foo", "val"], "bar");
 
       assert.isEqual(1, listener.called);
-      assert.isDeepEqual([["foo", "val"], "foo", "bar"], _.toArray(listener.args));
+      assert.isDeepEqual([["foo", "val"], undefined, "foo", "bar"], _.toArray(listener.args));
 
       this.stopListening();
     },
@@ -122,10 +122,8 @@ var GraphEventsTest = function() {
     "Notification with Compounds", function() {
       this.setup();
 
-      var set_listener = _listener();
       var update_listener = _listener();
 
-      this.listenTo(this.graph, "property:set", set_listener);
       this.listenTo(this.graph, "property:updated", update_listener);
 
       var ops = [
@@ -136,8 +134,7 @@ var GraphEventsTest = function() {
 
       this.graph.apply(compound);
 
-      assert.isEqual(1, set_listener.called);
-      assert.isEqual(1, update_listener.called);
+      assert.isEqual(2, update_listener.called);
 
       this.stopListening();
     },

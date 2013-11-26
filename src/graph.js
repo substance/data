@@ -696,7 +696,7 @@ Graph.Private = function() {
     var property = this.resolve(path);
     var oldValue = util.deepclone(property.get());
     property.set(value);
-    this.trigger("property:set", path, oldValue, value);
+    this.trigger("property:updated", path, null, oldValue, value);
   };
 
   var _triggerPropertyUpdate = function(path, diff) {
