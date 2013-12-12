@@ -97,7 +97,7 @@ var GraphEventsTest = function() {
       this.graph.set(["foo", "val"], "bar");
 
       assert.isEqual(1, listener.called);
-      assert.isDeepEqual([["foo", "val"], undefined, "foo", "bar"], _.toArray(listener.args));
+      assert.isDeepEqual([["foo", "val"], null, "foo", "bar"], _.toArray(listener.args));
 
       this.stopListening();
     },
