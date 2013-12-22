@@ -257,7 +257,8 @@ Graph.Prototype = function() {
     // each atomic change.
 
     Operator.Helpers.each(_op, function(op) {
-      op.apply(this.objectAdapter);
+      Operator.ObjectOperation.apply(op, this.objectAdapter);
+
       this.updated_at = new Date();
 
       this._internalUpdates(op);
