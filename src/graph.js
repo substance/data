@@ -597,7 +597,8 @@ Graph.Prototype = function() {
 
   this.addIndex = function(name, options) {
     if (this.indexes[name]) {
-      throw new GraphError("Index with name " + name + "already exists.");
+      return this.indexes[name];
+      // throw new GraphError("Index with name " + name + "already exists.");
     }
     var index = new Index(this, options);
     this.indexes[name] = index;
