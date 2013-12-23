@@ -7,4 +7,24 @@ Data.VERSION = '0.8.0';
 
 Data.Graph = require('./src/graph');
 
+
+var _ = require("underscore");
+// A helper that is used by Graph node implementations
+Data.defineNodeProperties = function(prototype, properties, readonly) {
+  _.each(properties, function(name) {
+    var spec = {
+      get: function() {
+        return this.properties[name];
+      }
+    };
+    if (!readonly) {
+      spec["set"] = function(val) {
+        this.properties[name] = val;
+        return this;
+      };
+    }
+    Object.defineProperty(prototype, name, spec);
+  });
+};
+
 module.exports = Data;
