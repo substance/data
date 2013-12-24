@@ -324,11 +324,12 @@ Graph.Prototype = function() {
   //  => 'red'
 
   this.get = function(path) {
+    if (path === undefined || path === null) {
+      throw new GraphError("Invalid argument: provided undefined or null.");
+    }
     if (!_.isArray(path) && !_.isString(path)) {
       throw new GraphError("Invalid argument path. Must be String or Array");
     }
-
-    if (arguments.length > 1) path = _.toArray(arguments);
     if (_.isString(path)) return this.nodes[path];
 
     var prop = this.resolve(path);
