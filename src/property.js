@@ -10,7 +10,16 @@ var Property = function(graph, path) {
   this.graph = graph;
   this.schema = graph.schema;
 
-  _.extend(this, this.resolve(path));
+  // Note: if you specifiy an invalid path, e.g., to a non-existing property
+  // then this.resolve() will return `undefined`.
+  // In cases of write-access (e.g., update, set) we need to make sure to fail instantly with an error,
+  // to avoid entering other more complicated places with an invalid state.
+  var resolved = this.resolve(path);
+  if (resolved !== undefined) {
+    _.extend(this, resolved);
+  } else {
+    return undefined;
+  }
 };
 
 Property.Prototype = function() {
@@ -32,7 +41,6 @@ Property.Prototype = function() {
         parent = this.graph.get(path[idx]);
 
         if (parent === undefined) {
-          //throw new Error("Key error: could not find element for path " + JSON.stringify(path));
           return undefined;
         }
 
@@ -42,7 +50,6 @@ Property.Prototype = function() {
         key = undefined;
       } else {
         if (parent === undefined) {
-          //throw new Error("Key error: could not find element for path " + JSON.stringify(path));
           return undefined;
         }
         key = path[idx];

@@ -572,6 +572,9 @@ Graph.Prototype = function() {
     else {
 
       var prop = this.resolve(op.path);
+      if (prop === undefined) {
+        throw new Error("Key error: could not find element for path " + JSON.stringify(op.path));
+      }
       var value = prop.get();
 
       var oldValue;
@@ -589,7 +592,8 @@ Graph.Prototype = function() {
       if (op.type === "set") {
         oldValue = op.original;
       } else {
-        oldValue = op.diff.invert().apply(_.clone(value));
+        var invertedDiff = Operator.Helpers.invert(op.diff, prop.type);
+        oldValue = invertedDiff.apply(_.clone(value));
       }
 
       adapter.update(prop.node, prop.key, value, oldValue);
@@ -697,6 +701,9 @@ Graph.Private = function() {
 
   this.set = function(path, value) {
     var property = this.resolve(path);
+    if (property === undefined) {
+      throw new Error("Key error: could not find element for path " + JSON.stringify(path));
+    }
     var oldValue = util.deepclone(property.get());
     property.set(value);
     this.trigger("property:updated", path, null, oldValue, value);
@@ -710,6 +717,9 @@ Graph.Private = function() {
 
   this.update = function(path, value, diff) {
     var property = this.resolve(path);
+    if (property === undefined) {
+      throw new Error("Key error: could not find element for path " + JSON.stringify(path));
+    }
     property.set(value);
     _triggerPropertyUpdate.call(this, path, diff);
   };
@@ -752,9 +762,16 @@ Graph.ObjectAdapter = function(graph) {
 Graph.ObjectAdapter.Prototype = function() {
   var impl = new Graph.Private();
 
+  // Note: this adapter is used with the OT API only.
+  // We do not accept paths to undefined properties
+  // and instead throw an error to fail as early as possible.
   this.get = function(path) {
     var prop = this.graph.resolve(path);
-    return prop.get();
+    if (prop === undefined) {
+      throw new Error("Key error: could not find element for path " + JSON.stringify(path));
+    } else {
+      return prop.get();
+    }
   };
 
   this.create = function(__, value) {
