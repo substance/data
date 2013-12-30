@@ -611,6 +611,13 @@ Graph.Prototype = function() {
     return index;
   };
 
+  this.getIndex = function(name) {
+    if (!this.indexes[name]) {
+      throw new GraphError("No index available with name:"+name);
+    }
+    return this.indexes[name];
+  };
+
   this.removeIndex = function(name) {
     delete this.indexes[name];
   };
