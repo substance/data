@@ -592,7 +592,7 @@ Graph.Prototype = function() {
       if (op.type === "set") {
         oldValue = op.original;
       } else {
-        var invertedDiff = Operator.Helpers.invert(op.diff, prop.type);
+        var invertedDiff = Operator.Helpers.invert(op.diff, prop.baseType);
         oldValue = invertedDiff.apply(_.clone(value));
       }
 
