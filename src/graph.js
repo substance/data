@@ -257,10 +257,12 @@ Graph.Prototype = function() {
     // each atomic change.
 
     Operator.Helpers.each(_op, function(op) {
-      Operator.ObjectOperation.apply(op, this.objectAdapter);
+      if (!(op instanceof Operator.ObjectOperation)) {
+        op = Operator.ObjectOperation.fromJSON(op);
+      }
+      op.apply(this.objectAdapter);
 
       this.updated_at = new Date();
-
       this._internalUpdates(op);
 
       _.each(this.indexes, function(index) {
