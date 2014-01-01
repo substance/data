@@ -19,7 +19,7 @@
     "underscore": "1.5.x",
     "substance-util": "git+https://github.com/substance/util.git#0.3.x",
     "substance-operator": "git+https://github.com/substance/operator.git#0.3.x",
-    "substance-chronicle": "git+https://github.com/substance/chronicle.git#0.3.x"
+    "substance-chronicle": "git+https://github.com/substance/chronicle.git#indexeddb"
   },
   "devDependencies": {
     "mocha": "1.12.x",
