@@ -7,7 +7,6 @@ var _ = require('underscore');
 var util = require('substance-util');
 var Test = require('substance-test');
 var assert = Test.assert;
-var registerTest = Test.registerTest;
 var Data = require('../index');
 var Operator = require('substance-operator');
 
@@ -27,6 +26,12 @@ var SCHEMA = {
 // ========
 
 var GraphEventsTest = function() {
+  Test.call(this);
+};
+
+GraphEventsTest.Prototype = function() {
+
+  _.extend(this, util.Events.Listener);
 
   this.setup = function() {
     this.graph = new Data.Graph(SCHEMA);
@@ -171,11 +176,9 @@ var GraphEventsTest = function() {
 
       this.stopListening();
     }
-
   ];
 };
+GraphEventsTest.Prototype.prototype = Test.prototype;
+GraphEventsTest.prototype = new GraphEventsTest.Prototype();
 
-_.extend(GraphEventsTest.prototype, util.Events.Listener);
-
-
-registerTest(['Substance.Data', 'Graph Events'], new GraphEventsTest());
+Test.registerTest(['Substance.Data', 'Graph Events'], new GraphEventsTest());

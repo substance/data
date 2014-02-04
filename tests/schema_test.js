@@ -43,6 +43,10 @@ var SCHEMA = {
 };
 
 var SchemaTest = function() {
+  Test.call(this);
+};
+
+SchemaTest.Prototype = function() {
 
   this.setup = function() {
     this.graph = new Data.Graph(SCHEMA);
@@ -100,5 +104,7 @@ var SchemaTest = function() {
     }
   ];
 };
+SchemaTest.Prototype.prototype = Test.prototype;
+SchemaTest.prototype = new SchemaTest.Prototype();
 
-registerTest(['Substance.Data', 'Schema'], new SchemaTest());
+Test.registerTest(['Substance.Data', 'Schema'], new SchemaTest());

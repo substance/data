@@ -6,7 +6,6 @@
 var _    = require('underscore');
 var Test = require('substance-test');
 var assert = Test.assert;
-var registerTest = Test.registerTest;
 var Data = require('../index');
 var Chronicle = require("substance-chronicle");
 
@@ -33,6 +32,10 @@ var SCHEMA = {
 };
 
 var GraphIndexTest = function() {
+  Test.call(this);
+};
+
+GraphIndexTest.Prototype = function() {
 
   this.setup = function() {
     this.graph = new Data.Graph(SCHEMA, {chronicle: Chronicle.create({mode: Chronicle.HYSTERICAL})});
@@ -143,5 +146,7 @@ var GraphIndexTest = function() {
     }
   ];
 };
+GraphIndexTest.Prototype.prototype = Test.prototype;
+GraphIndexTest.prototype = new GraphIndexTest.Prototype();
 
-registerTest(['Substance.Data', 'Graph Indexes'], new GraphIndexTest());
+Test.registerTest(['Substance.Data', 'Graph Indexes'], new GraphIndexTest());

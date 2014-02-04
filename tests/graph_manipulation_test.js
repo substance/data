@@ -6,7 +6,6 @@
 var _    = require('underscore');
 var Test = require('substance-test');
 var assert = Test.assert;
-var registerTest = Test.registerTest;
 var Operator = require('substance-operator');
 var Data = require('../index');
 
@@ -82,6 +81,10 @@ function getIds(arr) {
 }
 
 var GraphManipulationTest = function() {
+  Test.call(this);
+};
+
+GraphManipulationTest.Prototype = function() {
 
   this.setup = function() {
     this.graph = new Data.Graph(SCHEMA);
@@ -288,5 +291,7 @@ var GraphManipulationTest = function() {
     }
   ];
 };
+GraphManipulationTest.Prototype.prototype = Test.prototype;
+GraphManipulationTest.prototype = new GraphManipulationTest.Prototype();
 
-registerTest(['Substance.Data', 'Graph Manipulation'], new GraphManipulationTest());
+Test.registerTest(['Substance.Data', 'Graph Manipulation'], new GraphManipulationTest());

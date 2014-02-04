@@ -6,7 +6,6 @@
 var _    = require('underscore');
 var Test = require('substance-test');
 var assert = Test.assert;
-var registerTest = Test.registerTest;
 var util = require('substance-util');
 
 var Operator = require('substance-operator');
@@ -16,8 +15,6 @@ var Chronicle = require('substance-chronicle');
 
 // Test
 // ========
-
-var test = {};
 
 var SCHEMA = {
   "views": {
@@ -181,110 +178,118 @@ var OP9 = Operator.ObjectOperation.Update(["content", "nodes"], Operator.ArrayOp
 //
 //
 
-test.setup = function() {
-  this.graph = new Data.Graph(SCHEMA, {chronicle: Chronicle.create()});
-  this.chronicle = this.graph.chronicle;
-  this.index = this.chronicle.index;
-  this.adapter = this.graph.chronicle.versioned;
-
-  this.ID = ["ROOT"];
-  this.M = ["ROOT"];
-
-  var self = this;
-  this.CHECKS = {"ROOT": function() {
-    assert.isTrue(_.isEmpty(self.graph.nodes));
-  }};
-  this.chronicle.uuid = util.uuidGen("");
-
+var VersionedGraphTest = function() {
+  Test.call(this);
 };
 
-test.actions = [
+VersionedGraphTest.Prototype = function() {
 
-  "Creation", function() {
-    var check;
+  this.setup = function() {
+    this.graph = new Data.Graph(SCHEMA, {chronicle: Chronicle.create()});
+    this.chronicle = this.graph.chronicle;
+    this.index = this.chronicle.index;
+    this.adapter = this.graph.chronicle.versioned;
+
+    this.ID = ["ROOT"];
+    this.M = ["ROOT"];
+
     var self = this;
+    this.CHECKS = {"ROOT": function() {
+      assert.isTrue(_.isEmpty(self.graph.nodes));
+    }};
+    this.chronicle.uuid = util.uuidGen("");
+  };
 
-    this.CHECKS["ROOT"]();
+  this.actions = [
 
-    this.graph.apply(OP1);
-    this.ID.push(this.chronicle.getState());
-    this.CHECKS[_.last(this.ID)] = check = function() {
-      assert.isArrayEqual(["content", "figures"], self.graph.get("document").views);
-    };
-    check();
+    "Creation", function() {
+      var check;
+      var self = this;
 
-    this.graph.apply(OP2);
-    this.ID.push(this.chronicle.getState());
-    this.CHECKS[_.last(this.ID)] = check = function() {
-      assert.isArrayEqual([], self.graph.get("content").nodes);
-    };
-    check();
+      this.CHECKS["ROOT"]();
 
-    this.graph.apply(OP3);
-    this.ID.push(this.chronicle.getState());
-    this.CHECKS[_.last(this.ID)] = check = function() {
-      assert.isEqual("Heading 1", self.graph.get("h1").content);
-    };
-    check();
+      this.graph.apply(OP1);
+      this.ID.push(this.chronicle.getState());
+      this.CHECKS[_.last(this.ID)] = check = function() {
+        assert.isArrayEqual(["content", "figures"], self.graph.get("document").views);
+      };
+      check();
 
-    this.graph.apply(OP4);
-    this.ID.push(this.chronicle.getState());
-    this.CHECKS[_.last(this.ID)] = check = function() {
-      assert.isArrayEqual(["h1"], self.graph.get("content").nodes);
-    };
-    check();
+      this.graph.apply(OP2);
+      this.ID.push(this.chronicle.getState());
+      this.CHECKS[_.last(this.ID)] = check = function() {
+        assert.isArrayEqual([], self.graph.get("content").nodes);
+      };
+      check();
 
-    this.graph.apply(OP5);
-    this.ID.push(this.chronicle.getState());
-    this.CHECKS[_.last(this.ID)] = check = function() {
-      assert.isEqual("This is text1.", self.graph.get("text1").content);
-    };
-    check();
+      this.graph.apply(OP3);
+      this.ID.push(this.chronicle.getState());
+      this.CHECKS[_.last(this.ID)] = check = function() {
+        assert.isEqual("Heading 1", self.graph.get("h1").content);
+      };
+      check();
 
-    this.graph.apply(OP6);
-    this.ID.push(this.chronicle.getState());
-    this.CHECKS[_.last(this.ID)] = check = function() {
-      assert.isArrayEqual(["h1", "text1"], self.graph.get("content").nodes);
-    };
-    check();
+      this.graph.apply(OP4);
+      this.ID.push(this.chronicle.getState());
+      this.CHECKS[_.last(this.ID)] = check = function() {
+        assert.isArrayEqual(["h1"], self.graph.get("content").nodes);
+      };
+      check();
 
-    this.graph.apply(OP7);
-    this.ID.push(this.chronicle.getState());
-    this.CHECKS[_.last(this.ID)] = check = function() {
-      assert.isArrayEqual(["text1", "h1"], self.graph.get("content").nodes);
-    };
-    check();
-  },
+      this.graph.apply(OP5);
+      this.ID.push(this.chronicle.getState());
+      this.CHECKS[_.last(this.ID)] = check = function() {
+        assert.isEqual("This is text1.", self.graph.get("text1").content);
+      };
+      check();
 
-  "Random checkout", function() {
-    this.graph.reset();
+      this.graph.apply(OP6);
+      this.ID.push(this.chronicle.getState());
+      this.CHECKS[_.last(this.ID)] = check = function() {
+        assert.isArrayEqual(["h1", "text1"], self.graph.get("content").nodes);
+      };
+      check();
 
-    var sequence = ["1", "7", "5", "4", "3", "2", "6"];
+      this.graph.apply(OP7);
+      this.ID.push(this.chronicle.getState());
+      this.CHECKS[_.last(this.ID)] = check = function() {
+        assert.isArrayEqual(["text1", "h1"], self.graph.get("content").nodes);
+      };
+      check();
+    },
 
-    _.each(sequence, function(id) {
-      this.chronicle.open(id);
-      this.CHECKS[id].call(this);
-    }, this);
-  },
+    "Random checkout", function() {
+      this.graph.reset();
 
-  "Merge", function() {
-    this.chronicle.open(this.ID[4]);
-    this.graph.apply(OP8);
-    this.ID.push(this.chronicle.getState());
-    this.graph.apply(OP9);
-    this.ID.push(this.chronicle.getState());
+      var sequence = ["1", "7", "5", "4", "3", "2", "6"];
 
-    this.chronicle.open(this.ID[7]);
-    var mergeOptions = {
-      sequence: [this.ID[5], this.ID[6], this.ID[8], this.ID[9], this.ID[7]],
-      force: true
-    };
-    this.chronicle.merge(this.ID[9], "manual", mergeOptions);
-    this.M.push(this.chronicle.getState());
+      _.each(sequence, function(id) {
+        this.chronicle.open(id);
+        this.CHECKS[id].call(this);
+      }, this);
+    },
 
-    assert.isArrayEqual(["text1", "h1", "text2"], this.graph.get("content").nodes);
-  },
+    "Merge", function() {
+      this.chronicle.open(this.ID[4]);
+      this.graph.apply(OP8);
+      this.ID.push(this.chronicle.getState());
+      this.graph.apply(OP9);
+      this.ID.push(this.chronicle.getState());
 
-];
+      this.chronicle.open(this.ID[7]);
+      var mergeOptions = {
+        sequence: [this.ID[5], this.ID[6], this.ID[8], this.ID[9], this.ID[7]],
+        force: true
+      };
+      this.chronicle.merge(this.ID[9], "manual", mergeOptions);
+      this.M.push(this.chronicle.getState());
 
-registerTest(['Substance.Data', 'Versioned Graph'], test);
+      assert.isArrayEqual(["text1", "h1", "text2"], this.graph.get("content").nodes);
+    },
+
+  ];
+};
+VersionedGraphTest.Prototype.prototype = Test.prototype;
+VersionedGraphTest.prototype = new VersionedGraphTest.Prototype();
+
+Test.registerTest(['Substance.Data', 'Versioned Graph'], new VersionedGraphTest());
