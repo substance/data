@@ -242,7 +242,7 @@ Graph.Prototype = function() {
     }
     var oldValue = prop.get();
     // Note: Operator.ObjectOperation.Set will clone the values
-    var op = Operator.ObjectOperation.Set(path, oldValue, newValue));
+    var op = Operator.ObjectOperation.Set(path, oldValue, newValue);
     return this.apply(op);
   };
 
