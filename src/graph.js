@@ -241,7 +241,7 @@ Graph.Prototype = function() {
       throw new GraphError("Could not resolve property with path "+JSON.stringify(path));
     }
     var oldValue = prop.get();
-    var op = Operator.ObjectOperation.Set(path, oldValue, newValue);
+    var op = Operator.ObjectOperation.Set(path, _.clone(oldValue), _.clone(newValue));
     return this.apply(op);
   };
 
