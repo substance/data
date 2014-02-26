@@ -23,8 +23,7 @@
   },
   "devDependencies": {
     "mocha": "1.12.x",
-    "substance-test": "git+https://github.com/substance/test.git#master",
-    "substance-store": "0.1.x"
+    "substance-test": "git+https://github.com/substance/test.git#master"
   },
   "scripts": {
     "test": "mocha -R spec tests/run.js"
