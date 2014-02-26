@@ -17,14 +17,14 @@
   },
   "dependencies": {
     "underscore": "1.5.x",
-    "substance-util": "git+https://github.com/substance/util.git#0.3.x",
-    "substance-operator": "git+https://github.com/substance/operator.git#0.3.x",
-    "substance-chronicle": "git+https://github.com/substance/chronicle.git#indexeddb"
+    "substance-util": "0.3.0",
+    "substance-operator": "0.3.0",
+    "substance-chronicle": "0.3.0"
   },
   "devDependencies": {
     "mocha": "1.12.x",
-    "substance-test": "git+https://github.com/substance/test.git#0.3.x",
-    "substance-store": "git+https://github.com/substance/store.git#0.1.x"
+    "substance-test": "0.3.0",
+    "substance-store": "0.1.x"
   },
   "scripts": {
     "test": "mocha -R spec tests/run.js"
