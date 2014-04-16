@@ -235,7 +235,7 @@ Graph.Prototype = function() {
   //   - path: an array used to resolve the property to be updated
   //   - diff: an (incremental) operation that should be applied to the property
   //
-  this.set = function(path, newValue) {
+  this.set = function(path, newValue, userData) {
     var prop = this.resolve(path);
     if (!prop) {
       throw new GraphError("Could not resolve property with path "+JSON.stringify(path));
@@ -243,6 +243,8 @@ Graph.Prototype = function() {
     var oldValue = prop.get();
     // Note: Operator.ObjectOperation.Set will clone the values
     var op = Operator.ObjectOperation.Set(path, oldValue, newValue);
+    if (userData) op.data = userData;
+
     return this.apply(op);
   };
 
