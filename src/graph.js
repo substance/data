@@ -253,7 +253,7 @@ Graph.Prototype = function() {
   //
   // Only applies the graph operation without triggering e.g., the chronicle.
 
-  this.__apply__ = function(_op) {
+  this.__apply__ = function(_op, options) {
     //console.log("Graph.__apply__", op);
 
     // Note: we apply compounds eagerly... i.e., all listeners will be updated after
@@ -274,7 +274,7 @@ Graph.Prototype = function() {
       }, this);
 
       // And all regular listeners in second line
-      this.trigger('operation:applied', op, this);
+      this.trigger('operation:applied', op, this, options);
     }, this);
 
   };
@@ -297,8 +297,8 @@ Graph.Prototype = function() {
   // Arguments:
   //   - op: the operation to be applied,
 
-  this.apply = function(op) {
-    this.__apply__(op);
+  this.apply = function(op, options) {
+    this.__apply__(op, options);
 
     // do not record changes during initialization
     if (!this.__is_initializing__ && this.isVersioned) {
