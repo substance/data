@@ -716,6 +716,9 @@ Graph.Private = function() {
     if (property === undefined) {
       throw new Error("Key error: could not find element for path " + JSON.stringify(path));
     }
+    if (!property.type) {
+      throw new Error("Could not lookup schema for path " + JSON.stringify(path));
+    }
     var oldValue = util.deepclone(property.get());
     property.set(value);
     this.trigger("property:updated", path, null, oldValue, value);
