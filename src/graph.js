@@ -13,6 +13,7 @@ var Operator = require('substance-operator');
 var PersistenceAdapter = require('./persistence_adapter');
 var ChronicleAdapter = require('./chronicle_adapter');
 var Index = require('./graph_index');
+var Migrations = require("./migrations");
 
 var GraphError = errors.define("GraphError");
 
@@ -59,15 +60,12 @@ var Graph = function(schema, options) {
   // Check if provided seed conforms to the given schema
   // Only when schema has an id and seed is provided
 
-  if (this.schema.id && options.seed && options.seed.schema) {
-    if (!_.isEqual(options.seed.schema, [this.schema.id, this.schema.version])) {
-      throw new GraphError([
-        "Graph does not conform to schema. Expected: ",
-        this.schema.id+"@"+this.schema.version,
-        " Actual: ",
-        options.seed.schema[0]+"@"+options.seed.schema[1]
-      ].join(''));
-    }
+  // TODO: IMO it does not make sense to have a schema without id
+  // and every seed MUST have a schema
+  // if (this.schema.id && options.seed && options.seed.schema) {
+  var seed = options.seed;
+  if (seed && (seed.schema[0] !== this.schema.id || seed.schema[1] !== this.schema.version)) {
+    this.migrate(seed);
   }
 
   this.objectAdapter = new Graph.ObjectAdapter(this);
@@ -635,6 +633,25 @@ Graph.Prototype = function() {
     this.chronicle = chronicle;
     this.chronicle.manage(new Graph.ChronicleAdapter(this));
     this.isVersioned = true;
+  };
+
+  this.getMigrations = function() {
+    return {};
+  };
+
+  this.migrate = function(seed) {
+    // Try to migrate
+    var migrations = new Migrations(this);
+    // try {
+      return migrations.migrate(seed);
+    // } catch (migrationErr) {
+    //   throw new GraphError([
+    //     "Graph does not conform to schema. Expected: ",
+    //     this.schema.id+"@"+this.schema.version,
+    //     " Actual: ",
+    //     seed.schema[0]+"@"+seed.schema[1]
+    //   ].join(''));
+    // }
   };
 
 };
