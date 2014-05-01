@@ -448,61 +448,6 @@ Graph.Prototype = function() {
     delete this.__is_initializing__;
   };
 
-  // Merge graphs
-  // ------------
-  //
-  // Merges this graph with another graph:
-  //     var folks = new Data.Graph(folks_schema);
-  //     var persons = new Data.Graph(persons_schema);
-  //     folks.create({
-  //       name: 'Bart',
-  //       surname: 'Simpson',
-  //       type: 'cartoon-actor',
-  //       century: 'XXI',
-  //       citizen: 'U.S.'
-  //     });
-  //     persons.create({
-  //       name: 'Alexander',
-  //       surname: 'Pushkin',
-  //       type: 'poet',
-  //       century: '19',
-  //       citizen: 'Russia'
-  //     });
-  //     persons.create({
-  //       name: 'Pelem Grenwill',
-  //       surname: 'Woodhouse',
-  //       type: 'poet',
-  //       century: '19',
-  //       citizen: 'Russia'
-  //     });
-  //     var merged = persons.merge(folks);
-  //     merged.toJSON();
-  //     => {
-  //       nodes: [
-  //         {
-  //           name: 'Alexander',
-  //           surname: 'Pushkin',
-  //           type: 'poet',
-  //           century: '19',
-  //           citizen: 'Russia'
-  //         },
-  //         {
-  //           name: 'Pelem Grenwill',
-  //           surname: 'Woodhouse',
-  //           type: 'poet',
-  //           century: '19',
-  //           citizen: 'Russia'
-  //         },
-  //         {
-  //           name: 'Bart',
-  //           surname: 'Simpson',
-  //           type: 'cartoon-actor',
-  //           century: 'XXI',
-  //           citizen: 'U.S.'
-  //         }
-  //       ]
-  //     }
-
   this.merge = function(graph) {
     _.each(graph.nodes, function(n) {
       this.create(n);
