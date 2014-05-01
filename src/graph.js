@@ -62,9 +62,14 @@ var Graph = function(schema, options) {
 
   // TODO: IMO it does not make sense to have a schema without id
   // and every seed MUST have a schema
-  // if (this.schema.id && options.seed && options.seed.schema) {
+  // We should add that schema in all seeds
   var seed = options.seed;
-  if (seed && (seed.schema[0] !== this.schema.id || seed.schema[1] !== this.schema.version)) {
+  if (seed && !seed.schema) {
+    console.error("FIXME: a document seed MUST have a schema.");
+  }
+  if (seed && seed.schema &&
+      (seed.schema[0] !== this.schema.id || seed.schema[1] !== this.schema.version)
+     ) {
     this.migrate(seed);
   }
 
