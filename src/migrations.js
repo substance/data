@@ -140,7 +140,11 @@ Migrator.Prototype = function() {
   };
 
   this.addProperty = function(nodeType, propertyName, defaultValue) {
-    throw new MigrationError("Not yet implemented", nodeType, propertyName, defaultValue);
+    _.each(this.data.nodes, function(n) {
+      if (n.type === nodeType) {
+        n[propertyName] = defaultValue;
+      }
+    }, this);
   };
 
   this.reportWarning = function(msg, data) {
