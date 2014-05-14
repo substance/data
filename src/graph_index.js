@@ -159,6 +159,20 @@ Index.Prototype = function() {
     return result;
   };
 
+  // EXPERIMENTAL: sometimes we want to get groups of nodes, where this.property
+  // is used for grouping.
+  // Note: this works only for non-array properties.
+  this.getGroups = function() {
+    var result = {};
+
+    _.each(this.scopes, function(__, groupId) {
+      var nodes = this.get(groupId);
+      result[groupId] = Object.keys(nodes);
+    }, this);
+
+    return result;
+  };
+
   this.reset = function() {
     this.nodes = {};
     this.scopes = {};
