@@ -276,8 +276,16 @@ Graph.Prototype = function() {
         index.onGraphChange(op);
       }, this);
 
+      // provide the target node which is affected by this operation
+      var target;
+      if (op.type === "create" || op.type === "delete") {
+        target = op.val;
+      } else {
+        target = this.get(op.path[0]);
+      }
+
       // And all regular listeners in second line
-      this.trigger('operation:applied', op, this, options);
+      this.trigger('operation:applied', op, this, target, options);
     }, this);
 
   };
