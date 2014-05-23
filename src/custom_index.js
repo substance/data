@@ -58,7 +58,7 @@ CustomIndex.Prototype = function() {
   this.__remove = function(key, value) {
     var values = this.data[key];
     if (values) {
-      var idx = values.dataOf(value);
+      var idx = values.indexOf(value);
       if (idx >= 0) {
         values = values.splice(idx, 1);
       }
