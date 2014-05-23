@@ -13,6 +13,8 @@ var Operator = require('substance-operator');
 var PersistenceAdapter = require('./persistence_adapter');
 var ChronicleAdapter = require('./chronicle_adapter');
 var Index = require('./graph_index');
+var CustomIndex = require('./custom_index');
+var SimpleIndex = require('./simple_index');
 var Migrations = require("./migrations");
 
 var GraphError = errors.define("GraphError");
@@ -566,7 +568,18 @@ Graph.Prototype = function() {
       return this.indexes[name];
       // throw new GraphError("Index with name " + name + "already exists.");
     }
-    var index = new Index(this, options);
+
+    // EXPERIMENTAL: refactoring the index API
+    // Eventually, simple indexing should be easier and consistent with
+    // the currently rather complicated hierarchical index
+    var index;
+    if (options && options["custom"]) {
+      index = new CustomIndex(this, name, options);
+    } else if (options && options["simple"]) {
+      index = new SimpleIndex(this, name, options);
+    } else {
+      index = new Index(this, options);
+    }
     this.indexes[name] = index;
 
     return index;

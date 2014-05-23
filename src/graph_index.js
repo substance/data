@@ -9,6 +9,10 @@ var util = require("substance-util");
 // - filter: a function that takes a node and returns true if the node should be indexed
 // - key: a function that provides a path for scoped indexing (default: returns empty path)
 //
+// Note: this implementation is rather 'complicated'. It is tailored to the annotation use-case,
+// where we want to get all annotations for a specific graph path, e.g., ["text_1", "content"].
+// TODO: we should provide a simpler index implementation of other things,
+// for example: group nodes by type, map annotations to container (i.e., annotation.path[0]->container).
 
 var Index = function(graph, options) {
   options = options || {};
@@ -32,6 +36,8 @@ var Index = function(graph, options) {
 };
 
 Index.Prototype = function() {
+
+  _.extend(this, util.Events.Listener);
 
   // Resolves a sub-hierarchy of the index via a given path
   // --------
@@ -183,7 +189,7 @@ Index.Prototype = function() {
   };
 };
 
-Index.prototype = _.extend(new Index.Prototype(), util.Events.Listener);
+Index.prototype = new Index.Prototype();
 
 Index.typeFilter = function(schema, types) {
   return function(node) {
