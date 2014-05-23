@@ -91,7 +91,7 @@ CustomIndex.Prototype = function() {
           var key = self.__getKey(node, node[self.__property]);
           if (!key) return;
           var value = self.__getValue(node, node[self.__property]);
-          this.__add(key, value);
+          self.__add(key, value);
         }
       },
       delete: function(node) {
@@ -99,18 +99,18 @@ CustomIndex.Prototype = function() {
           var key = self.__getKey(node, node[self.__property]);
           if (!key) return;
           var value = self.__getValue(node, node[self.__property]);
-          this.__remove(key, value);
+          self.__remove(key, value);
         }
       },
       update: function(node, property, newValue, oldValue) {
         if ((self.__property === property) && (!self.__filter || self.__filter(node))) {
           var key = self.__getKey(node, oldValue);
           if (key) {
-            this.__remove(key, oldValue);
+            self.__remove(key, oldValue);
           }
           key = self.__getKey(node, newValue);
           var value = self.__getValue(node, newValue);
-          this.__add(key, value);
+          self.__add(key, value);
         }
       }
     };
