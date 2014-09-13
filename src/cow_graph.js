@@ -5,13 +5,19 @@ var GraphError = Graph.GraphError;
 
 var CopyOnWriteGraph = function(graph) {
   this.original = graph;
-  this.nodes = CopyOnWriteGraph.cowObject(graph.nodes);
+  this.COW_ID = CopyOnWriteGraph.IDX++;
+
+  this.nodes = CopyOnWriteGraph.cowObject(graph.nodes, this.COW_ID);
   this.objectAdapter = new Graph.ObjectAdapter(this);
   this.schema = graph.schema;
   this.indexes = {};
   this.chronicle = undefined;
   this.isVersioned = false;
+
+  this.objectAdapter.inplace = function() { return true; };
 };
+
+CopyOnWriteGraph.IDX = 1;
 
 CopyOnWriteGraph.Prototype = function() {
   this.get = function(path) {
@@ -26,7 +32,7 @@ CopyOnWriteGraph.Prototype = function() {
     return prop.get();
   };
   this.resolve = function(path) {
-    return new CopyOnWriteGraph.CowProperty(this, path);
+    return new CopyOnWriteGraph.CowProperty(this, path, this.COW_ID);
   };
   this._delete = function(node) {
     this.nodes[node.id] = undefined;
@@ -36,29 +42,36 @@ CopyOnWriteGraph.Prototype = function() {
 CopyOnWriteGraph.Prototype.prototype = Graph.prototype;
 CopyOnWriteGraph.prototype = new CopyOnWriteGraph.Prototype();
 
-CopyOnWriteGraph.cowObject = function(obj) {
+CopyOnWriteGraph.cowObject = function(obj, COW_ID) {
   var result;
-  if (_.isObject(obj)) {
+  if (obj === undefined || obj === null) return obj;
+
+  if (_.isArray(obj)) {
+    result = obj.slice(0);
+  } else if (_.isObject(obj)) {
     if (obj.copyOnWriteClone) {
       result = obj.copyOnWriteClone();
     } else {
       result = Object.create(obj);
     }
-  } else if (_.isArray(obj)) {
-    result = obj.slice(0);
+    result.toJSON = function() {
+      return _.extend({}, Object.getPrototypeOf(this), this);
+    };
   } else {
-    return obj;
+    // copy primitives
+    result = new obj.constructor(obj);
   }
-  result.__COW__ = true;
-
+  result.__COW__ = COW_ID;
   return result;
 };
 
-CopyOnWriteGraph.CowProperty = function(graph, path) {
+CopyOnWriteGraph.CowProperty = function(graph, path, COW_ID) {
+  // Important: set this before calling super
+  this.COW_ID = COW_ID;
+
   Property.call(this, graph, path);
   this.graph = graph;
   this.path = path;
-
 };
 CopyOnWriteGraph.CowProperty.Protoype = function() {
 
@@ -73,8 +86,8 @@ CopyOnWriteGraph.CowProperty.Protoype = function() {
         this.baseType = undefined;
         return;
       }
-      else if (!child.__COW__) {
-        child = CopyOnWriteGraph.cowObject(child);
+      else if (child.__COW__ !== this.COW_ID) {
+        child = CopyOnWriteGraph.cowObject(child, this.COW_ID);
         this.context[this.path[i]] = child;
       }
       this.context = child;
@@ -88,8 +101,8 @@ CopyOnWriteGraph.CowProperty.Protoype = function() {
 
   this.get = function() {
     var result = this.context[this.key];
-    if (_.isObject(result) && !result.__COW__) {
-      result = CopyOnWriteGraph.cowObject(result);
+    if (result.__COW__ !== this.COW_ID) {
+      result = CopyOnWriteGraph.cowObject(result, this.COW_ID);
       this.context[this.key] = result;
     }
     return result;
