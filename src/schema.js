@@ -3,7 +3,6 @@
 var _ = require("underscore");
 var util = require("substance-util");
 
-
 // Data.Schema
 // ========
 //
@@ -11,6 +10,14 @@ var util = require("substance-util");
 
 var Schema = function(schema) {
   _.extend(this, schema);
+
+  this._typeChains = {};
+  this._properties = {};
+
+  _.each(schema.types, function(type, name) {
+    this.getTypeChain(name);
+    this.getProperties(name);
+  }, this);
 };
 
 Schema.Prototype = function() {
@@ -19,7 +26,7 @@ Schema.Prototype = function() {
   // --------
   //
 
-  this.defaultValue = function(valueType) {
+  this.getDefaultValue = function(valueType) {
     if (valueType === "object") return {};
     if (valueType === "array") return [];
     if (valueType === "string") return "";
@@ -97,7 +104,7 @@ Schema.Prototype = function() {
   // --------
   //
 
-  this.type = function(typeId) {
+  this.getType = function(typeId) {
     return this.types[typeId];
   };
 
@@ -106,43 +113,53 @@ Schema.Prototype = function() {
   //
   // => ["base_type", "specific_type"]
 
-  this.typeChain = function(typeId) {
-    var type = this.types[typeId];
-    if (!type) {
-      throw new Error('Type ' + typeId + ' not found in schema');
+  this.getTypeChain = function(typeId) {
+    if (!this.types[typeId]) {
+      throw new Error("Unknonw type: " + typeId);
     }
-
-    var chain = (type.parent) ? this.typeChain(type.parent) : [];
-    chain.push(typeId);
-    return chain;
+    if (!this._typeChains[typeId]) {
+      var typeChain = [typeId];
+      var type = this.types[typeId];
+      while (type.parent) {
+        typeChain.push(type.parent);
+        type = type.parent;
+      }
+      this._typeChains[typeId] = typeChain;
+    }
+    return this._typeChains[typeId];
   };
 
   this.isInstanceOf = function(type, parentType) {
-    var typeChain = this.typeChain(type);
-    if (typeChain && typeChain.indexOf(parentType) >= 0) {
-      return true;
-    } else {
-      return false;
-    }
+    return (this.getTypeChain(type).indexOf(parentType) > 0);
   };
 
   // Provides the top-most parent type of a given type.
   // --------
   //
 
-  this.baseType = function(typeId) {
-    return this.typeChain(typeId)[0];
+  this.getBaseType = function(typeId) {
+    var typeChain = this.getTypeChain(typeId)[0];
+    return _.last(typeChain);
   };
 
   // Return all properties for a given type
   // --------
   //
 
-  this.properties = function(type) {
-    type = _.isObject(type) ? type : this.type(type);
-    var result = (type.parent) ? this.properties(type.parent) : {};
-    _.extend(result, type.properties);
-    return result;
+  this.getProperties = function(typeId) {
+    if (!this.types[typeId]) {
+      throw new Error("Unknown type: " + typeId);
+    }
+    if (!this._properties[typeId]) {
+      var typeChain = this.getTypeChain(typeId);
+      var properties = {};
+      _.each(typeChain, function(typeId) {
+        _.extend(properties, this.types[typeId]);
+      }, this);
+      delete properties['parent'];
+      this._properties[typeId] = properties;
+    }
+    return this._properties[typeId];
   };
 
   // Returns the full type for a given property
@@ -150,11 +167,11 @@ Schema.Prototype = function() {
   //
   // => ["array", "string"]
 
-  this.propertyType = function(type, property) {
-    var properties = this.properties(type);
+  this.getPropertyType = function(type, property) {
+    var properties = this.getProperties(type);
     var propertyType = properties[property];
     if (!propertyType) throw new Error("Property not found for" + type +'.'+property);
-    return _.isArray(propertyType) ? propertyType : [propertyType];
+    return propertyType;
   };
 
   // Returns the base type for a given property
@@ -163,8 +180,9 @@ Schema.Prototype = function() {
   //  ["string"] => "string"
   //  ["array", "string"] => "array"
 
-  this.propertyBaseType = function(type, property) {
-    return this.propertyType(type, property)[0];
+  this.getPropertyBaseType = function(type, property) {
+    var propertyType = this.getPropertyType(type, property);
+    return _.isArray(propertyType) ? propertyType[0] : propertyType;
   };
 };
 

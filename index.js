@@ -7,6 +7,7 @@ Data.VERSION = '0.8.0';
 
 Data.Graph = require('./src/graph');
 
+Data.COWGraph = require('./src/cow_graph');
 
 var _ = require("underscore");
 // A helper that is used by Graph node implementations

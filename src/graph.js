@@ -10,7 +10,6 @@ var Property = require('./property');
 var Chronicle = require('substance-chronicle');
 var Operator = require('substance-operator');
 
-var PersistenceAdapter = require('./persistence_adapter');
 var ChronicleAdapter = require('./chronicle_adapter');
 var Index = require('./graph_index');
 var CustomIndex = require('./custom_index');
@@ -58,72 +57,37 @@ var Graph = function(schema, options) {
 
   // Initialization
   this.schema = new Schema(schema);
-
-  // Check if provided seed conforms to the given schema
-  // Only when schema has an id and seed is provided
-
-  // TODO: IMO it does not make sense to have a schema without id
-  // and every seed MUST have a schema
-  // We should add that schema in all seeds
-  var seed = options.seed;
-  if (seed && !seed.schema) {
-    console.error("FIXME: a document seed MUST have a schema.");
-  }
-  if (seed && seed.schema &&
-      (seed.schema[0] !== this.schema.id || seed.schema[1] !== this.schema.version)
-     ) {
-    this.migrate(seed);
-  }
-
-  this.objectAdapter = new Graph.ObjectAdapter(this);
-
   this.nodes = {};
   this.indexes = {};
-
+  this.objectAdapter = new Graph.ObjectAdapter(this);
+  this.seed = options.seed;
   this.__mode__ = options.mode || Graph.DEFAULT_MODE;
-  this.__seed__ = options.seed;
-
-  // Note: don't init automatically after making persistent
-  // as this would delete the persistet graph.
-  // Instead, the application has to call `graph.load()` if the store is supposed to
-  // contain a persisted graph
   this.isVersioned = !!options.chronicle;
-  this.isPersistent = !!options.store;
-
-  // Make chronicle graph
+  this.chronicle = options.chronicle;
   if (this.isVersioned) {
-    this.chronicle = options.chronicle;
     this.chronicle.manage(new Graph.ChronicleAdapter(this));
   }
 
-  // Make persistent graph
-  if (this.isPersistent) {
-    var nodes = options.store.hash("nodes");
-    this.__store__ = options.store;
-    this.__nodes__ = nodes;
-
-    if (this.isVersioned) {
-      this.__version__ = options.store.hash("__version__");
-    }
-
-    this.objectAdapter = new PersistenceAdapter(this.objectAdapter, nodes);
+  // Check if provided seed conforms to the given schema
+  // Only when schema has an id and seed is provided
+  // TODO: IMO it does not make sense to have a schema without id
+  // and every seed MUST have a schema
+  // We should add that schema in all seeds
+  if (this.seed && !this.seed.schema) {
+    console.error("FIXME: a document seed MUST have a schema.");
+  }
+  if (this.seed && this.seed.schema &&
+      (this.seed.schema[0] !== this.schema.id || this.seed.schema[1] !== this.schema.version)
+     ) {
+    this.migrate(this.seed);
   }
 
-  if (options.load) {
-    this.load();
-  } else {
-    this.init();
-  }
-
-  // Populate graph
-  if (options.graph) this.merge(options.graph);
+  this.init(this.seed);
 };
 
 Graph.Prototype = function() {
 
   _.extend(this, util.Events);
-
-  var _private = new Graph.Private();
 
   // Graph manipulation API
   // ======================
@@ -350,8 +314,7 @@ Graph.Prototype = function() {
     }
     if (_.isString(path)) return this.nodes[path];
 
-    var prop = this.resolve(path);
-    return prop.get();
+    return util.getProp(this.nodes, path);
   };
 
   // Query graph data
@@ -379,7 +342,7 @@ Graph.Prototype = function() {
 
     // resolve referenced nodes in array types
     if (baseType === "array") {
-      return _private.queryArray.call(this, val, type);
+      return this.queryArray(val, type);
     } else if (!isValueType(baseType)) {
       return this.get(val);
     } else {
@@ -431,7 +394,7 @@ Graph.Prototype = function() {
       if (this.__nodes__) this.__nodes__.clear();
     }
 
-    this.init();
+    this.init(this.seed);
 
     if (this.isVersioned) {
       this.state = Chronicle.ROOT;
@@ -441,11 +404,11 @@ Graph.Prototype = function() {
   };
 
   // Graph initialization.
-  this.init = function() {
+  this.init = function(seed) {
     this.__is_initializing__ = true;
 
-    if (this.__seed__) {
-      this.nodes = util.clone(this.__seed__.nodes);
+    if (seed) {
+      this.nodes = util.clone(seed.nodes);
     } else {
       this.nodes = {};
     }
@@ -478,38 +441,6 @@ Graph.Prototype = function() {
     return _.map(this.getView(view), function(node) {
       return this.get(node);
     }, this);
-  };
-
-  // Graph loading.
-  // ----------
-  //
-  // Note: currently this must be called explicitely by the app
-
-  this.load = function() {
-
-    if (!this.isPersistent) {
-      console.log("Graph is not persistent.");
-      return;
-    }
-
-    this.__is_initializing__ = true;
-
-    this.nodes = {};
-    this.indexes = {};
-
-    // import persistet nodes
-    var keys = this.__nodes__.keys();
-    for (var idx = 0; idx < keys.length; idx++) {
-      _private.create.call(this, this.__nodes__.get(keys[idx]));
-    }
-
-    if (this.isVersioned) {
-      this.state = this.__version__.get("state") || "ROOT";
-    }
-
-    delete this.__is_initializing__;
-
-    return this;
   };
 
   // A helper to apply co-transformations
@@ -625,21 +556,8 @@ Graph.Prototype = function() {
     // }
   };
 
-};
-
-// Index Modes
-// ----------
-
-Graph.STRICT_INDEXING = 1 << 1;
-Graph.DEFAULT_MODE = Graph.STRICT_INDEXING;
-
-
-// Private Graph implementation
-// ============================
-
-Graph.Private = function() {
-
-  var _private = this;
+  // Internal implementation
+  // =======================
 
   // Node construction
   // -----------------
@@ -653,26 +571,43 @@ Graph.Private = function() {
     if (!node.id || !node.type) {
       throw new GraphError("Can not create Node: 'id' and 'type' are mandatory.");
     }
-
-    var type = schema.type(node.type);
+    var type = schema.getType(node.type);
     if (!type) {
       throw new GraphError("Type '"+node.type+"' not found in the schema");
     }
-
-    var properties = schema.properties(node.type);
+    var properties = schema.getProperties(node.type);
     var freshNode = { type: node.type, id: node.id };
-
     // Start constructing the fresh node
     _.each(properties, function(p, key) {
       // Find property base type
-      var baseType = schema.propertyBaseType(node.type, key);
+      var baseType = schema.getPropertyBaseType(node.type, key);
 
       // Assign user defined property value or use default value for baseType
-      var val = (node[key] !== undefined) ? node[key] : schema.defaultValue(baseType);
+      var val = (node[key] !== undefined) ? node[key] : schema.getDefaultValue(baseType);
       freshNode[key] = util.deepclone(val);
     });
-
     return freshNode;
+  };
+
+  this.queryArray = function(arr, type) {
+    if (!_.isArray(type)) {
+      throw new GraphError("Illegal argument: array types must be specified as ['array'(, 'array')*, <type>]");
+    }
+    var result, idx;
+    if (type[1] === "array") {
+      result = [];
+      for (idx = 0; idx < arr.length; idx++) {
+        result.push(this.queryArray(arr[idx], type.slice(1)));
+      }
+    } else if (!isValueType(type[1])) {
+      result = [];
+      for (idx = 0; idx < arr.length; idx++) {
+        result.push(this.get(arr[idx]));
+      }
+    } else {
+      result = arr;
+    }
+    return result;
   };
 
   // Create a new node
@@ -680,8 +615,8 @@ Graph.Private = function() {
   // Safely constructs a new node
   // Checks for node duplication
   // Adds new node to indexes
-  this.create = function(node) {
-    var newNode = _private.createNode(this.schema, node);
+  this._create = function(node) {
+    var newNode = this.createNode(this.schema, node);
     if (this.contains(newNode.id)) {
       throw new GraphError("Node already exists: " + newNode.id);
     }
@@ -694,17 +629,17 @@ Graph.Private = function() {
   // -----------
   // Deletes node by id, referenced nodes remain untouched
   // Removes node from indexes
-  this.delete = function(node) {
+  this._delete = function(node) {
     delete this.nodes[node.id];
     this.trigger("node:deleted", node.id);
   };
 
-  this.set = function(path, value) {
+  this._set = function(path, value) {
     var property = this.resolve(path);
     if (property === undefined) {
       throw new Error("Key error: could not find element for path " + JSON.stringify(path));
     }
-    if (!property.type) {
+    if (!property.getType()) {
       throw new Error("Could not lookup schema for path " + JSON.stringify(path));
     }
     var oldValue = util.deepclone(property.get());
@@ -718,7 +653,7 @@ Graph.Private = function() {
     }, this);
   };
 
-  this.update = function(path, value, diff) {
+  this._update = function(path, value, diff) {
     var property = this.resolve(path);
     if (property === undefined) {
       throw new Error("Key error: could not find element for path " + JSON.stringify(path));
@@ -727,28 +662,13 @@ Graph.Private = function() {
     _triggerPropertyUpdate.call(this, path, diff);
   };
 
-  this.queryArray = function(arr, type) {
-    if (!_.isArray(type)) {
-      throw new GraphError("Illegal argument: array types must be specified as ['array'(, 'array')*, <type>]");
-    }
-    var result, idx;
-    if (type[1] === "array") {
-      result = [];
-      for (idx = 0; idx < arr.length; idx++) {
-        result.push(_private.queryArray.call(this, arr[idx], type.slice(1)));
-      }
-    } else if (!isValueType(type[1])) {
-      result = [];
-      for (idx = 0; idx < arr.length; idx++) {
-        result.push(this.get(arr[idx]));
-      }
-    } else {
-      result = arr;
-    }
-    return result;
-  };
-
 };
+
+// Index Modes
+// ----------
+
+Graph.STRICT_INDEXING = 1 << 1;
+Graph.DEFAULT_MODE = Graph.STRICT_INDEXING;
 
 Graph.prototype = new Graph.Prototype();
 
@@ -763,7 +683,6 @@ Graph.ObjectAdapter = function(graph) {
 };
 
 Graph.ObjectAdapter.Prototype = function() {
-  var impl = new Graph.Private();
 
   // Note: this adapter is used with the OT API only.
   // We do not accept paths to undefined properties
@@ -779,20 +698,20 @@ Graph.ObjectAdapter.Prototype = function() {
 
   this.create = function(__, value) {
     // Note: only nodes (top-level) can be created
-    impl.create.call(this.graph, value);
+    this.graph._create(value);
   };
 
   this.set = function(path, value) {
-    impl.set.call(this.graph, path, value);
+    this.graph._set(path, value);
   };
 
   this.update = function(path, value, diff) {
-    impl.update.call(this.graph, path, value, diff);
+    this.graph._update(path, value, diff);
   };
 
   this.delete = function(__, value) {
     // Note: only nodes (top-level) can be deleted
-    impl.delete.call(this.graph, value);
+    this.graph._delete(value);
   };
 
   this.inplace = function() { return false; };
@@ -803,8 +722,7 @@ Graph.ObjectAdapter.prototype = new Graph.ObjectAdapter.Prototype();
 
 Graph.Schema = Schema;
 Graph.Property = Property;
-
-Graph.PersistenceAdapter = PersistenceAdapter;
+Graph.GraphError = GraphError;
 Graph.ChronicleAdapter = ChronicleAdapter;
 Graph.Index = Index;
 
