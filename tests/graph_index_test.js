@@ -149,4 +149,4 @@ GraphIndexTest.Prototype = function() {
 GraphIndexTest.Prototype.prototype = Test.prototype;
 GraphIndexTest.prototype = new GraphIndexTest.Prototype();
 
-Test.registerTest(['Substance.Data', 'Graph Indexes'], new GraphIndexTest());
+module.exports = GraphIndexTest;

@@ -313,8 +313,11 @@ Graph.Prototype = function() {
       throw new GraphError("Invalid argument path. Must be String or Array");
     }
     if (_.isString(path)) return this.nodes[path];
-
-    return util.getProp(this.nodes, path);
+    // Note: we use the property mechanism here to enable type safety.
+    // I.e., property.get() calls Schema.ensureType() which parses string data
+    // and throws error if an unexpected type is given.
+    var prop = this.resolve(path);
+    return prop.get();
   };
 
   // Query graph data
@@ -490,7 +493,7 @@ Graph.Prototype = function() {
         oldValue = invertedDiff.apply(_.clone(value));
       }
 
-      adapter.update(prop.node, prop.key, value, oldValue);
+      adapter.update(prop.context, prop.key, value, oldValue);
     }
   };
 
@@ -639,7 +642,7 @@ Graph.Prototype = function() {
     if (property === undefined) {
       throw new Error("Key error: could not find element for path " + JSON.stringify(path));
     }
-    if (!property.getType()) {
+    if (!property.baseType) {
       throw new Error("Could not lookup schema for path " + JSON.stringify(path));
     }
     var oldValue = util.deepclone(property.get());

@@ -46,8 +46,10 @@ CopyOnWriteGraph.cowObject = function(obj, COW_ID) {
   var result;
   if (obj === undefined || obj === null) return obj;
 
-  if (_.isArray(obj)) {
+  if ( _.isArray(obj) ) {
     result = obj.slice(0);
+  } else if (_.isDate(obj)) {
+    return new Date(obj);
   } else if (_.isObject(obj)) {
     if (obj.copyOnWriteClone) {
       result = obj.copyOnWriteClone();
@@ -59,7 +61,8 @@ CopyOnWriteGraph.cowObject = function(obj, COW_ID) {
     };
   } else {
     // copy primitives
-    result = new obj.constructor(obj);
+    // result = new obj.constructor(obj);
+    return obj;
   }
   result.__COW__ = COW_ID;
   return result;
@@ -83,6 +86,7 @@ CopyOnWriteGraph.CowProperty.Protoype = function() {
       child = this.context[this.path[i]];
       if (child === undefined || child === null) {
         this.context = [];
+        this.type = [];
         this.baseType = undefined;
         return;
       }
@@ -93,19 +97,22 @@ CopyOnWriteGraph.CowProperty.Protoype = function() {
       this.context = child;
     }
     if (this.context === this.graph.nodes) {
+      this.type = ['graph'];
       this.baseType = 'graph';
     } else {
-      this.baseType = this.graph.schema.getPropertyBaseType(this.context.type, this.key);
+      this.type = this.graph.schema.getPropertyType(this.context.type, this.key);
+      this.baseType = _.isArray(this.type) ? this.type[0] : this.type;
     }
   };
 
   this.get = function() {
-    var result = this.context[this.key];
-    if (result.__COW__ !== this.COW_ID) {
-      result = CopyOnWriteGraph.cowObject(result, this.COW_ID);
-      this.context[this.key] = result;
+    var value = this.context[this.key];
+    if (value && (value.__COW__ !== this.COW_ID) ) {
+      value = this.graph.schema.ensureType(this.baseType, value);
+      value = CopyOnWriteGraph.cowObject(value, this.COW_ID);
+      this.context[this.key] = value;
     }
-    return result;
+    return value;
   };
 
 };

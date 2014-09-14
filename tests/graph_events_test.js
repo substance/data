@@ -181,4 +181,4 @@ GraphEventsTest.Prototype = function() {
 GraphEventsTest.Prototype.prototype = Test.prototype;
 GraphEventsTest.prototype = new GraphEventsTest.Prototype();
 
-Test.registerTest(['Substance.Data', 'Graph Events'], new GraphEventsTest());
+module.exports = GraphEventsTest;

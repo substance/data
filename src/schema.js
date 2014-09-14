@@ -100,6 +100,53 @@ Schema.Prototype = function() {
     }
   };
 
+  this.ensureType = function(valueType, value) {
+    if (value === null) {
+      return value;
+    }
+    if (_.isString(value)) {
+      if (valueType === "object") return JSON.parse(value);
+      if (valueType === "array") return JSON.parse(value);
+      if (valueType === "string") return value;
+      if (valueType === "number") return new Number(value);
+      if (valueType === "boolean") {
+        if (value === "true") return true;
+        else if (value === "false") return false;
+        else throw new Error("Can not parse boolean value from: " + value);
+      }
+      if (valueType === "date") return new Date(value);
+      // all other types must be string compatible ??
+      return value;
+    } else {
+      if (valueType === 'array') {
+        if (!_.isArray(value)) {
+          throw new Error("Illegal value type: expected array.");
+        }
+      }
+      else if (valueType === 'object') {
+        if (!_.isObject(value)) {
+          throw new Error("Illegal value type: expected object.");
+        }
+      }
+      else if (valueType === 'number') {
+        if (!_.isNumber(value)) {
+          throw new Error("Illegal value type: expected number.");
+        }
+      }
+      else if (valueType === 'boolean') {
+        if (!_.isBoolean(value)) {
+          throw new Error("Illegal value type: expected boolean.");
+        }
+      }
+      else if (valueType === 'date') {
+        if (!_.isDate(value)) {
+          throw new Error("Illegal value type: expected date.");
+        }
+      }
+      return value;
+    }
+  };
+
   // Return type object for a given type id
   // --------
   //
@@ -154,9 +201,8 @@ Schema.Prototype = function() {
       var typeChain = this.getTypeChain(typeId);
       var properties = {};
       _.each(typeChain, function(typeId) {
-        _.extend(properties, this.types[typeId]);
+        _.extend(properties, this.types[typeId].properties);
       }, this);
-      delete properties['parent'];
       this._properties[typeId] = properties;
     }
     return this._properties[typeId];

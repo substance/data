@@ -218,6 +218,11 @@ GraphManipulationTest.Prototype = function() {
       this.setup();
     },
 
+    "Get 'date' should deliver Date instance", function() {
+      var val = this.graph.get(['the_dates', 'val']);
+      assert.isTrue( val instanceof Date );
+    },
+
     "Update 'object'", function() {
       // Maybe it would be helpful to have some convenience mechanism
       // to create node property updates more easily
@@ -294,4 +299,4 @@ GraphManipulationTest.Prototype = function() {
 GraphManipulationTest.Prototype.prototype = Test.prototype;
 GraphManipulationTest.prototype = new GraphManipulationTest.Prototype();
 
-Test.registerTest(['Substance.Data', 'Graph Manipulation'], new GraphManipulationTest());
+module.exports = GraphManipulationTest;

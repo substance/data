@@ -6,7 +6,6 @@
 var _    = require('underscore');
 var Test = require('substance-test');
 var assert = Test.assert;
-var registerTest = Test.registerTest;
 var Data = require('../index');
 
 
@@ -55,15 +54,15 @@ SchemaTest.Prototype = function() {
 
   this.actions = [
 
-    "Schema.defaultValue()", function() {
+    "Schema.getDefaultValue()", function() {
 
-      assert.isDeepEqual({}, this.schema.defaultValue("object"));
-      assert.isArrayEqual([], this.schema.defaultValue("array"));
-      assert.isEqual("", this.schema.defaultValue("string"));
-      assert.isEqual(0, this.schema.defaultValue("number"));
-      assert.isEqual(false, this.schema.defaultValue("boolean"));
+      assert.isDeepEqual({}, this.schema.getDefaultValue("object"));
+      assert.isArrayEqual([], this.schema.getDefaultValue("array"));
+      assert.isEqual("", this.schema.getDefaultValue("string"));
+      assert.isEqual(0, this.schema.getDefaultValue("number"));
+      assert.isEqual(false, this.schema.getDefaultValue("boolean"));
       // can only check if a default date is given
-      assert.isDefined(this.schema.defaultValue("date"));
+      assert.isDefined(this.schema.getDefaultValue("date"));
     },
 
     "Schema.parseValue()", function() {
@@ -77,8 +76,8 @@ SchemaTest.Prototype = function() {
       assert.isEqual(expected.getTime(), parsedDate.getTime());
     },
 
-    "Schema.properties()", function() {
-      var props = this.schema.properties("elem");
+    "Schema.getProperties()", function() {
+      var props = this.schema.getProperties("elem");
 
       assert.isDeepEqual(SCHEMA.types.elem.properties, props);
       // props should be a copy
@@ -87,19 +86,19 @@ SchemaTest.Prototype = function() {
     },
 
     "Inheritance - type chain", function() {
-      var chain = this.schema.typeChain("numbers");
-      assert.isArrayEqual(["node", "numbers"], chain);
+      var chain = this.schema.getTypeChain("numbers");
+      assert.isArrayEqual(["numbers", "node"], chain);
     },
 
     "Inheritance - properties", function() {
       var expected = _.extend({}, SCHEMA.types.node.properties, SCHEMA.types.numbers.properties);
-      var actual = this.schema.properties("numbers");
+      var actual = this.schema.getProperties("numbers");
       assert.isDeepEqual(expected, actual);
     },
 
     "Composite types", function() {
       var expected = ["array", "number"];
-      var actual = this.schema.propertyType("numbers", "arr");
+      var actual = this.schema.getPropertyType("numbers", "arr");
       assert.isArrayEqual(expected, actual);
     }
   ];
@@ -107,4 +106,4 @@ SchemaTest.Prototype = function() {
 SchemaTest.Prototype.prototype = Test.prototype;
 SchemaTest.prototype = new SchemaTest.Prototype();
 
-Test.registerTest(['Substance.Data', 'Schema'], new SchemaTest());
+module.exports = SchemaTest;

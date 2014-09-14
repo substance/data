@@ -193,11 +193,12 @@ Index.prototype = new Index.Prototype();
 
 Index.typeFilter = function(schema, types) {
   return function(node) {
-    var typeChain = schema.typeChain(node.type);
+    // for (var i = 0; i < types.length; i++) {
+    //   if (schema.isInstanceOf(node.type, types[i])) return true;
+    // }
+    var typeChain = schema.getTypeChain(node.type);
     for (var i = 0; i < types.length; i++) {
-      if (typeChain.indexOf(types[i]) >= 0) {
-        return true;
-      }
+      if (typeChain.indexOf(types[i]) > -1) return true;
     }
     return false;
   };

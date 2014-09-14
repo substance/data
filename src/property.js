@@ -25,23 +25,27 @@ Property.Prototype = function() {
       }
     }
     if (this.context === this.graph.nodes) {
+      this.type = ['graph'];
       this.baseType = 'graph';
     } else {
-      this.baseType = this.graph.schema.getPropertyBaseType(this.context.type, this.key);
+      this.type = this.graph.schema.getPropertyType(this.context.type, this.key);
+      this.baseType = _.isArray(this.type) ? this.type[0] : this.type;
     }
-  }
+  };
 
   this.get = function() {
-    return this.context[this.key];
+    var value = this.context[this.key];
+    if (this.baseType !== 'graph') {
+      value = this.graph.schema.ensureType(this.baseType, value);
+      this.context[this.key] = value;
+    }
+    return value;
   };
 
   this.set = function(value) {
     this.context[this.key] = this.graph.schema.parseValue(this.baseType, value);
   };
 
-  this.getType = function() {
-    return this.baseType;
-  };
 };
 
 Property.prototype = new Property.Prototype();

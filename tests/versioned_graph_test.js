@@ -292,4 +292,4 @@ VersionedGraphTest.Prototype = function() {
 VersionedGraphTest.Prototype.prototype = Test.prototype;
 VersionedGraphTest.prototype = new VersionedGraphTest.Prototype();
 
-Test.registerTest(['Substance.Data', 'Versioned Graph'], new VersionedGraphTest());
+module.exports = VersionedGraphTest;
