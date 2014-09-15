@@ -1,7 +1,5 @@
 "use strict";
 
-var _ = require("underscore");
-
 var Property = function(graph, path) {
   if (!path) {
     throw new Error("Illegal argument: path is null/undefined.");

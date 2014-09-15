@@ -1,6 +1,5 @@
 "use strict";
 
-var _ = require("underscore");
 var util = require("substance-util");
 
 // Data.Schema

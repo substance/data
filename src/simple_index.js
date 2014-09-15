@@ -1,4 +1,5 @@
-var _ = require("underscore");
+"use strict";
+
 var CustomIndex = require("./custom_index");
 
 var SimpleIndex = function(graph, name, options) {

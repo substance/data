@@ -3,7 +3,6 @@
 // Import
 // ========
 
-var _    = require('underscore');
 var Test = require('substance-test');
 var assert = Test.assert;
 var GraphManipulationTest = require('./graph_manipulation_test');

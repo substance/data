@@ -16,13 +16,13 @@
     "url": "https://github.com/substance/data.git"
   },
   "dependencies": {
-    "underscore": "1.5.x",
     "substance-util": "git+https://github.com/substance/util.git#master",
     "substance-operator": "git+https://github.com/substance/operator.git#master",
     "substance-chronicle": "git+https://github.com/substance/chronicle.git#master"
   },
   "devDependencies": {
     "mocha": "1.12.x",
+    "underscore": "1.5.x",
     "substance-test": "git+https://github.com/substance/test.git#master"
   },
   "scripts": {

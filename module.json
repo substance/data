@@ -10,13 +10,13 @@
     "url": "https://github.com/substance/data.git"
   },
   "dependencies": {
-    "underscore": "",
     "substance-util": "",
     "substance-operator": "",
     "substance-chronicle": ""
   },
   "devDependencies": {
     "mocha":        "",
+    "underscore": "",
     "substance-test": ""
   },
   "scripts": {

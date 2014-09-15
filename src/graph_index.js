@@ -1,4 +1,5 @@
-var _ = require("underscore");
+"use strict";
+
 var util = require("substance-util");
 
 // Creates an index for the document applying a given node filter function

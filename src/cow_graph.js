@@ -1,4 +1,3 @@
-var _ = require('underscore');
 var Graph = require('./graph');
 var Property = require('./property');
 var GraphError = Graph.GraphError;
