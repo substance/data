@@ -56,7 +56,13 @@ CopyOnWriteGraph.cowObject = function(obj, COW_ID) {
       result = Object.create(obj);
     }
     result.toJSON = function() {
-      return _.extend({}, Object.getPrototypeOf(this), this);
+      // TODO: maybe we want to do something like this:
+      // var protoChain = util.getProtoChain().reverse();
+      // protoChain.unshift({});
+      // _.extend.apply(null, protoChain);
+      var proto = Object.getPrototypeOf(this);
+      var protoJSON = proto.toJSON ? proto.toJSON() : proto;
+      return _.extend({}, protoJSON, this);
     };
   } else {
     // copy primitives
