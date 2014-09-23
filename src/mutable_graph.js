@@ -10,8 +10,7 @@ var Property = require('./property');
 var Chronicle = require('substance-chronicle');
 var Operator = require('substance-operator');
 
-var PersistenceAdapter = require('./persistence_adapter');
-var ChronicleAdapter = require('./chronicle_adapter');
+//var ChronicleAdapter = require('./chronicle_adapter');
 var Index = require('./graph_index');
 
 var GraphError = errors.define("GraphError");
@@ -89,19 +88,6 @@ var Graph = function(schema, options) {
   if (this.isVersioned) {
     this.chronicle = options.chronicle;
     this.chronicle.manage(new Graph.ChronicleAdapter(this));
-  }
-
-  // Make persistent graph
-  if (this.isPersistent) {
-    var nodes = options.store.hash("nodes");
-    this.__store__ = options.store;
-    this.__nodes__ = nodes;
-
-    if (this.isVersioned) {
-      this.__version__ = options.store.hash("__version__");
-    }
-
-    this.objectAdapter = new PersistenceAdapter(this.objectAdapter, nodes);
   }
 
   if (options.load) {
@@ -754,8 +740,7 @@ Graph.ObjectAdapter.prototype = new Graph.ObjectAdapter.Prototype();
 Graph.Schema = Schema;
 Graph.Property = Property;
 
-Graph.PersistenceAdapter = PersistenceAdapter;
-Graph.ChronicleAdapter = ChronicleAdapter;
+//Graph.ChronicleAdapter = ChronicleAdapter;
 Graph.Index = Index;
 
 // Exports
