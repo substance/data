@@ -96,6 +96,11 @@ Graph.Prototype = function() {
 
   this.create = function(node) {
     this.nodes[node.id] = node;
+    this._updateIndexes({
+      type: 'create',
+      path: [node.id],
+      val: node
+    });
   };
 
   // Remove a node
@@ -103,7 +108,13 @@ Graph.Prototype = function() {
   // Removes a node with given id and key (optional):
   //     Data.Graph.delete(this.graph.get('apple'));
   this.delete = function(id) {
+    var oldVal = this.nodes[id];
     delete this.nodes[id];
+    this._updateIndexes({
+      type: 'delete',
+      path: [id],
+      val: oldVal
+    });
   };
 
   // Set the property
@@ -121,7 +132,14 @@ Graph.Prototype = function() {
     if (!prop) {
       throw new GraphError("Could not resolve property with path "+JSON.stringify(path));
     }
+    var oldVal = prop.get();
     prop.set(newValue);
+    this._updateIndexes({
+      type: 'set',
+      path: path,
+      val: newValue,
+      original: oldVal
+    });
   };
 
   // Get the node [property]
@@ -261,6 +279,16 @@ Graph.Prototype = function() {
 
   this.removeIndex = function(name) {
     delete this.indexes[name];
+  };
+
+  this._updateIndexes = function(op) {
+    _.each(this.indexes, function(index) {
+      if (!op) {
+        index.rebuild();
+      } else {
+        index.onGraphChange(op);
+      }
+    }, this);
   };
 
   this._queryArray = function(arr, type) {

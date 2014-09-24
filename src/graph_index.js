@@ -67,50 +67,64 @@ Index.Prototype = function() {
     return result;
   };
 
-  var _add = function(key, node) {
-    var index = _resolve.call(this, key);
-    index.nodes[node.id] = node.id;
-  };
-
-  var _remove = function(key, node) {
-    var index = _resolve.call(this, key);
-    delete index.nodes[node.id];
-  };
-
   // Keeps the index up-to-date when the graph changes.
   // --------
   //
 
   this.onGraphChange = function(op) {
+    this.applyOp(op);
+  };
 
-    var self = this;
+  this._add = function(node) {
+    if (!this.filter || this.filter(node)) {
+      var key = _getKey.call(this, node);
+      var index = _resolve.call(this, key);
+      index.nodes[node.id] = node.id;
+    }
+  };
 
-    var adapter = {
-      create: function(node) {
-        if (!self.filter || self.filter(node)) {
-          var key = _getKey.call(self, node);
-          _add.call(self, key, node);
-        }
-      },
-      delete: function(node) {
-        if (!self.filter || self.filter(node)) {
-          var key = _getKey.call(self, node);
-          _remove.call(self, key, node);
-        }
-      },
-      update: function(node, property, newValue, oldValue) {
-        if ((self.property === property) && (!self.filter || self.filter(node))) {
-          var key = oldValue;
-          if (_.isString(key)) key = [key];
-          _remove.call(self, key, node);
-          key = newValue;
-          if (_.isString(key)) key = [key];
-          _add.call(self, key, node);
-        }
+  this._remove = function(node) {
+    if (!this.filter || this.filter(node)) {
+      var key = _getKey.call(this, node);
+      var index = _resolve.call(this, key);
+      delete index.nodes[node.id];
+    }
+  };
+
+  this._update = function(node, property, newValue, oldValue) {
+    if ((this.property === property) && (!this.filter || this.filter(node))) {
+      var key = oldValue;
+      if (_.isString(key)) key = [key];
+      var index = _resolve.call(this, key);
+      delete index.nodes[node.id];
+      key = newValue;
+      index.nodes[node.id] = node.id;
+    }
+  };
+
+
+  this.applyOp = function(op) {
+    if (op.type === "create") {
+      this._add(op.val);
+    }
+    else if (op.type === "delete") {
+      this._remove(op.val);
+    }
+    // type = 'update' or 'set'
+    else {
+      var prop = this.resolve(op.path);
+      var value = prop.get();
+      var oldValue;
+      if (value === undefined) {
+        return;
       }
-    };
-
-    this.graph.cotransform(adapter, op);
+      if (op.type === "set") {
+        oldValue = op.original;
+      } else {
+        console.error("Operational updates are not supported in this implementation");
+      }
+      this._update(prop.node, prop.key, value, oldValue);
+    }
   };
 
   // Initializes the index
@@ -124,7 +138,8 @@ Index.Prototype = function() {
     _.each(nodes, function(node) {
       if (!this.filter || this.filter(node)) {
         var key = _getKey.call(this, node);
-        _add.call(this, key, node);
+        var index = _resolve.call(this, key);
+        index.nodes[node.id] = node.id;
       }
     }, this);
   };
@@ -166,6 +181,11 @@ Index.Prototype = function() {
 
   this.dispose = function() {
     this.stopListening();
+  };
+
+  this.rebuild = function() {
+    this.reset();
+    this.createIndex();
   };
 };
 
