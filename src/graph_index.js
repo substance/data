@@ -112,7 +112,7 @@ Index.Prototype = function() {
     }
     // type = 'update' or 'set'
     else {
-      var prop = this.resolve(op.path);
+      var prop = this.graph.resolve(this, op.path);
       var value = prop.get();
       var oldValue;
       if (value === undefined) {
