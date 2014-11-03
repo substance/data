@@ -91,9 +91,10 @@ Schema.Prototype = function() {
         value = util.deepclone(value);
       }
       else if (valueType === 'string') {
-        if (!_.isString(value)) {
-          throw new Error("Illegal value type: expected string.");
-        }
+        // TODO: how can we activate a custom String class?
+        // if (!_.isString(value)) {
+        //   throw new Error("Illegal value type: expected string.");
+        // }
       }
       else if (valueType === 'object') {
         if (!_.isObject(value)) {
