@@ -7,6 +7,7 @@ var GraphError = Graph.GraphError;
 var Operator = require('substance-operator');
 var Chronicle = require('substance-chronicle');
 var ChronicleAdapter = require('./chronicle_adapter');
+var COWGraph = require('../cow_graph');
 
 var NOP = "NOP";
 var CREATE = "create";
@@ -238,5 +239,24 @@ OperationalGraph.ObjectOperation.Compound = function(ops, data) {
   if (ops.length === 0) return null;
   else return new Operator.Compound(ops, data);
 };
+
+OperationalGraph.COWGraph = function(graph) {
+  COWGraph.call(this, graph);
+
+  this.chronicle = undefined;
+  this.isRecording = true;
+  this.ops = [];
+};
+
+OperationalGraph.COWGraph.Prototype = function() {
+  // mix in everything from the regular COWGraph
+  COWGraph.Prototype.call(this);
+
+  this.record = function(op) {
+    this.ops.push(op);
+  };
+};
+OperationalGraph.COWGraph.Prototype.prototype = OperationalGraph.prototype;
+OperationalGraph.COWGraph.prototype = new OperationalGraph.COWGraph.Prototype();
 
 module.exports = OperationalGraph;

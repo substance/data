@@ -12,13 +12,12 @@ var CopyOnWriteGraph = function(graph) {
   this.nodes = CopyOnWriteGraph.cowObject(graph.nodes, this.COW_ID);
   this.schema = graph.schema;
   this.indexes = {};
-  this.chronicle = undefined;
-  this.isRecording = false;
 };
 
 CopyOnWriteGraph.IDX = 1;
 
 CopyOnWriteGraph.Prototype = function() {
+
   this.get = function(path) {
     if (path === undefined || path === null) {
       throw new GraphError("Invalid argument: provided undefined or null.");
@@ -30,19 +29,15 @@ CopyOnWriteGraph.Prototype = function() {
     var prop = this.resolve(path);
     return prop.get();
   };
+
   this.resolve = function(path) {
     return new CopyOnWriteGraph.CowProperty(this, path, this.COW_ID);
   };
-  this.delete = function(id) {
-    var oldVal = this.nodes[id];
+
+  this._delete = function(id) {
     this.nodes[id] = undefined;
-    this._updateIndexes({
-      type: 'delete',
-      path: [id],
-      val: oldVal
-    });
-    return oldVal;
   };
+
 };
 CopyOnWriteGraph.Prototype.prototype = Graph.prototype;
 CopyOnWriteGraph.prototype = new CopyOnWriteGraph.Prototype();

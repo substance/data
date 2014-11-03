@@ -108,13 +108,17 @@ Graph.Prototype = function() {
   //     Data.Graph.delete(this.graph.get('apple'));
   this.delete = function(id) {
     var oldVal = this.nodes[id];
-    delete this.nodes[id];
+    this._delete(id);
     this._updateIndexes({
       type: 'delete',
       path: [id],
       val: oldVal
     });
     return oldVal;
+  };
+
+  this._delete = function(id) {
+    delete this.nodes[id];
   };
 
   // Set the property
