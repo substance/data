@@ -156,17 +156,6 @@ GraphManipulationTest.Prototype = function() {
       assert.isEqual(node.name, newNode.name);
       assert.isEqual(node.val, newNode.val);
       assert.isArrayEqual(node.arr, newNode.arr);
-
-      // the node is newly created
-      node.bla = "blupp";
-      assert.isUndefined(newNode.bla);
-
-      // ... and values are deeply cloned
-      node.arr.push(4);
-      assert.isFalse(_.isEqual(node.arr, newNode.arr));
-
-      // only properties that are specified in the schema should be copied
-      assert.isUndefined(newNode.foo);
     },
 
     "Node creation: 'id' and 'type' are mandatory", function() {
@@ -235,16 +224,16 @@ GraphManipulationTest.Prototype = function() {
     },
 
     "Update 'array'", function() {
-      this.graph.update(["the_numbers", "arr"], ["+", 3, 4]);
-
-      var numbers = this.graph.get("the_numbers");
+      var numbers = this.graph.get(["the_numbers"]);
+      var diff = Operator.ArrayOperation.create(numbers.arr, ["+", 3, 4]);
+      this.graph.update(["the_numbers", "arr"], diff);
       assert.isArrayEqual([1,2,3,4], numbers.arr);
     },
 
     "Update 'string'", function() {
-      this.graph.update(["the_strings", "val"], [3, "tball"]);
-
       var strings = this.graph.get("the_strings");
+      var diff = Operator.TextOperation.fromOT(strings.val, [3, "tball"]);
+      this.graph.update(["the_strings", "val"], diff);
       assert.isEqual("football", strings.val);
     },
 

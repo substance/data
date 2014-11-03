@@ -11,7 +11,7 @@ SimpleIndex.Prototype = function() {
   this.__add = function(key, value) {
     this.data[key] = value;
   };
-  this.__remove = function(key, value) {
+  this.__remove = function(key) {
     delete this.data[key];
   };
 };

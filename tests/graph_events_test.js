@@ -3,6 +3,7 @@
 // Import
 // ========
 
+var _ = require('underscore');
 var util = require('substance-util');
 var Test = require('substance-test');
 var assert = Test.assert;
@@ -33,7 +34,7 @@ GraphEventsTest.Prototype = function() {
   _.extend(this, util.Events.Listener);
 
   this.setup = function() {
-    this.graph = new Data.Graph(SCHEMA);
+    this.graph = new Data.OperationalGraph(SCHEMA);
     this.schema = this.graph.schema;
 
     this.graph.create({
@@ -62,7 +63,7 @@ GraphEventsTest.Prototype = function() {
 
       var listener = _listener();
 
-      this.listenTo(this.graph, "node:created", listener);
+      this.listenTo(this.graph, "operation:applied", listener);
 
       var node = {
         id: "001",
@@ -73,7 +74,10 @@ GraphEventsTest.Prototype = function() {
       this.graph.create(node);
 
       assert.isEqual(1, listener.called);
-      assert.isObjectEqual(node, listener.args[0]);
+      var op = listener.args[0];
+      assert.isEqual("create", op.type);
+      assert.isArrayEqual([node.id], op.path);
+      assert.isObjectEqual(node, op.val);
 
       this.stopListening();
     },
@@ -82,12 +86,13 @@ GraphEventsTest.Prototype = function() {
       this.setup();
 
       var listener = _listener();
-      this.listenTo(this.graph, "node:deleted", listener);
+      this.listenTo(this.graph, "operation:applied", listener);
 
       this.graph.delete("foo");
 
       assert.isEqual(1, listener.called);
-      assert.isEqual("foo", listener.args[0]);
+      var op = listener.args[0];
+      assert.isArrayEqual(["foo"], op.path);
 
       this.stopListening();
     },
@@ -96,12 +101,15 @@ GraphEventsTest.Prototype = function() {
       this.setup();
 
       var listener = _listener();
-      this.listenTo(this.graph, "property:updated", listener);
+      this.listenTo(this.graph, "operation:applied", listener);
 
       this.graph.set(["foo", "val"], "bar");
 
       assert.isEqual(1, listener.called);
-      assert.isDeepEqual([["foo", "val"], null, "foo", "bar"], _.toArray(listener.args));
+      var op = listener.args[0];
+      assert.isArrayEqual(["foo", "val"], op.path);
+      assert.isEqual("foo", op.original);
+      assert.isEqual("bar", op.val);
 
       this.stopListening();
     },
@@ -110,15 +118,15 @@ GraphEventsTest.Prototype = function() {
       this.setup();
 
       var listener = _listener();
-      this.listenTo(this.graph, "property:updated", listener);
+      this.listenTo(this.graph, "operation:applied", listener);
 
+      var str = this.graph.get(["foo", "val"]);
       // Attention: these are actuall two atomic operations: Delete + Insert
       // Thus the listener is called twice
-      this.graph.update(["foo", "val"], [-3, "bla"]);
+      this.graph.update(["foo", "val"], Operator.TextOperation.Delete(0, 'foo'));
+      this.graph.update(["foo", "val"], Operator.TextOperation.Insert(0, 'bar'));
 
       assert.isEqual(2, listener.called);
-      assert.isArrayEqual(["foo", "val"],listener.args[0]);
-      assert.isTrue(listener.args[1] instanceof Operator.Operation);
 
       this.stopListening();
     },
@@ -128,7 +136,7 @@ GraphEventsTest.Prototype = function() {
 
       var update_listener = _listener();
 
-      this.listenTo(this.graph, "property:updated", update_listener);
+      this.listenTo(this.graph, "operation:applied", update_listener);
 
       var ops = [
         Operator.ObjectOperation.Set(["foo", "val"], "foo", "bar"),

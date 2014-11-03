@@ -1,6 +1,7 @@
 "use strict";
 
 var util = require("substance-util");
+var _ = require('underscore');
 
 // Data.Schema
 // ========
@@ -20,6 +21,27 @@ var Schema = function(schema) {
 };
 
 Schema.Prototype = function() {
+
+  this.prepareNode = function (node) {
+    if (!node.id || !node.type) {
+      throw new Error("Can not create Node: 'id' and 'type' are mandatory.");
+    }
+    var type = this.getType(node.type);
+    if (!type) {
+      throw new Error("Type '"+node.type+"' not found in the schema");
+    }
+    var properties = this.getProperties(node.type);
+    _.each(properties, function(p, key) {
+      // Find property base type
+      var baseType = this.getPropertyBaseType(node.type, key);
+      // Assign user defined property value or use default value for baseType
+      if (node[key] === undefined) {
+        node[key] = util.deepclone(this.getDefaultValue(baseType));
+      } else {
+        // TODO: make sure the given value fits to the schema
+      }
+    }, this);
+  };
 
   // Return Default value for a given type
   // --------
@@ -107,7 +129,7 @@ Schema.Prototype = function() {
       if (valueType === "object") return JSON.parse(value);
       if (valueType === "array") return JSON.parse(value);
       if (valueType === "string") return value;
-      if (valueType === "number") return new Number(value);
+      if (valueType === "number") return Number.parseFloat(value);
       if (valueType === "boolean") {
         if (value === "true") return true;
         else if (value === "false") return false;

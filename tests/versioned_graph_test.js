@@ -184,7 +184,9 @@ var VersionedGraphTest = function() {
 VersionedGraphTest.Prototype = function() {
 
   this.setup = function() {
-    this.graph = new Data.Graph(SCHEMA, {chronicle: Chronicle.create()});
+    this.graph = new Data.OperationalGraph(SCHEMA);
+    this.graph.enableVersioning();
+
     this.chronicle = this.graph.chronicle;
     this.index = this.chronicle.index;
     this.adapter = this.graph.chronicle.versioned;
@@ -259,13 +261,11 @@ VersionedGraphTest.Prototype = function() {
 
     "Random checkout", function() {
       this.graph.reset();
-
       var sequence = ["1", "7", "5", "4", "3", "2", "6"];
-
-      _.each(sequence, function(id) {
-        this.chronicle.open(id);
-        this.CHECKS[id].call(this);
-      }, this);
+      for (var i = 0; i < sequence.length; i++) {
+        this.chronicle.open(sequence[i]);
+        this.CHECKS[sequence[i]].call(this);
+      }
     },
 
     "Merge", function() {

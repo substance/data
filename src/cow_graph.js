@@ -1,3 +1,6 @@
+"use strict";
+
+var _ = require('underscore');
 var Graph = require('./graph');
 var Property = require('./property');
 var GraphError = Graph.GraphError;
@@ -7,13 +10,10 @@ var CopyOnWriteGraph = function(graph) {
   this.COW_ID = CopyOnWriteGraph.IDX++;
 
   this.nodes = CopyOnWriteGraph.cowObject(graph.nodes, this.COW_ID);
-  this.objectAdapter = new Graph.ObjectAdapter(this);
   this.schema = graph.schema;
   this.indexes = {};
   this.chronicle = undefined;
-  this.isVersioned = false;
-
-  this.objectAdapter.inplace = function() { return true; };
+  this.isRecording = false;
 };
 
 CopyOnWriteGraph.IDX = 1;
@@ -33,9 +33,15 @@ CopyOnWriteGraph.Prototype = function() {
   this.resolve = function(path) {
     return new CopyOnWriteGraph.CowProperty(this, path, this.COW_ID);
   };
-  this._delete = function(node) {
-    this.nodes[node.id] = undefined;
-    this.trigger("node:deleted", node.id);
+  this.delete = function(id) {
+    var oldVal = this.nodes[id];
+    this.nodes[id] = undefined;
+    this._updateIndexes({
+      type: 'delete',
+      path: [id],
+      val: oldVal
+    });
+    return oldVal;
   };
 };
 CopyOnWriteGraph.Prototype.prototype = Graph.prototype;
