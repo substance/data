@@ -66,8 +66,6 @@ CopyOnWriteGraph.cowObject = function(obj, COW_ID) {
       return _.extend({}, protoJSON, this);
     };
   } else {
-    // copy primitives
-    // result = new obj.constructor(obj);
     return obj;
   }
   result.__COW__ = COW_ID;
