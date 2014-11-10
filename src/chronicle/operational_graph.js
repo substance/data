@@ -137,6 +137,7 @@ OperationalGraph.Prototype = function() {
     // Note: we apply compounds eagerly... i.e., all listeners will be updated after
     // each atomic change.
     var ops = Operator.Helpers.flatten(_op);
+    var changes = new OperationalGraph.ChangeMap();
     for (var i = 0; i < ops.length; i++) {
       var op = ops[i];
       if (!(op instanceof OperationalGraph.ObjectOperation)) {
@@ -147,9 +148,18 @@ OperationalGraph.Prototype = function() {
 
       this._updateIndexes(op);
 
+      var path;
+      if (op.type === "create" || op.type === "delete") {
+        path = [op.val.id];
+      } else {
+        path = op.path;
+      }
+      changes.push(path, op);
+
       // And all regular listeners in second line
       this.trigger('operation:applied', op, this);
     }
+    this.trigger('graph:changed', changes);
   };
 
   this.__trigger__ = function(_op) {
@@ -261,5 +271,39 @@ OperationalGraph.COWGraph.Prototype = function() {
 };
 OperationalGraph.COWGraph.Prototype.prototype = OperationalGraph.prototype;
 OperationalGraph.COWGraph.prototype = new OperationalGraph.COWGraph.Prototype();
+
+OperationalGraph.ChangeMap = function() {
+  this.data = {};
+};
+OperationalGraph.ChangeMap.Prototype = function() {
+  this.push = function(path, op) {
+    var context = this.data;
+    for (var i = 0; i < path.length; i++) {
+      var key = path[i];
+      if (context[key] === undefined) {
+        context[key] = {};
+      }
+      context = context[key];
+    }
+    context._ops = context._ops || [];
+    context._ops.push(op);
+  };
+  this.getChanges = function(path) {
+    var context = this.data;
+    for (var i = 0; i < path.length; i++) {
+      var key = path[i];
+      if (context[key] === undefined) {
+        return [];
+      }
+      context = context[key];
+    }
+    return context._ops || [];
+  };
+
+  this.getNodes = function() {
+    return Object.keys(this.data);
+  };
+};
+OperationalGraph.ChangeMap.prototype = new OperationalGraph.ChangeMap.Prototype();
 
 module.exports = OperationalGraph;
