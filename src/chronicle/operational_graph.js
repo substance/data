@@ -144,6 +144,9 @@ OperationalGraph.Prototype = function() {
       }
       op.apply(this);
       this.updated_at = new Date();
+
+      this._updateIndexes(op);
+
       // And all regular listeners in second line
       this.trigger('operation:applied', op, this);
     }
