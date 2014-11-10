@@ -3,6 +3,7 @@
 // Import
 // ========
 
+var _ = require('underscore');
 var Test = require('substance-test');
 var assert = Test.assert;
 var Data = require('../index');

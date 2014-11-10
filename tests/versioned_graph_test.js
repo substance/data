@@ -3,13 +3,13 @@
 // Import
 // ========
 
+var _ = require('underscore');
 var Test = require('substance-test');
 var assert = Test.assert;
 var util = require('substance-util');
 
 var Operator = require('substance-operator');
 var Data = require('../index');
-var Chronicle = require('substance-chronicle');
 
 
 // Test
