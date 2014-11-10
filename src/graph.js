@@ -526,10 +526,10 @@ Graph.Prototype = function() {
 
   this.cotransform = function(adapter, op) {
     if (op.type === "create") {
-      adapter.create(op.val);
+      adapter.create.call(adapter, op.val);
     }
     else if (op.type === "delete") {
-      adapter.delete(op.val);
+      adapter.delete.call(adapter, op.val);
     }
     // type = 'update' or 'set'
     else {
@@ -559,7 +559,7 @@ Graph.Prototype = function() {
         oldValue = invertedDiff.apply(_.clone(value));
       }
 
-      adapter.update(prop.node, prop.key, value, oldValue);
+      adapter.update.call(adapter, prop.node, prop.key, value, oldValue);
     }
   };
 
