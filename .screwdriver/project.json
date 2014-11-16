@@ -1,0 +1,14 @@
+{
+  "modules": [
+    {
+      "repository": "https://github.com/substance/util.git",
+      "folder": "node_modules/substance-util",
+      "branch": "lens"
+    },
+    {
+      "repository": "https://github.com/substance/data.git",
+      "folder": ".",
+      "branch": "lens"
+    }
+  ]
+}

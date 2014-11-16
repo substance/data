@@ -17,14 +17,11 @@
   },
   "dependencies": {
     "underscore": "1.5.x",
-    "substance-util": "git+https://github.com/substance/util.git#lens",
-    "substance-operator": "git+https://github.com/substance/operator.git#lens",
-    "substance-chronicle": "git+https://github.com/substance/chronicle.git#lens"
+    "substance-util": "git+https://github.com/substance/util.git#lens"
   },
   "devDependencies": {
-    "mocha": "*",
-    "substance-test": "0.2.x",
-    "substance-store": "0.1.0"
+    "mocha": "^2.0.1",
+    "substance-test": "git+https://github.com/substance/test.git#master"
   },
   "scripts": {
     "test": "mocha -R spec tests/run.js"
