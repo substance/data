@@ -156,7 +156,6 @@ Index.Prototype = function() {
     }
 
     var index = _resolve.call(this, path);
-    var result;
 
     // EXPERIMENTAL: do we need the ability to retrieve indexed elements non-recursively
     // for now...
@@ -165,9 +164,10 @@ Index.Prototype = function() {
     //     if (shallow) {
     //       result = index.nodes;
     //     }
-    result = _collect(index);
+    var collected = _collect(index);
+    var result = new Index.Result();
 
-    _.each(result, function(id) {
+    _.each(collected, function(id) {
       result[id] = this.graph.get(id);
     }, this);
 
@@ -201,6 +201,17 @@ Index.typeFilter = function(schema, types) {
     }
     return false;
   };
+};
+
+Index.Result = function() {};
+Index.Result.prototype.asList = function() {
+  var list = [];
+  for (var key in this) {
+    list.push(this[key]);
+  }
+};
+Index.Result.prototype.getLength = function() {
+  return Object.keys(this).length;
 };
 
 module.exports = Index;
