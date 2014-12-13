@@ -287,7 +287,9 @@ Graph.Prototype = function() {
       }
 
       // And all regular listeners in second line
-      this.trigger('operation:applied', op, this, target, options);
+      window.setTimeout(function() {
+        this.trigger('operation:applied', op, this, target, options);
+      }.bind(this));
     }, this);
 
   };
