@@ -1,3 +1,5 @@
+"use strict";
+
 var _ = require("underscore");
 var util = require("substance-util");
 
@@ -93,7 +95,9 @@ Index.Prototype = function() {
       delete index.nodes[node.id];
       index = _resolve.call(this, [newValue]);
       index.nodes[node.id] = node.id;
+      return true;
     }
+    return false;
   };
 
 
@@ -114,10 +118,10 @@ Index.Prototype = function() {
       }
       if (op.type === "set") {
         oldValue = op.original;
-      } else {
+        this._update(prop.context, prop.key, value, oldValue);
+      } else if ((this.property === prop.key) && (!this.filter || this.filter(prop.context))) {
         console.error("Operational updates are not supported in this implementation");
       }
-      this._update(prop.context, prop.key, value, oldValue);
     }
   };
 
