@@ -50,4 +50,12 @@ Property.Prototype = function() {
 
 Property.prototype = new Property.Prototype();
 
+Object.defineProperties(Property.prototype, {
+  'node': {
+    get: function() {
+      return this.context;
+    }
+  }
+});
+
 module.exports = Property;
