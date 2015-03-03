@@ -16,17 +16,20 @@
     "url": "https://github.com/substance/data.git"
   },
   "dependencies": {
+    "substance": "git+https://github.com/oliver----/substance.git",
     "substance-util": "git+https://github.com/substance/util.git#substance-ve",
-    "substance-operator": "git+https://github.com/substance/operator.git#substance-ve",
+    "substance-operator": "git+https://github.com/substance/operator.git#next",
     "substance-chronicle": "git+https://github.com/substance/chronicle.git#substance-ve"
   },
   "devDependencies": {
+    "express": "4.9.x",
     "mocha": "1.12.x",
     "underscore": "1.5.x",
-    "substance-test": "git+https://github.com/substance/test.git#substance-ve"
+    "substance-test": "git+https://github.com/substance/test.git#next",
+    "substance-cjs": "git+https://github.com/substance/cjs.git#next"
   },
   "scripts": {
-    "test": "mocha -R spec tests/run.js"
+    "test": "mocha -R spec test/run.js"
   },
   "version": "0.9.0",
   "engines": {
