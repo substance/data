@@ -17,8 +17,8 @@ var VersionedData = function(nodeFactory, seed) {
   Data.call(this, nodeFactory, seed);
   this.chronicle = Chronicle.create();
   this.isRecording = false;
-
   this.chronicle.manage(new ChronicleAdapter(this));
+  this.startRecording();
 };
 
 VersionedData.Prototype = function() {
