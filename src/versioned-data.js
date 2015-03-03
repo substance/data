@@ -4,17 +4,15 @@ var Substance = require('substance');
 
 var Data = require('./data');
 var Operator = require('substance-operator');
+var ObjectOperation = Operator.ObjectOperation;
+var ArrayOperation = Operator.ArrayOperation;
+var TextOperation = Operator.TextOperation;
 var Chronicle = require('substance-chronicle');
 var ChronicleAdapter = require('./chronicle_adapter');
 
-var NOP = "NOP";
-var CREATE = "create";
-var DELETE = 'delete';
-var UPDATE = 'update';
-var SET = 'set';
+var VersionedData = function(options) {
+  Data.call(this, options);
 
-var VersionedData = function(nodeFactory, seed) {
-  Data.call(this, nodeFactory, seed);
   this.chronicle = Chronicle.create();
   this.isRecording = false;
   this.chronicle.manage(new ChronicleAdapter(this));
@@ -42,68 +40,41 @@ VersionedData.Prototype = function() {
   };
 
   this.create = function(node) {
-    node = this._super.create.apply(this, arguments);
-    if (node) {
-      var op = new VersionedData.ObjectOperation({type: CREATE, path: [node.id], val: node});
-      if (this.isRecording) {
-        this.record(op);
-      }
-      this.notifyOperation(op);
+    if (this.contains(node.id)) {
+      throw new Error("Node already exists: " + node.id);
     }
-    return node;
+    if (!node.id || !node.type) {
+      throw new Error("Node id and type are mandatory.");
+    }
+    // TODO:
+    var op = ObjectOperation.Create([node.id], node);
+    this.apply(op);
+    return this.get(node.id);
   };
 
   this.delete = function(id) {
-    var node = this._super.delete.apply(this, arguments);
+    var node = this.get(id);
     if (node) {
       // in case that the returned node is a rich object
       // there should be a serialization method
-      if (node.toJSON) {
-        node = node.toJSON();
-      }
-      var op = new VersionedData.ObjectOperation({type: DELETE, path: [id], val: node});
-      if (this.isRecording) {
-        this.record(op);
-      }
-      this.notifyOperation(op);
+      if (node.toJSON) { node = node.toJSON(); }
+      var op = ObjectOperation.Delete([id], node);
+      this.apply(op);
     }
     return node;
   };
 
   this.update = function(path, diff) {
-    var prop = this.resolve(path);
-    if (!prop) {
-      throw new Error("Could not resolve property with path "+JSON.stringify(path));
-    }
-    if (Substance.isArray(diff)) {
-      if (prop.baseType === "string") {
-        diff = Operator.TextOperation.fromSequence(prop.get(), diff);
-      } else if (prop.baseType === "array") {
-        diff = Operator.ArrayOperation.create(prop.get(), diff);
-      } else {
-        throw new Error("There is no convenient notation supported for this type: " + prop.baseType);
-      }
-    }
-    if (!diff) {
-      // if the diff turns out to be empty there will be no operation.
-      return;
-    }
-    var oldValue = prop.get();
-    var op = new VersionedData.ObjectOperation({ type: UPDATE, path: path, diff: diff, propertyType: prop.baseType });
-    this.__apply__(op);
-    if (this.isRecording) {
-      this.record(op);
-    }
+    var oldValue = this.get(path);
+    var op = ObjectOperation.Update(path, diff);
+    this.apply(op);
     return oldValue;
   };
 
   this.set = function(path, newValue) {
-    var oldValue = this._super.set.apply(this, arguments);
-    var op = new VersionedData.ObjectOperation({ type: SET, path: path, original: oldValue, val: newValue });
-    if (this.isRecording) {
-      this.record(op);
-    }
-    this.__trigger__(op);
+    var oldValue = this.get(path);
+    var op = ObjectOperation.Set(path, oldValue, newValue);
+    this.apply(op);
     return op;
   };
 
@@ -119,39 +90,37 @@ VersionedData.Prototype = function() {
   //
   // Only applies the graph operation without triggering e.g., the chronicle.
 
-  this.__apply__ = function(_op) {
-    var ops = Operator.Helpers.flatten(_op);
-    var changes = new VersionedData.ChangeMap();
-    for (var i = 0; i < ops.length; i++) {
-      var op = ops[i];
-      if (!(op instanceof VersionedData.ObjectOperation)) {
-        op = VersionedData.ObjectOperation.fromJSON(op);
-      }
-      op.apply(this);
-      this.updated_at = new Date();
-
-      this._updateIndexes(op);
-
-      var path;
-      if (op.type === "create" || op.type === "delete") {
-        path = [op.val.id];
+  this.__apply__ = function(op) {
+    if (op.type === ObjectOperation.NOP) return;
+    else if (op.type === ObjectOperation.CREATE) {
+      // clone here as the operations value must not be changed
+      this._super.create.call(this, Substance.clone(op.val));
+    } else if (op.type === ObjectOperation.DELETE) {
+      this._super.delete.call(this, op.val.id);
+    } else if (op.type === ObjectOperation.UPDATE) {
+      var oldVal = this.get(op.path);
+      var diff = op.diff;
+      if (op.propertyType === 'array') {
+        if (! (diff instanceof ArrayOperation) ) {
+          diff = ArrayOperation.fromJSON(diff);
+        }
+        // array ops work inplace
+        diff.apply(oldVal);
+      } else if (op.propertyType === 'string') {
+        if (! (diff instanceof TextOperation) ) {
+          diff = TextOperation.fromJSON(diff);
+        }
+        var newVal = diff.apply(oldVal);
+        this._super.set.call(this, op.path, newVal);
       } else {
-        path = op.path;
+        throw new Error("Unsupported type for operational update.");
       }
-      changes.push(path, op);
-
-      // And all regular listeners in second line
-      this.trigger('operation:applied', op, this);
+    } else if (op.type === ObjectOperation.SET) {
+      this._super.set.call(this, op.path, op.val);
+    } else {
+      throw new Error("Illegal state.");
     }
-    this.trigger('graph:changed', changes);
-  };
-
-  this.__trigger__ = function(_op) {
-    var ops = Operator.Helpers.flatten(_op);
-    for (var i = 0; i < ops.length; i++) {
-      var op = ops[i];
-      this.trigger('operation:applied', op, this);
-    }
+    this.emit('operation:applied', op, this);
   };
 
   this.record = function(op) {
@@ -161,60 +130,5 @@ VersionedData.Prototype = function() {
 };
 
 Substance.inherit(VersionedData, Data);
-
-VersionedData.ObjectOperation = function(data) {
-  Operator.ObjectOperation.call(this, data);
-};
-VersionedData.ObjectOperation.Prototype = function() {
-  this.apply = function(graph) {
-    var isRecording = graph.isRecording;
-    if (isRecording) graph.stopRecording();
-
-    if (this.type === NOP) return;
-    if (this.type === CREATE) {
-      // clone here as the operations value must not be changed
-      graph.create(Substance.clone(this.val));
-    } else if (this.type === DELETE) {
-      graph.delete(this.val.id);
-    } else if (this.type === UPDATE) {
-      var val = graph.nodes.get(this.path);
-      if (this.propertyType === 'object') {
-        Operator.ObjectOperation.apply(this.diff, val);
-      } else if (this.propertyType === 'array') {
-        Operator.ArrayOperation.apply(this.diff, val);
-      } else if (this.propertyType === 'string') {
-        val = Operator.TextOperation.apply(this.diff, val);
-        graph.nodes.set(this.path, val);
-      } else {
-        throw new Error("Unsupported type for operational update.");
-      }
-    } else if (this.type === SET) {
-      graph.nodes.set(this.path, this.val);
-    } else {
-      throw new Error("Illegal state.");
-    }
-    if (isRecording) graph.startRecording();
-  };
-};
-
-Substance.inherit(VersionedData, Operator.ObjectOperation);
-
-VersionedData.ObjectOperation.fromJSON = function(data) {
-  var op = new VersionedData.ObjectOperation(data);
-  if (data.type === "update") {
-    switch (data.propertyType) {
-    case "string":
-      op.diff = Operator.TextOperation.fromJSON(op.diff);
-      break;
-    case "array":
-      op.diff = Operator.ArrayOperation.fromJSON(op.diff);
-      break;
-    default:
-      throw new Error("Don't know how to deserialize this operation:" + JSON.stringify(data));
-    }
-  }
-  return op;
-};
-
 
 module.exports = VersionedData;

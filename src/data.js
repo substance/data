@@ -1,9 +1,12 @@
 "use strict";
 
 var Substance = require('substance');
-var PathAdapter = require('./path-adapter');
+var PathAdapter = Substance.PathAdapter;
+var EventEmitter = Substance.EventEmitter;
 
 function Data(options) {
+  EventEmitter.call(this);
+
   options = options || {};
 
   // the nodeFactory is used to wrap plain JSON data into rich objects
@@ -72,13 +75,13 @@ Data.Prototype = function() {
   // Graph initialization.
   this.init = function() {
     if (this.seed) {
-      this.nodes = Substance.extend(Object.create(PathAdapter.prototype), this.seed.nodes);
+      this.nodes = Substance.extend(new PathAdapter(), this.seed.nodes);
     } else {
-      this.nodes = Object.create(PathAdapter.prototype);
+      this.nodes = new PathAdapter();
     }
   };
 };
 
-Substance.initClass(Data);
+Substance.inherit(Data, EventEmitter);
 
 module.exports = Data;
