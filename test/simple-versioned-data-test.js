@@ -1,18 +1,15 @@
 "use strict";
 
-// Import
-// ========
-
 var Test = require('substance-test');
 var assert = Test.assert;
 var Operator = require('substance-operator');
 var Data = require('../versioned');
 
-var SimpleDataTest = function() {
+var SimpleVersionedDataTest = function() {
   Test.call(this);
 };
 
-SimpleDataTest.Prototype = function() {
+SimpleVersionedDataTest.Prototype = function() {
 
   this.setup = function() {
     this.graph = new Data();
@@ -87,7 +84,7 @@ SimpleDataTest.Prototype = function() {
     },
   ];
 };
-SimpleDataTest.Prototype.prototype = Test.prototype;
-SimpleDataTest.prototype = new SimpleDataTest.Prototype();
+SimpleVersionedDataTest.Prototype.prototype = Test.prototype;
+SimpleVersionedDataTest.prototype = new SimpleVersionedDataTest.Prototype();
 
-module.exports = SimpleDataTest;
+module.exports = SimpleVersionedDataTest;

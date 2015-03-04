@@ -17,9 +17,8 @@
   },
   "dependencies": {
     "substance": "git+https://github.com/oliver----/substance.git",
-    "substance-util": "git+https://github.com/substance/util.git#substance-ve",
     "substance-operator": "git+https://github.com/substance/operator.git#next",
-    "substance-chronicle": "git+https://github.com/substance/chronicle.git#substance-ve"
+    "substance-chronicle": "git+https://github.com/substance/chronicle.git#next"
   },
   "devDependencies": {
     "express": "4.9.x",
