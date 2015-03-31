@@ -75,9 +75,21 @@ Data.Prototype = function() {
   // Graph initialization.
   this.init = function() {
     if (this.seed) {
-      this.nodes = Substance.extend(new PathAdapter(), this.seed.nodes);
+      var nodes = this.seed.nodes;
+      if (this.nodeFactory) {
+        this.nodes = new PathAdapter();
+        Substance.each(nodes, function(node) {
+          var richNode = this.nodeFactory(node);
+          if (richNode) {
+            this.nodes[node.id] = richNode;
+          } else {
+            console.error('Could not create node instance for', node);
+          }
+        }, this);
+      } else {
+        this.nodes = Substance.extend(new PathAdapter(), this.seed.nodes);
+      }
     } else {
-      this.nodes = new PathAdapter();
     }
   };
 };
