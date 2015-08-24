@@ -1,5 +1,7 @@
-Substance.Data    [![Build Status](https://travis-ci.org/substance/data.png)](https://travis-ci.org/substance/data)
+Substance.Data    
 =====================
+
+**No longer maintained. Use http://github.com/substance/substance instead.**
 
 Substance.Data is a data representation framework for Javascript. It's being developed in the context of Substance, an open publishing platform.
 
